@@ -15,6 +15,7 @@ const DIRECT_TOOLS: Array[String] = [
 	"node.set_property",
 	"script.read",
 	"script.write",
+	"script.patch",
 	"script.validate",
 	"script.attach",
 	"resource.inspect",
@@ -32,7 +33,9 @@ const DIRECT_TOOLS: Array[String] = [
 	"runtime.call_method",
 	"diagnostics.run_capture",
 	"batch.execute",
+	"batch.execute_transaction",
 	"logs.read",
+	"test.run",
 ]
 
 const MANAGED_DOMAINS: Array[String] = [
@@ -47,6 +50,8 @@ const MANAGED_DOMAINS: Array[String] = [
 	"debugger",
 	"runtime",
 	"logs",
+	"test",
+	"autoload",
 ]
 
 var _registry: RefCounted

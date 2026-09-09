@@ -12,6 +12,7 @@ const EditorCommands := preload("res://addons/godot_mcp_chatgpt/commands/editor_
 const RuntimeDebuggerManager := preload("res://addons/godot_mcp_chatgpt/debug/runtime_debugger_manager.gd")
 const RuntimeDebuggerCommands := preload("res://addons/godot_mcp_chatgpt/commands/runtime_debugger_commands.gd")
 const ObservationCommands := preload("res://addons/godot_mcp_chatgpt/commands/observation_commands.gd")
+const WorkflowCommands := preload("res://addons/godot_mcp_chatgpt/commands/workflow_commands.gd")
 const LogCapture := preload("res://addons/godot_mcp_chatgpt/debug/log_capture.gd")
 const DiagnosticsCommands := preload("res://addons/godot_mcp_chatgpt/commands/diagnostics_commands.gd")
 const BatchCommands := preload("res://addons/godot_mcp_chatgpt/commands/batch_commands.gd")
@@ -44,8 +45,9 @@ func _enter_tree() -> void:
 		push_warning("[GodotMCPChatGPT] Runtime debugger setup: %s" % str(runtime_setup))
 	RuntimeDebuggerCommands.register(_registry, self, _runtime_manager)
 	ObservationCommands.register(_registry, self, _runtime_manager, _editor_logger)
+	WorkflowCommands.register(_registry, self)
 	DiagnosticsCommands.register(_registry, self)
-	BatchCommands.register(_registry)
+	BatchCommands.register(_registry, self)
 
 	_client = TunnelClientRunner.new()
 	_client.name = "WebMCPClient"

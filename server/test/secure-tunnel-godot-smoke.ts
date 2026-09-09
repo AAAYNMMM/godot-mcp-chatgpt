@@ -152,7 +152,7 @@ const expectedDirect = [
   "godot.get_status", "project.inspect", "project.search_text",
   "scene.get_current", "scene.get_tree", "scene.open", "scene.save",
   "node.create", "node.find", "node.get_properties", "node.set_property",
-  "script.read", "script.write", "script.validate", "script.attach",
+  "script.read", "script.write", "script.patch", "script.validate", "script.attach",
   "resource.inspect", "classdb.search", "classdb.inspect",
   "editor.inspect", "editor.take_screenshot", "editor.run_project", "editor.run_custom_scene",
   "runtime.status", "runtime.get_tree", "runtime.inspect", "runtime.get_property",
@@ -160,12 +160,12 @@ const expectedDirect = [
 ];
 const expectedManage = [
   "project.manage", "input_map.manage", "scene.manage", "node.manage", "script.manage",
-  "resource.manage", "classdb.manage", "editor.manage", "debugger.manage", "runtime.manage", "logs.manage",
+  "resource.manage", "classdb.manage", "editor.manage", "debugger.manage", "runtime.manage", "logs.manage", "test.manage", "autoload.manage",
 ];
 for (const required of [...expectedDirect, ...expectedManage]) assert.ok(names.has(required), "missing compact public tool " + required);
-assert.equal(toolNames.length, 42, "unexpected compact public tool count");
+assert.equal(toolNames.length, 47, "unexpected compact public tool count");
 assert.ok(toolNames.length <= 50, "compact public tool surface exceeds release gate");
-let derivedAtomicCount = 3;
+let derivedAtomicCount = 4;
 for (const manageName of expectedManage) {
   const manage = listed.tools.find((item: any) => item.name === manageName);
   assert.ok(manage, "missing " + manageName);
@@ -173,13 +173,68 @@ for (const manageName of expectedManage) {
   assert.ok(Array.isArray(ops) && ops.length > 0, manageName + " missing op enum");
   derivedAtomicCount += ops.length;
 }
-assert.equal(derivedAtomicCount, 139, "compact surface does not cover all registered atomic commands");
+assert.equal(derivedAtomicCount, 153, "compact surface does not cover all registered atomic commands");
 console.log("COMPACT_TOOL_SURFACE_GATE=PASS public=" + toolNames.length + " atomic=" + derivedAtomicCount);
 
 const invalidManagedParams = await toolRaw("project.get_info", { unexpected: true });
 assert.equal(invalidManagedParams.publicName, "project.manage");
 assert.equal(invalidManagedParams.isError, true);
 assert.equal(invalidManagedParams.body?.code, "INVALID_ARGUMENTS");
+
+// Phase C: script diagnostics / patch / GDScript tests / ensure helpers / autoload.
+const invalidWrite = await tool("script.write", { path: "res://.mcp-smoke/phase-c-invalid.gd", content: "extends Node\nfunc broken( -> void:\n\tpass\n" });
+assert.equal(invalidWrite.written, true);
+assert.equal(invalidWrite.valid, false);
+const invalidDiag = await tool("script.get_diagnostics", { path: "res://.mcp-smoke/phase-c-invalid.gd" });
+assert.equal(invalidDiag.valid, false);
+await tool("script.write", { path: "res://.mcp-smoke/phase-c-invalid.gd", content: "extends Node\nfunc fixed() -> int:\n\treturn 42\n" });
+const validDiag = await tool("script.get_diagnostics", { path: "res://.mcp-smoke/phase-c-invalid.gd" });
+assert.equal(validDiag.valid, true);
+
+await tool("script.write", { path: "res://.mcp-smoke/patch-target.gd", content: "extends RefCounted\nconst TOKEN = 1\nconst TOKEN2 = 1\n" });
+const ambiguousPatch = await toolRaw("script.patch", { path: "res://.mcp-smoke/patch-target.gd", find: "= 1", replace: "= 2" });
+assert.equal(ambiguousPatch.isError, true);
+assert.equal(ambiguousPatch.body?.code, "PATCH_AMBIGUOUS");
+const patched = await tool("script.patch", { path: "res://.mcp-smoke/patch-target.gd", find: "const TOKEN = 1", replace: "const TOKEN = 42", require_valid: true });
+assert.equal(patched.written, true);
+assert.equal(patched.valid, true);
+assert.equal(patched.replacements, 1);
+
+await tool("input_map.remove_action", { action: "mcp_phase_c_ensure" });
+await toolRaw("autoload.remove", { name: "McpPhaseCTest" });
+const ensureAction1 = await tool("input_map.ensure_action", { action: "mcp_phase_c_ensure", deadzone: 0.3 });
+assert.equal(ensureAction1.created, true);
+const ensureAction2 = await tool("input_map.ensure_action", { action: "mcp_phase_c_ensure", deadzone: 0.3 });
+assert.equal(ensureAction2.already_exists, true);
+const ensureEvent1 = await tool("input_map.ensure_event", { action: "mcp_phase_c_ensure", event: { type: "key", keycode: 90 } });
+assert.equal(ensureEvent1.already_bound, false);
+const ensureEvent2 = await tool("input_map.ensure_event", { action: "mcp_phase_c_ensure", event: { type: "key", keycode: 90 } });
+assert.equal(ensureEvent2.already_bound, true);
+
+await tool("script.write", { path: "res://.mcp-smoke/phase-c-autoload.gd", content: "extends Node\n" });
+const autoloadAdded = await tool("autoload.add", { name: "McpPhaseCTest", path: "res://.mcp-smoke/phase-c-autoload.gd", singleton: true });
+assert.equal(autoloadAdded.persisted, true);
+const autoloads = await tool("autoload.list");
+assert.ok(autoloads.autoloads.some((entry: any) => entry.name === "McpPhaseCTest"));
+const reservedAutoload = await toolRaw("autoload.remove", { name: "GodotMCPChatGPTRuntime" });
+assert.equal(reservedAutoload.isError, true);
+assert.equal(reservedAutoload.body?.code, "RESERVED_AUTOLOAD");
+const autoloadRemoved = await tool("autoload.remove", { name: "McpPhaseCTest" });
+assert.equal(autoloadRemoved.removed, true);
+
+await tool("project.make_directory", { path: "res://.mcp-smoke/tests" });
+const testSource = '@tool\nextends "res://addons/godot_mcp_chatgpt/testing/test_suite.gd"\n\nfunc test_math() -> void:\n\tassert_eq(20 + 22, 42)\n\nfunc test_truth() -> bool:\n\tassert_true(true)\n\treturn true\n';
+await tool("script.write", { path: "res://.mcp-smoke/tests/test_phase_c.gd", content: testSource });
+const testList = await tool("test.list", { root: "res://.mcp-smoke/tests" });
+assert.equal(testList.count, 1);
+assert.equal(testList.suites[0].count, 2);
+const testRun = await tool("test.run", { root: "res://.mcp-smoke/tests", max_tests: 10 });
+assert.equal(testRun.ok, true);
+assert.equal(testRun.tests, 2);
+assert.equal(testRun.passed, 2);
+assert.equal(testRun.failed, 0);
+const cachedTests = await tool("test.get_results");
+assert.equal(cachedTests.tests, 2);
 
 const batchRead = await tool("batch.execute", {
   operations: [
@@ -276,6 +331,44 @@ assert.equal(editorSelection.selection.nodes.length, 1);
 assert.equal(editorSelection.selection.nodes[0]?.name, "Player");
 const clearedSelection = await tool("editor.clear_selection");
 assert.equal(clearedSelection.nodes.length, 0);
+
+const undoNode = await tool("node.create", { parent_path: ".", type: "Node3D", name: "UndoNode" });
+assert.equal(undoNode.undoable, true);
+const undoSet = await tool("node.set_property", { node_path: "UndoNode", property: "position", value: { __godot_type: "Vector3", x: 5, y: 6, z: 7 } });
+assert.equal(undoSet.undoable, true);
+const undoStateBefore = await tool("editor.get_undo_state");
+assert.equal(undoStateBefore.has_undo, true);
+const undoResult = await tool("editor.undo");
+assert.equal(undoResult.performed, true);
+const afterUndo = await tool("node.get_property", { node_path: "UndoNode", property: "position" });
+assert.deepEqual(afterUndo.value, { __godot_type: "Vector3", x: 0, y: 0, z: 0 });
+const redoResult = await tool("editor.redo");
+assert.equal(redoResult.performed, true);
+const afterRedo = await tool("node.get_property", { node_path: "UndoNode", property: "position" });
+assert.deepEqual(afterRedo.value, { __godot_type: "Vector3", x: 5, y: 6, z: 7 });
+
+const txSuccess = await tool("batch.execute_transaction", { operations: [
+  { tool: "node.set_property", arguments: { node_path: "UndoNode", property: "position", value: { __godot_type: "Vector3", x: 1, y: 1, z: 1 } } },
+  { tool: "node.create", arguments: { parent_path: ".", type: "Node", name: "TransactionalNode" } },
+] });
+assert.equal(txSuccess.atomic, true);
+assert.equal(txSuccess.committed, true);
+assert.equal(txSuccess.undo_actions, 2);
+const txNode = await tool("node.find", { name_contains: "TransactionalNode" });
+assert.equal(txNode.count, 1);
+const beforeFailedTx = await tool("node.get_property", { node_path: "UndoNode", property: "position" });
+const txRollback = await tool("batch.execute_transaction", { operations: [
+  { tool: "node.set_property", arguments: { node_path: "UndoNode", property: "position", value: { __godot_type: "Vector3", x: 9, y: 9, z: 9 } } },
+  { tool: "node.set_property", arguments: { node_path: "UndoNode", property: "definitely_missing", value: 1 } },
+] });
+assert.equal(txRollback.atomic, true);
+assert.equal(txRollback.committed, false);
+assert.equal(txRollback.rolled_back, true);
+const afterFailedTx = await tool("node.get_property", { node_path: "UndoNode", property: "position" });
+assert.deepEqual(afterFailedTx.value, beforeFailedTx.value);
+const unsupportedTx = await toolRaw("batch.execute_transaction", { operations: [{ tool: "script.write", arguments: { path: "res://.mcp-smoke/nope.gd", content: "extends RefCounted\n" } }] });
+assert.equal(unsupportedTx.isError, true);
+assert.equal(unsupportedTx.body?.code, "TRANSACTION_TOOL_NOT_UNDOABLE");
 
 const property = await tool("node.set_property", {
   node_path: "Player",
@@ -449,7 +542,7 @@ assert.deepEqual(runtimePosition.value, { __godot_type: "Vector3", x: 4, y: 5, z
 const runtimeChanged = await tool("runtime.set_property", { node_path: "Player", property: "position", value: { __godot_type: "Vector3", x: 7, y: 8, z: 9 } });
 assert.deepEqual(runtimeChanged.value, { __godot_type: "Vector3", x: 7, y: 8, z: 9 });
 const runtimeCall = await tool("runtime.call_method", { node_path: ".", method: "get_child_count", arguments: [] });
-assert.equal(runtimeCall.result, 2);
+assert.ok(runtimeCall.result >= 2, `expected at least Player + PhaseBLabel children, got ${runtimeCall.result}`);
 const runtimePerf = await tool("runtime.get_performance");
 assert.equal(typeof runtimePerf.fps, "number");
 const paused = await tool("runtime.pause");
@@ -530,6 +623,11 @@ assert.equal(closedScene.closed, true);
 const reopenedAfterClose = await tool("scene.open", { path: "res://.mcp-smoke/secure-generated.tscn" });
 assert.equal(reopenedAfterClose.opened, true);
 
+await tool("input_map.remove_action", { action: "mcp_phase_c_ensure" });
+await tool("project.delete_file", { path: "res://.mcp-smoke/phase-c-invalid.gd" });
+await tool("project.delete_file", { path: "res://.mcp-smoke/patch-target.gd" });
+await tool("project.delete_file", { path: "res://.mcp-smoke/phase-c-autoload.gd" });
+await tool("project.delete_file", { path: "res://.mcp-smoke/tests/test_phase_c.gd" });
 await tool("input_map.remove_action", { action: "mcp_phase_b_action" });
 const removedAction = await tool("input_map.remove_action", { action: "mcp_smoke_action" });
 assert.equal(removedAction.removed, true);

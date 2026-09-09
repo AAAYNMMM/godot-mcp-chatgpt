@@ -299,60 +299,57 @@ static func _node_create(plugin: EditorPlugin, args: Dictionary) -> Dictionary:
 	var type_name := str(args.get("type", "")).strip_edges()
 	var instance = ClassDB.instantiate(type_name)
 	if not instance is Node:
-		if instance is Object:
-			instance.free()
+		if instance is Object: instance.free()
 		return _error("INVALID_NODE_TYPE", "Class is not an instantiable Node: %s" % type_name)
 	var node: Node = instance
 	var requested_name := str(args.get("name", "")).strip_edges()
-	if not requested_name.is_empty():
-		node.name = requested_name
-	parent.add_child(node)
-	node.owner = root
-	_mark_unsaved(plugin)
-	return _ok({
-		"node_path": str(root.get_path_to(node)),
-		"name": node.name,
-		"type": node.get_class(),
-	})
-
+	if not requested_name.is_empty(): node.name = requested_name
+	var undo := plugin.get_undo_redo()
+	undo.create_action("MCP Create Node", UndoRedo.MERGE_DISABLE, root)
+	undo.add_do_method(parent, "add_child", node)
+	undo.add_do_method(node, "set_owner", root)
+	undo.add_undo_method(parent, "remove_child", node)
+	undo.add_do_reference(node)
+	undo.commit_action()
+	return _ok({"node_path": str(root.get_path_to(node)), "name": node.name, "type": node.get_class(), "undoable": true})
 
 static func _node_set_property(plugin: EditorPlugin, args: Dictionary) -> Dictionary:
 	var root := plugin.get_editor_interface().get_edited_scene_root()
-	if root == null:
-		return _error("NO_SCENE", "No scene is currently open")
+	if root == null: return _error("NO_SCENE", "No scene is currently open")
 	var node_path := str(args.get("node_path", ""))
 	var node := _resolve_node(root, node_path)
-	if node == null:
-		return _error("NODE_NOT_FOUND", "Node not found: %s" % node_path)
+	if node == null: return _error("NODE_NOT_FOUND", "Node not found: %s" % node_path)
 	var property_name := str(args.get("property", "")).strip_edges()
-	if property_name.is_empty():
-		return _error("PROPERTY_REQUIRED", "property is required")
-	if not _has_property(node, property_name):
-		return _error("PROPERTY_NOT_FOUND", "Property '%s' does not exist on %s" % [property_name, node.get_class()])
+	if property_name.is_empty(): return _error("PROPERTY_REQUIRED", "property is required")
+	if not _has_property(node, property_name): return _error("PROPERTY_NOT_FOUND", "Property '%s' does not exist on %s" % [property_name, node.get_class()])
 	var decoded = _decode_value(args.get("value"))
-	node.set(property_name, decoded)
-	_mark_unsaved(plugin)
-	return _ok({"node_path": node_path, "property": property_name, "value": _encode_value(node.get(property_name))})
-
+	var old_value = node.get(property_name)
+	var undo := plugin.get_undo_redo()
+	undo.create_action("MCP Set %s" % property_name, UndoRedo.MERGE_DISABLE, node)
+	undo.add_do_property(node, property_name, decoded)
+	undo.add_undo_property(node, property_name, old_value)
+	undo.commit_action()
+	return _ok({"node_path": node_path, "property": property_name, "value": _encode_value(node.get(property_name)), "undoable": true})
 
 static func _node_delete(plugin: EditorPlugin, args: Dictionary) -> Dictionary:
 	var root := plugin.get_editor_interface().get_edited_scene_root()
-	if root == null:
-		return _error("NO_SCENE", "No scene is currently open")
+	if root == null: return _error("NO_SCENE", "No scene is currently open")
 	var node_path := str(args.get("node_path", ""))
 	var node := _resolve_node(root, node_path)
-	if node == null:
-		return _error("NODE_NOT_FOUND", "Node not found: %s" % node_path)
-	if node == root:
-		return _error("ROOT_DELETE_DENIED", "The edited scene root cannot be deleted with node.delete")
+	if node == null: return _error("NODE_NOT_FOUND", "Node not found: %s" % node_path)
+	if node == root: return _error("ROOT_DELETE_DENIED", "The edited scene root cannot be deleted with node.delete")
 	var deleted_name := node.name
 	var parent := node.get_parent()
-	if parent != null:
-		parent.remove_child(node)
-	node.free()
-	_mark_unsaved(plugin)
-	return _ok({"deleted": true, "name": deleted_name})
-
+	if parent == null: return _error("NO_PARENT", "Node has no parent")
+	var old_owner := node.owner
+	var undo := plugin.get_undo_redo()
+	undo.create_action("MCP Delete Node", UndoRedo.MERGE_DISABLE, root)
+	undo.add_do_method(parent, "remove_child", node)
+	undo.add_undo_method(parent, "add_child", node)
+	if old_owner != null: undo.add_undo_method(node, "set_owner", old_owner)
+	undo.add_undo_reference(node)
+	undo.commit_action()
+	return _ok({"deleted": true, "name": deleted_name, "undoable": true})
 
 static func _script_read(args: Dictionary) -> Dictionary:
 	var path := str(args.get("path", "")).strip_edges()
@@ -370,22 +367,25 @@ static func _script_read(args: Dictionary) -> Dictionary:
 
 static func _script_write(plugin: EditorPlugin, args: Dictionary) -> Dictionary:
 	var path := str(args.get("path", "")).strip_edges()
-	if not _valid_res_path(path):
-		return _error("INVALID_PATH", "Path must stay inside res:// and must not contain '..'")
+	if not _valid_res_path(path): return _error("INVALID_PATH", "Path must stay inside res:// and must not contain '..'")
 	var content := str(args.get("content", ""))
 	var dir_err := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(path.get_base_dir()))
-	if dir_err != OK and dir_err != ERR_ALREADY_EXISTS:
-		return _error("DIRECTORY_FAILED", "Unable to create file directory: %s" % error_string(dir_err))
+	if dir_err != OK and dir_err != ERR_ALREADY_EXISTS: return _error("DIRECTORY_FAILED", "Unable to create file directory: %s" % error_string(dir_err))
 	var file := FileAccess.open(path, FileAccess.WRITE)
-	if file == null:
-		return _error("OPEN_FAILED", "Unable to write file: %s" % path)
-	file.store_string(content)
-	file.close()
+	if file == null: return _error("OPEN_FAILED", "Unable to write file: %s" % path)
+	file.store_string(content); file.close()
+	var diagnostics := {"valid": true, "error_code": 0, "error": "", "methods": []}
+	if path.get_extension().to_lower() == "gd":
+		var script := GDScript.new(); script.source_code = content
+		var parse_error := script.reload(true)
+		diagnostics.valid = parse_error == OK
+		diagnostics.error_code = int(parse_error)
+		diagnostics.error = error_string(parse_error) if parse_error != OK else ""
+		if parse_error == OK:
+			for method in script.get_script_method_list(): diagnostics.methods.append(str(method.get("name", "")))
 	var fs := plugin.get_editor_interface().get_resource_filesystem()
-	if fs != null:
-		fs.scan_sources()
-	return _ok({"path": path, "bytes": content.to_utf8_buffer().size()})
-
+	if fs != null: fs.scan_sources()
+	return _ok({"path": path, "bytes": content.to_utf8_buffer().size(), "written": true, "valid": diagnostics.valid, "diagnostics": diagnostics})
 
 static func _script_attach(plugin: EditorPlugin, args: Dictionary) -> Dictionary:
 	var root := plugin.get_editor_interface().get_edited_scene_root()

@@ -25,6 +25,8 @@ static func register(registry: RefCounted, plugin: EditorPlugin) -> void:
 	_add(registry, "input_map.remove_action", "Remove an InputMap action and persist it.", {"action":{"type":"string"}}, func(a): return _input_remove(a), false, ["action"], true)
 	_add(registry, "input_map.add_event", "Add a keyboard/mouse/joypad event to an InputMap action and persist it.", {"action":{"type":"string"},"event":{"type":"object"}}, func(a): return _input_add_event(a), false, ["action","event"])
 	_add(registry, "input_map.clear_action_events", "Remove all events from an InputMap action and persist it.", {"action":{"type":"string"}}, func(a): return _input_clear_events(a), false, ["action"], true)
+	_add(registry, "input_map.ensure_action", "Ensure an InputMap action exists and is persisted without duplicating or replacing an existing action.", {"action":{"type":"string"},"deadzone":{"type":"number","minimum":0,"maximum":1}}, func(a): return _input_ensure_action(a), false, ["action"])
+	_add(registry, "input_map.ensure_event", "Ensure one keyboard/mouse/joypad event binding exists for an action, creating the action if necessary.", {"action":{"type":"string"},"event":{"type":"object"},"deadzone":{"type":"number","minimum":0,"maximum":1}}, func(a): return _input_ensure_event(a), false, ["action","event"])
 
 static func _add(registry, name:String, description:String, properties:Dictionary, handler:Callable, read_only:bool, required:Array = [], destructive:bool=false) -> void:
 	registry.add_command(name, description, {"type":"object","properties":properties,"required":required,"additionalProperties":false}, handler, {"readOnlyHint":read_only,"destructiveHint":destructive})
@@ -218,6 +220,38 @@ static func _input_clear_events(args:Dictionary)->Dictionary:
 	var action:=str(args.get("action","")); if not ProjectSettings.has_setting("input/"+action): return U.error("ACTION_NOT_FOUND","Input action not found")
 	var current:=ProjectSettings.get_setting("input/"+action,{}); current["events"]=[]; ProjectSettings.set_setting("input/"+action,current); var err:=ProjectSettings.save(); InputMap.load_from_project_settings(); if err!=OK: return U.error("SAVE_FAILED",error_string(err))
 	return U.ok(_input_action_value(action))
+
+static func _input_ensure_action(args:Dictionary)->Dictionary:
+	var action:=str(args.get("action","")).strip_edges()
+	if action.is_empty(): return U.error("ACTION_REQUIRED","action is required")
+	if InputMap.has_action(action) or ProjectSettings.has_setting("input/"+action):
+		if not InputMap.has_action(action): InputMap.load_from_project_settings()
+		return U.ok({"action":action,"created":false,"already_exists":true,"value":_input_action_value(action)})
+	var created:=_input_add({"action":action,"deadzone":float(args.get("deadzone",0.5))})
+	if not bool(created.get("ok",false)): return created
+	return U.ok({"action":action,"created":true,"already_exists":false,"value":created.get("result",{})})
+
+static func _input_ensure_event(args:Dictionary)->Dictionary:
+	var action:=str(args.get("action","")).strip_edges()
+	if action.is_empty(): return U.error("ACTION_REQUIRED","action is required")
+	var event_data=args.get("event",{})
+	if not event_data is Dictionary: return U.error("INVALID_EVENT","event must be an object")
+	var event:=_decode_input_event(event_data)
+	if event==null: return U.error("INVALID_EVENT","Unsupported input event type")
+	var ensured:=_input_ensure_action({"action":action,"deadzone":float(args.get("deadzone",0.5))})
+	if not bool(ensured.get("ok",false)): return ensured
+	for existing in InputMap.action_get_events(action):
+		if _input_events_equal(existing,event):
+			return U.ok({"action":action,"already_bound":true,"action_created":bool(ensured.get("result",{}).get("created",false)),"event":_encode_input_event(existing)})
+	var added:=_input_add_event({"action":action,"event":event_data})
+	if not bool(added.get("ok",false)): return added
+	return U.ok({"action":action,"already_bound":false,"action_created":bool(ensured.get("result",{}).get("created",false)),"event":_encode_input_event(event),"value":added.get("result",{})})
+
+static func _input_events_equal(a:InputEvent,b:InputEvent)->bool:
+	if a.get_class()!=b.get_class(): return false
+	var ea:=_encode_input_event(a).duplicate(true); var eb:=_encode_input_event(b).duplicate(true)
+	ea.erase("text"); eb.erase("text"); ea.erase("class"); eb.erase("class")
+	return ea==eb
 
 static func _decode_input_event(data:Dictionary)->InputEvent:
 	match str(data.get("type","")):

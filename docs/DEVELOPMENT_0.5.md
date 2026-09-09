@@ -546,15 +546,41 @@ Real Web ChatGPT validation is intentionally deferred to Phase F per the request
 
 ### Phase C — Script/test/transaction workflow
 
-Status: **planned**.
+Status: **targeted validation passed**.
 
-- script patch;
-- write diagnostics;
-- GDScript test runner/results;
-- InputMap ensure helpers;
-- UndoRedo conversion for eligible editor mutations;
-- atomic/rollback Batch for supported operations;
-- autoload add/remove.
+Implemented and validated:
+
+- `script.patch` exact-anchor patching with ambiguity/count checks and optional GDScript validity gate;
+- `script.write` write diagnostics plus `script.get_diagnostics`;
+- bounded editor-side GDScript test discovery/run/results using `@tool` test suites;
+- idempotent `input_map.ensure_action` and `input_map.ensure_event` helpers;
+- project autoload list/add/remove with persistence and reserved runtime-autoload protection;
+- Godot-native `EditorUndoRedoManager` backing for core `node.create`, `node.set_property`, and `node.delete` mutations;
+- `editor.undo`, `editor.redo`, and undo-history inspection;
+- `batch.execute_transaction` for the proven UndoRedo-backed mutation subset, with preflight rejection of unsupported operations and rollback on failure;
+- existing non-transactional `batch.execute` retained explicitly as non-atomic.
+
+Validation actually run:
+
+```text
+Godot 4.7.2 addon load/parse: PASS
+npm run build: PASS
+npm test: PASS
+CATALOGUE_SCHEMA_GATE=PASS tools=47
+COMPACT_TOOL_SURFACE_GATE=PASS public=47 atomic=153
+SCRIPT_PATCH_DIAGNOSTICS=PASS
+GDSCRIPT_TEST_RUNNER=PASS tests=2 passed=2 failed=0
+INPUTMAP_ENSURE=PASS
+AUTOLOAD_LIFECYCLE=PASS
+EDITOR_UNDO_REDO=PASS
+TRANSACTION_BATCH_COMMIT=PASS undo_actions=2
+TRANSACTION_BATCH_ROLLBACK=PASS
+PRODUCTION_PLUGIN_SMOKE=PASS
+DIFF_CHECK=PASS
+BOM_CHECK=PASS
+```
+
+Real Web ChatGPT validation remains intentionally deferred to Phase F per the requested workflow.
 
 ### Phase D — High-level content authoring
 
@@ -650,7 +676,7 @@ Rules for implementation:
 
 ## 9. Current status
 
-Status: **Phases A–B targeted validation passed; final integrated Web ChatGPT validation deferred**.
+Status: **Phases A–C targeted validation passed; final integrated Web ChatGPT validation deferred**.
 
 Locked decisions:
 
@@ -678,4 +704,4 @@ PLANNING_DOC_GATES=PASS
 
 ## 10. Exact next implementation task
 
-**Proceed to Phase C: script patch/write diagnostics, GDScript test runner, InputMap ensure helpers, UndoRedo/transactional batch, and autoload mutation. Real Web ChatGPT testing remains deferred to Phase F.**
+**Proceed to Phase D: Animation, Material/Shader, Audio, Particles, Camera, Theme, UI, and Resource helpers. Real Web ChatGPT testing remains deferred to Phase F.**

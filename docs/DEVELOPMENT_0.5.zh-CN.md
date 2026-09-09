@@ -547,15 +547,41 @@ PRODUCTION_PLUGIN_SMOKE=PASS
 
 ### Phase C — Script / Test / Transaction
 
-状态：**planned**。
+状态：**targeted validation passed**。
 
-- Script Patch；
-- Write Diagnostics；
-- GDScript Test Runner / Results；
-- InputMap Ensure Helper；
-- Eligible Editor Mutation UndoRedo；
-- 支持范围内 Atomic / Rollback Batch；
-- Autoload Add / Remove。
+已实现并验证：
+
+- `script.patch` 精确锚点 Patch，带歧义、匹配数量和可选 GDScript 有效性门禁；
+- `script.write` 写入诊断与 `script.get_diagnostics`；
+- 有边界的 Editor 侧 GDScript Test Discovery / Run / Results，测试脚本按 Godot `@tool` 规则执行；
+- 幂等 `input_map.ensure_action` / `input_map.ensure_event`；
+- Project Autoload List / Add / Remove，持久化并保护保留的 Runtime Autoload；
+- 核心 `node.create`、`node.set_property`、`node.delete` 改用 Godot 原生 `EditorUndoRedoManager`；
+- `editor.undo`、`editor.redo` 与 Undo History 状态；
+- `batch.execute_transaction`：仅接受已证明由 UndoRedo 支撑的 Mutation，执行前拒绝不支持项，失败时回滚；
+- 原有非事务 `batch.execute` 保留并继续明确为 non-atomic。
+
+实际验证：
+
+```text
+Godot 4.7.2 addon load/parse: PASS
+npm run build: PASS
+npm test: PASS
+CATALOGUE_SCHEMA_GATE=PASS tools=47
+COMPACT_TOOL_SURFACE_GATE=PASS public=47 atomic=153
+SCRIPT_PATCH_DIAGNOSTICS=PASS
+GDSCRIPT_TEST_RUNNER=PASS tests=2 passed=2 failed=0
+INPUTMAP_ENSURE=PASS
+AUTOLOAD_LIFECYCLE=PASS
+EDITOR_UNDO_REDO=PASS
+TRANSACTION_BATCH_COMMIT=PASS undo_actions=2
+TRANSACTION_BATCH_ROLLBACK=PASS
+PRODUCTION_PLUGIN_SMOKE=PASS
+DIFF_CHECK=PASS
+BOM_CHECK=PASS
+```
+
+按用户要求，真实 Web ChatGPT 验证继续统一延后到 Phase F。
 
 ### Phase D — 高层内容创作
 
@@ -651,7 +677,7 @@ Godot AI 是独立的 MIT 开源项目，本项目在 v0.5 迁移中将它作为
 
 ## 9. 当前状态
 
-状态：**Phase A–B targeted validation passed；最终真实 Web ChatGPT 集成验证延后**。
+状态：**Phase A–C targeted validation passed；最终真实 Web ChatGPT 集成验证延后**。
 
 已经锁定：
 
@@ -679,4 +705,4 @@ PLANNING_DOC_GATES=PASS
 
 ## 10. 精确下一项实现任务
 
-**开始 Phase C：Script Patch / Write Diagnostics / GDScript Test Runner / InputMap Ensure / UndoRedo + Transactional Batch / Autoload Mutation。真实 Web ChatGPT 测试继续延后到 Phase F。**
+**开始 Phase D：Animation / Material / Shader / Audio / Particles / Camera / Theme / UI / Resource Helpers。真实 Web ChatGPT 测试继续延后到 Phase F。**

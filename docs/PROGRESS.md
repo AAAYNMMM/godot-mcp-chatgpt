@@ -128,7 +128,7 @@ README_STRUCTURE_CHECK=PASS
 No plugin/runtime source file was changed by this task.
 ## Active development — v0.5.0 capability migration
 
-Status: **Phases A–B targeted validation passed; final integrated Web ChatGPT validation deferred**.
+Status: **Phases A–C targeted validation passed; final integrated Web ChatGPT validation deferred**.
 
 The next milestone is now locked. See [v0.5.0 Capability Migration Plan](DEVELOPMENT_0.5.md).
 
@@ -216,9 +216,30 @@ COMPACT_TOOL_SURFACE_GATE=PASS public=42 atomic=139
 PRODUCTION_PLUGIN_SMOKE=PASS
 ```
 
+### Phase C implementation — script/test/transaction workflow
+
+Status: **targeted validation passed**.
+
+- Public surface: 47; internal atomic commands: 153.
+- Script patch/write diagnostics: PASS.
+- GDScript test runner: PASS, 2/2.
+- InputMap ensure helpers: PASS.
+- Autoload lifecycle: PASS.
+- Core node-mutation UndoRedo: PASS.
+- Editor undo/redo: PASS.
+- Transactional batch commit/rollback: PASS.
+- Unsupported transaction-operation preflight rejection: PASS.
+- Official OpenAI Tunnel production smoke: PASS.
+
+```text
+CATALOGUE_SCHEMA_GATE=PASS tools=47
+COMPACT_TOOL_SURFACE_GATE=PASS public=47 atomic=153
+PRODUCTION_PLUGIN_SMOKE=PASS
+```
+
 ### Exact next implementation task
 
-**Proceed to Phase C. Real Web ChatGPT Connector testing remains deferred until Phase F.**
+**Proceed to Phase D: Animation, Material/Shader, Audio, Particles, Camera, Theme, UI, and Resource helpers. Real Web ChatGPT Connector testing remains deferred until Phase F.**
 
 ## Documentation ownership
 

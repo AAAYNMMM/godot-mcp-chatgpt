@@ -128,7 +128,7 @@ README_STRUCTURE_CHECK=PASS
 本任务没有修改任何插件/Runtime 源码。
 ## 当前开发 — v0.5.0 能力迁移
 
-状态：**Phase A–B targeted validation passed；最终真实 Web ChatGPT 集成验证延后**。
+状态：**Phase A–C targeted validation passed；最终真实 Web ChatGPT 集成验证延后**。
 
 下一里程碑已经锁定，完整范围见 [v0.5.0 能力迁移计划](DEVELOPMENT_0.5.zh-CN.md)。
 
@@ -216,9 +216,30 @@ COMPACT_TOOL_SURFACE_GATE=PASS public=42 atomic=139
 PRODUCTION_PLUGIN_SMOKE=PASS
 ```
 
+### Phase C — Script / Test / Transaction
+
+状态：**targeted validation passed**。
+
+- Public Surface：47；Internal Atomic：153；
+- Script Patch / Write Diagnostics：PASS；
+- GDScript Test Runner：PASS，2/2；
+- InputMap Ensure：PASS；
+- Autoload Lifecycle：PASS；
+- Core Node Mutation UndoRedo：PASS；
+- Editor Undo / Redo：PASS；
+- Transaction Batch Commit / Rollback：PASS；
+- Unsupported Transaction Operation Preflight Reject：PASS；
+- Official OpenAI Tunnel Production Smoke：PASS。
+
+```text
+CATALOGUE_SCHEMA_GATE=PASS tools=47
+COMPACT_TOOL_SURFACE_GATE=PASS public=47 atomic=153
+PRODUCTION_PLUGIN_SMOKE=PASS
+```
+
 ### 精确下一项实现任务
 
-**开始 Phase C。真实 Web ChatGPT Connector 测试统一留到 Phase F。**
+**开始 Phase D：Animation / Material / Shader / Audio / Particles / Camera / Theme / UI / Resource Helpers。真实 Web ChatGPT Connector 测试继续统一留到 Phase F。**
 
 ## 文档职责
 
