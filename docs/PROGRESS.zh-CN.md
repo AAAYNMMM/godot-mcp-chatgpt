@@ -128,7 +128,7 @@ README_STRUCTURE_CHECK=PASS
 本任务没有修改任何插件/Runtime 源码。
 ## 当前开发 — v0.5.0 能力迁移
 
-状态：**规划完成 / 尚未开始实现**。
+状态：**Phase A 已实现 / Official Tunnel 验证通过；等待真实 Web ChatGPT 验证**。
 
 下一里程碑已经锁定，完整范围见 [v0.5.0 能力迁移计划](DEVELOPMENT_0.5.zh-CN.md)。
 
@@ -173,9 +173,33 @@ DIFF_CHECK=PASS
 DOC_ONLY_SCOPE=PASS
 ```
 
+### Phase A 实现 — Compact Public Tool Surface
+
+状态：**已实现 / Official Tunnel 验证通过；等待真实 Web ChatGPT 验证**。
+
+已实现：
+
+- 在 MCP `tools/list/tools/call` 与 Internal `CommandRegistry` 之间增加 `PublicToolSurface`；
+- 默认工具面压缩到 **39 个 Tools**（29 Direct + 10 Manage），但不删除 119 个 Atomic Commands；
+- v0.4 的 119 个 Atomic 能力全部仍然可达；
+- 增加 `*.manage(op, params)` Schema Validation 和结构化 Unknown-op Error；
+- Batch 继续保持 Internal Atomic 行为；
+- Official Tunnel Smoke 已升级，既有 Long-tail 行为测试会真实经过 Manage Tools。
+
+实际执行：
+
+```text
+Godot 4.7.2 addon load/parse: PASS
+npm run build: PASS
+npm test: PASS
+CATALOGUE_SCHEMA_GATE=PASS tools=39
+COMPACT_TOOL_SURFACE_GATE=PASS public=39 atomic=119
+PRODUCTION_PLUGIN_SMOKE=PASS
+```
+
 ### 精确下一项实现任务
 
-**Phase A：分离 Public MCP Catalogue 与 Internal Atomic CommandRegistry，实现 Domain Manage Dispatcher，把现有 v0.4 能力映射到 <=50 个 Tool 的 Compact Surface，并在迁移新能力 Family 前跑一次真实 ChatGPT 回归。**
+**打开新的 Web ChatGPT 对话并执行 Compact Surface 真实 Connector 回归。由于当前对话的 Tool Catalogue 是修改前发现的，Phase B 必须等待新对话真实验证结果。**
 
 ## 文档职责
 

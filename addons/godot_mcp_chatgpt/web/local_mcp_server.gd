@@ -8,8 +8,10 @@ const CLIENT_NAME := "godot-mcp-chatgpt"
 const MCP_PROTOCOL_VERSION := "2025-11-25"
 const MCP_SUPPORTED_VERSIONS := ["2026-07-28", "2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"]
 const MAX_BODY_BYTES := 1048576
+const PublicToolSurface := preload("res://addons/godot_mcp_chatgpt/core/public_tool_surface.gd")
 
 var _registry: RefCounted
+var _public_surface: RefCounted
 var _server := TCPServer.new()
 var _port := 0
 var _path := ""
@@ -19,6 +21,10 @@ var _dispatching := false
 
 func set_registry(registry: RefCounted) -> void:
 	_registry = registry
+	_public_surface = PublicToolSurface.new()
+	var setup_result: Dictionary = _public_surface.setup(registry)
+	if not bool(setup_result.get("ok", false)):
+		push_error("[GodotMCPChatGPT] Public tool surface setup failed: %s" % str(setup_result))
 
 func start_server() -> Dictionary:
 	if _server.is_listening():
@@ -200,7 +206,7 @@ func _dispatch_jsonrpc(rpc: Dictionary) -> Dictionary:
 			var name := str(params.get("name", ""))
 			var args_value = params.get("arguments", {})
 			var args: Dictionary = args_value if args_value is Dictionary else {}
-			var result: Dictionary = await _registry.call_command(name, args)
+			var result: Dictionary = await _public_surface.call_tool(name, args) if _public_surface != null else {"ok": false, "error": {"code": "PUBLIC_SURFACE_UNAVAILABLE", "message": "Public MCP tool surface is unavailable"}}
 			var tool_result := {"content": [{"type": "text", "text": JSON.stringify(result.get("result") if bool(result.get("ok", false)) else result.get("error"))}]}
 			if not bool(result.get("ok", false)):
 				tool_result["isError"] = true
@@ -210,7 +216,8 @@ func _dispatch_jsonrpc(rpc: Dictionary) -> Dictionary:
 
 func _mcp_tool_catalogue() -> Array[Dictionary]:
 	var output: Array[Dictionary] = []
-	for source in _registry.catalogue():
+	var sources: Array = _public_surface.catalogue() if _public_surface != null else []
+	for source in sources:
 		var item := {
 			"name": source.get("name", ""),
 			"description": source.get("description", ""),

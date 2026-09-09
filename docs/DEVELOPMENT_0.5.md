@@ -478,14 +478,32 @@ Before release, evaluate whether an **optional, disabled-by-default legacy regis
 
 ### Phase A — Compact-surface foundation
 
-Status: **planned**.
+Status: **implemented / official-tunnel validation passed; real Web ChatGPT validation pending**.
 
-- add internal/public catalogue separation;
-- add `domain.manage` dispatcher;
-- migrate all existing v0.4 capability access to the compact surface;
-- preserve atomic CommandRegistry behavior;
-- add public-tool-count/schema gates;
-- real ChatGPT regression before adding new capability families.
+Implemented:
+
+- added `core/public_tool_surface.gd` as the public/internal catalogue boundary;
+- kept the 119 v0.4 atomic commands in `CommandRegistry`;
+- exposed **39 default public tools**: 29 high-frequency direct tools + 10 domain `*.manage` rollups;
+- mapped every existing v0.4 atomic command to at least one public route;
+- added server-side schema validation for `*.manage(op, params)` against the selected atomic command schema;
+- preserved existing direct-tool error semantics instead of pre-empting domain-specific errors;
+- preserved Batch access to internal atomic command names;
+- updated the official-tunnel production smoke so the existing full behavioral regression automatically routes long-tail atomic calls through the compact domain surface;
+- added a derived coverage gate proving **39 public → 119 atomic** coverage.
+
+Validation actually passed:
+
+```text
+Godot 4.7.2 addon load/parse: PASS
+npm run build: PASS
+npm test: PASS
+CATALOGUE_SCHEMA_GATE=PASS tools=39
+COMPACT_TOOL_SURFACE_GATE=PASS public=39 atomic=119
+PRODUCTION_PLUGIN_SMOKE=PASS
+```
+
+Remaining Phase A gate: a **fresh Web ChatGPT conversation must re-discover the 39-tool catalogue and exercise representative direct + manage + Batch calls**. Do not start Phase B until that real Connector regression passes.
 
 ### Phase B — Observe, play, debug, diagnose
 
@@ -607,7 +625,7 @@ Rules for implementation:
 
 ## 9. Current status
 
-Status: **planning complete / implementation not started**.
+Status: **Phase A implemented / official-tunnel validation passed; real Web ChatGPT validation pending**.
 
 Locked decisions:
 
@@ -635,4 +653,4 @@ PLANNING_DOC_GATES=PASS
 
 ## 10. Exact next implementation task
 
-**Build Phase A: separate the public MCP catalogue from the internal atomic CommandRegistry, introduce the domain-manage dispatcher, map the existing v0.4 capabilities onto a <=50-tool compact surface, and run a full real ChatGPT regression before migrating new capability families.**
+**Run the Phase A real Web ChatGPT compact-surface regression in a fresh conversation: verify 39 discovered public tools, call representative direct tools, call long-tail operations through `*.manage`, verify Batch still reaches internal atomic commands, and confirm no schema/selection regressions. Only after that passes may Phase B begin.**

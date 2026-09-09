@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 const base = process.env.TUNNEL_STUB_URL ?? "http://127.0.0.1:8790";
 let rpcSeq = 0;
+let publicToolNames = new Set<string>();
 
 async function enqueue(body: Record<string, unknown>): Promise<any> {
   const enq = await fetch(`${base}/dev/enqueue`, {
@@ -41,9 +42,23 @@ async function toolEventually(name: string, args: Record<string, unknown> = {}, 
 }
 
 async function toolRaw(name: string, args: Record<string, unknown> = {}): Promise<any> {
-  const result = await rpc("tools/call", { name, arguments: args });
+  let publicName = name;
+  let publicArgs: Record<string, unknown> = args;
+  if (!publicToolNames.has(name)) {
+    const dot = name.indexOf(".");
+    if (dot > 0) {
+      const domain = name.slice(0, dot);
+      const op = name.slice(dot + 1);
+      const manageName = domain + ".manage";
+      if (publicToolNames.has(manageName)) {
+        publicName = manageName;
+        publicArgs = { op, params: args };
+      }
+    }
+  }
+  const result = await rpc("tools/call", { name: publicName, arguments: publicArgs });
   const text = result?.content?.[0]?.type === "text" ? result.content[0].text : "";
-  return { isError: Boolean(result?.isError), body: text ? JSON.parse(text) : null, text };
+  return { isError: Boolean(result?.isError), body: text ? JSON.parse(text) : null, text, publicName };
 }
 
 async function tool(name: string, args: Record<string, unknown> = {}): Promise<any> {
@@ -114,8 +129,9 @@ assert.equal(initializedAck.resp_type, "notify_ack");
 assert.equal(initializedAck.resp_code, 202);
 
 const listed = await rpc("tools/list");
-const names = new Set(listed.tools.map((item: any) => item.name));
+const names = new Set<string>(listed.tools.map((item: any) => String(item.name)));
 const toolNames = listed.tools.map((item: any) => item.name);
+publicToolNames = names;
 assert.equal(new Set(toolNames).size, toolNames.length, "duplicate MCP tool names");
 for (const item of listed.tools) {
   assert.match(item.name, /^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/, `invalid tool name ${item.name}`);
@@ -132,29 +148,38 @@ console.log(`CATALOGUE_SCHEMA_GATE=PASS tools=${toolNames.length}`);
 const nodeCreateSchema = listed.tools.find((item: any) => item.name === "node.create")?.inputSchema;
 assert.match(nodeCreateSchema?.properties?.parent_path?.description ?? "", /Use \. for the scene root/);
 
-for (const required of [
-  "godot.get_status", "project.get_info", "scene.create", "scene.get_tree", "scene.save",
-  "node.create", "node.set_property", "node.delete", "script.write", "script.read", "script.attach",
-  "editor.run_project", "editor.stop",
-]) assert.ok(names.has(required), `missing tool ${required}`);
+const expectedDirect = [
+  "godot.get_status", "project.inspect", "project.search_text",
+  "scene.get_current", "scene.get_tree", "scene.open", "scene.save",
+  "node.create", "node.find", "node.get_properties", "node.set_property",
+  "script.read", "script.write", "script.validate", "script.attach",
+  "resource.inspect", "classdb.search", "classdb.inspect",
+  "editor.inspect", "editor.run_project", "editor.run_custom_scene",
+  "runtime.status", "runtime.get_tree", "runtime.inspect", "runtime.get_property",
+  "runtime.set_property", "runtime.call_method", "diagnostics.run_capture", "batch.execute",
+];
+const expectedManage = [
+  "project.manage", "input_map.manage", "scene.manage", "node.manage", "script.manage",
+  "resource.manage", "classdb.manage", "editor.manage", "debugger.manage", "runtime.manage",
+];
+for (const required of [...expectedDirect, ...expectedManage]) assert.ok(names.has(required), "missing compact public tool " + required);
+assert.equal(toolNames.length, 39, "unexpected compact public tool count");
+assert.ok(toolNames.length <= 50, "compact public tool surface exceeds release gate");
+let derivedAtomicCount = 3;
+for (const manageName of expectedManage) {
+  const manage = listed.tools.find((item: any) => item.name === manageName);
+  assert.ok(manage, "missing " + manageName);
+  const ops = manage.inputSchema?.properties?.op?.enum;
+  assert.ok(Array.isArray(ops) && ops.length > 0, manageName + " missing op enum");
+  derivedAtomicCount += ops.length;
+}
+assert.equal(derivedAtomicCount, 119, "compact surface does not cover all v0.4 atomic commands");
+console.log("COMPACT_TOOL_SURFACE_GATE=PASS public=" + toolNames.length + " atomic=" + derivedAtomicCount);
 
-for (const required of [
-  "debugger.get_sessions", "debugger.get_breakpoints", "debugger.set_breakpoint", "debugger.toggle_profiler",
-  "runtime.status", "runtime.get_tree", "runtime.inspect", "runtime.find", "runtime.get_property",
-  "runtime.set_property", "runtime.call_method", "runtime.get_groups", "runtime.get_performance",
-  "runtime.pause", "runtime.resume",
-]) assert.ok(names.has(required), `missing runtime/debugger tool ${required}`);
-
-for (const required of [
-  "editor.inspect", "editor.get_selection", "editor.set_selection", "editor.clear_selection",
-  "editor.get_filesystem_state", "editor.scan_filesystem", "editor.reimport_files", "editor.select_file",
-  "editor.get_script_state", "editor.open_script", "editor.close_script", "editor.is_playing",
-  "editor.get_playing_scene", "editor.run_main_scene", "editor.run_current_scene", "editor.run_custom_scene",
-  "editor.stop_playing", "editor.save_all",
-]) assert.ok(names.has(required), `missing editor tool ${required}`);
-
-assert.ok(names.has("diagnostics.run_capture"), "missing diagnostics.run_capture");
-assert.ok(names.has("batch.execute"), "missing batch.execute");
+const invalidManagedParams = await toolRaw("project.get_info", { unexpected: true });
+assert.equal(invalidManagedParams.publicName, "project.manage");
+assert.equal(invalidManagedParams.isError, true);
+assert.equal(invalidManagedParams.body?.code, "INVALID_ARGUMENTS");
 
 const batchRead = await tool("batch.execute", {
   operations: [

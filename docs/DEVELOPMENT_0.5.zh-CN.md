@@ -479,14 +479,32 @@ Release 前评估是否低成本提供一个**默认关闭的 Legacy Registratio
 
 ### Phase A — Compact Surface 基础
 
-状态：**planned**。
+状态：**已实现 / Official Tunnel 验证通过；等待真实 Web ChatGPT 验证**。
 
-- 分离 Internal / Public Catalogue；
-- 增加 `domain.manage` dispatcher；
-- 把 v0.4 全部能力映射到 Compact Surface；
-- 保留 Atomic CommandRegistry；
-- 增加 Public Tool Count / Schema Gate；
-- 新能力迁移前先跑一次真实 ChatGPT Compact Surface 回归。
+已实现：
+
+- 新增 `core/public_tool_surface.gd`，作为 Public / Internal Catalogue 边界；
+- v0.4 的 119 个 Atomic Command 继续保留在 `CommandRegistry`；
+- 默认公开 **39 个 MCP Tools**：29 个高频 Direct Tools + 10 个 Domain `*.manage` Rollup；
+- v0.4 每一个 Atomic Command 都至少有一个 Public Route；
+- `*.manage(op, params)` 会按目标 Atomic Command Schema 在服务端再次验证 `params`；
+- Direct Tool 保留 v0.4 原有错误语义；
+- Batch 继续直接访问 Internal Atomic Command Name；
+- Official Tunnel Production Smoke 已改为：既有完整行为测试遇到 Long-tail Atomic Name 时自动经过 Compact Domain Surface；
+- 增加派生覆盖门禁，证明 **39 Public → 119 Atomic** 全覆盖。
+
+实际通过：
+
+```text
+Godot 4.7.2 addon load/parse: PASS
+npm run build: PASS
+npm test: PASS
+CATALOGUE_SCHEMA_GATE=PASS tools=39
+COMPACT_TOOL_SURFACE_GATE=PASS public=39 atomic=119
+PRODUCTION_PLUGIN_SMOKE=PASS
+```
+
+Phase A 剩余门禁：必须在**新的 Web ChatGPT 对话**里重新发现 39 个工具，并真实调用 Direct + Manage + Batch。真实 Connector 回归通过前，不开始 Phase B。
 
 ### Phase B — Observe / Play / Debug / Diagnose
 
@@ -608,7 +626,7 @@ Godot AI 是独立的 MIT 开源项目，本项目在 v0.5 迁移中将它作为
 
 ## 9. 当前状态
 
-状态：**规划完成 / 尚未实现**。
+状态：**Phase A 已实现 / Official Tunnel 验证通过；等待真实 Web ChatGPT 验证**。
 
 已经锁定：
 
@@ -636,4 +654,4 @@ PLANNING_DOC_GATES=PASS
 
 ## 10. 精确下一项实现任务
 
-**开始 Phase A：把 Public MCP Catalogue 和 Internal Atomic CommandRegistry 分层，实现 Domain Manage Dispatcher，把现有 v0.4 能力全部映射到 <=50 个 Tool 的 Compact Surface，并在迁移新能力前跑完整真实 ChatGPT 回归。**
+**在新的 Web ChatGPT 对话中执行 Phase A Compact Surface 真实回归：确认发现 39 个 Public Tools，真实调用代表性 Direct Tools、通过 `*.manage` 调用 Long-tail Operations，并确认 Batch 仍可访问 Internal Atomic Commands；确认无 Schema/Tool Selection 回归后，才开始 Phase B。**

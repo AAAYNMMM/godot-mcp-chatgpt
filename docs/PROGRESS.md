@@ -128,7 +128,7 @@ README_STRUCTURE_CHECK=PASS
 No plugin/runtime source file was changed by this task.
 ## Active development — v0.5.0 capability migration
 
-Status: **planning complete / implementation not started**.
+Status: **Phase A implemented / official-tunnel validation passed; real Web ChatGPT validation pending**.
 
 The next milestone is now locked. See [v0.5.0 Capability Migration Plan](DEVELOPMENT_0.5.md).
 
@@ -173,9 +173,33 @@ DIFF_CHECK=PASS
 DOC_ONLY_SCOPE=PASS
 ```
 
+### Phase A implementation — compact public tool surface
+
+Status: **implemented / official-tunnel validation passed; real Web ChatGPT validation pending**.
+
+Implemented:
+
+- added `PublicToolSurface` between MCP `tools/list/tools/call` and the internal `CommandRegistry`;
+- compressed the default surface to **39 tools** (29 direct + 10 manage) without deleting the 119 atomic commands;
+- kept all 119 v0.4 atomic capabilities reachable;
+- added `*.manage(op, params)` schema validation and structured unknown-op errors;
+- kept Batch internal-atomic behavior unchanged;
+- upgraded the official-tunnel smoke to route existing long-tail behavior tests through manage tools.
+
+Validation actually run:
+
+```text
+Godot 4.7.2 addon load/parse: PASS
+npm run build: PASS
+npm test: PASS
+CATALOGUE_SCHEMA_GATE=PASS tools=39
+COMPACT_TOOL_SURFACE_GATE=PASS public=39 atomic=119
+PRODUCTION_PLUGIN_SMOKE=PASS
+```
+
 ### Exact next implementation task
 
-**Phase A: separate the public MCP catalogue from the internal atomic CommandRegistry, add the domain-manage dispatcher, map all v0.4 capabilities onto the <=50-tool compact surface, and run a real ChatGPT regression before adding new capability families.**
+**Open a fresh Web ChatGPT conversation and run the real compact-surface Connector regression. Phase B is blocked on that result because the current conversation's tool catalogue was discovered before this change.**
 
 ## Documentation ownership
 
