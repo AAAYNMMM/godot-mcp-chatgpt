@@ -59,7 +59,7 @@ It does not reimplement the OpenAI tunnel protocol. Version 0.3.0 adopts that pr
 - starts bundled official OpenAI tunnel-client;
 - creates the tunnel-client profile;
 - injects Runtime API Key through `CONTROL_PLANE_API_KEY` only for child-process startup;
-- persists Tunnel ID only;
+- persists Tunnel ID in EditorSettings and Runtime API Key in Windows Credential Manager;
 - monitors/stops the tunnel process.
 
 ### Loopback MCP server
@@ -77,23 +77,10 @@ It does not reimplement the OpenAI tunnel protocol. Version 0.3.0 adopts that pr
 
 ### Godot command registry
 
-Current 13 tools:
+Version 0.4.0 exposes **119 tools** across Project/InputMap, Scene/Node, Script/Resource, ClassDB, Editor, Debugger/Runtime, Diagnostics and Batch.
 
-```text
-godot.get_status
-project.get_info
-scene.get_tree
-scene.create
-scene.save
-node.create
-node.set_property
-node.delete
-script.read
-script.write
-script.attach
-editor.run_project
-editor.stop
-```
+Complete index: [Tool Reference](TOOL_REFERENCE.md).
+## 5. Milestones
 
 ## 5. Milestones
 
@@ -159,20 +146,22 @@ Status: **in progress**.
 
 Detailed active tracker: [`docs/DEVELOPMENT_0.4.md`](DEVELOPMENT_0.4.md).
 
-Priority order:
+Completed scope:
 
-- richer node/property inspection;
-- scene open/close;
-- resources;
-- project settings and InputMap;
-- signals;
-- ClassDB lookup;
-- editor/runtime errors;
-- playtest diagnostics;
-- batch node/property operations;
-- optional screenshot workflow if it remains efficient and safe.
+- 119-tool production registry;
+- Project discovery/search/settings + InputMap;
+- Scene/Node rich inspection and mutation;
+- Signals, Groups and Metadata;
+- Script introspection/validation and Resource operations;
+- ClassDB live API introspection;
+- Editor control + Debugger/Runtime bridge;
+- bounded captured diagnostics;
+- bounded non-atomic Batch;
+- Windows Credential Manager persistence + restart auto-connect;
+- real ChatGPT Connector full-surface regression (`REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS`).
 
 ### Phase 7 — Release hardening
+Status: **in progress**.
 
 - improve tunnel-client health/readiness reporting in the Godot panel;
 - secure key lifecycle/clear UX;

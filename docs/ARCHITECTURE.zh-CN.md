@@ -113,26 +113,38 @@ mcp:
 
 ## Godot 工具边界
 
-当前 13 个工具：
+0.4.0 当前暴露 **119 个工具**，围绕真实 Godot 工作流组织，而不是提供通用 Shell：
 
 ```text
-godot.get_status
-project.get_info
-scene.get_tree
-scene.create
-scene.save
-node.create
-node.set_property
-node.delete
-script.read
-script.write
-script.attach
-editor.run_project
-editor.stop
+Project / InputMap
+Scene / Node / Signal / Group / Metadata
+Script / Resource
+ClassDB
+Editor
+Debugger / Runtime
+Diagnostics
+Batch
 ```
 
-文件工具只允许 `res://`。编辑器 mutation 默认串行。
+项目 File / Resource 操作仍限制在 `res://`。编辑器 mutation 通过 Godot command layer 串行处理。精确参数以实时 `tools/list` schema 为准，完整索引见：[工具参考](TOOL_REFERENCE.zh-CN.md)。
 
+## Runtime Debugger 路径
+
+Runtime 读取和控制不会再开启另一个公网网络服务，而是使用 Godot 自己的 Debugger 通道：
+
+```text
+MCP runtime.* / debugger.* tool
+ -> RuntimeDebuggerManager
+ -> EditorDebuggerPlugin / EditorDebuggerSession
+ -> Godot remote-debug channel
+ -> EngineDebugger
+ -> GodotMCPChatGPTRuntime autoload
+ -> 运行中 SceneTree
+```
+
+Runtime Bridge 可以读取/修改运行中节点、调用方法、读取部分 Performance monitor，并 pause/resume SceneTree。Runtime 修改不会自动写回保存的编辑器 Scene。
+
+插件被禁用时会清理保留的 autoload，并兼容 `res://` 和 Godot 4.7.2 `uid://` 引用。
 ## 内置运行时
 
 当前 Windows runtime：
@@ -156,10 +168,10 @@ control-plane stub
  -> 内置官方 tunnel-client.exe
  -> Godot loopback MCP
  -> 真实 Godot 4.7.2 GUI
- -> 13 个真实工具
+ -> 119 个真实工具
 ```
 
-这条路径已经 PASS，并且之后真实 ChatGPT 连接器也创建成功。
+0.4.0 已通过 119-tool catalogue/schema 和代表性真实行为门禁；2026-09-10 又通过真实 ChatGPT Connector 全能力回归，结果 `REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS`。
 
 ## 明确不做
 

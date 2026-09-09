@@ -5,7 +5,9 @@ var _client: Node
 var _tunnel_edit: LineEdit
 var _api_key_edit: LineEdit
 var _connect_button: Button
+var _forget_button: Button
 var _status_label: Label
+var _credential_label: Label
 var _log_label: Label
 
 func _ready() -> void:
@@ -17,11 +19,12 @@ func set_client(client: Node) -> void:
 	if _client != null:
 		_client.state_changed.connect(_on_state_changed)
 		_client.log_message.connect(_on_log_message)
+		_client.credential_state_changed.connect(_on_credential_state_changed)
 	if is_node_ready():
 		_refresh_from_client()
 
 func _build_ui() -> void:
-	custom_minimum_size = Vector2(310, 0)
+	custom_minimum_size = Vector2(360, 0)
 
 	var title := Label.new()
 	title.text = "Godot MCP ChatGPT"
@@ -44,7 +47,7 @@ func _build_ui() -> void:
 	add_child(_tunnel_edit)
 
 	var key_label := Label.new()
-	key_label.text = "API Key"
+	key_label.text = "Runtime API Key"
 	add_child(key_label)
 	_api_key_edit = LineEdit.new()
 	_api_key_edit.placeholder_text = "Runtime API key"
@@ -52,10 +55,20 @@ func _build_ui() -> void:
 	_api_key_edit.secret_character = "•"
 	add_child(_api_key_edit)
 
+	_credential_label = Label.new()
+	_credential_label.modulate.a = 0.72
+	add_child(_credential_label)
+
+	var buttons := HBoxContainer.new()
 	_connect_button = Button.new()
 	_connect_button.text = "Connect"
 	_connect_button.pressed.connect(_on_connect_pressed)
-	add_child(_connect_button)
+	buttons.add_child(_connect_button)
+	_forget_button = Button.new()
+	_forget_button.text = "Forget Saved Credentials"
+	_forget_button.pressed.connect(_on_forget_pressed)
+	buttons.add_child(_forget_button)
+	add_child(buttons)
 
 	_status_label = Label.new()
 	_status_label.text = "Status: disconnected"
@@ -67,7 +80,7 @@ func _build_ui() -> void:
 	add_child(_log_label)
 
 	var hint := Label.new()
-	hint.text = "Only Tunnel ID and Runtime API Key are required. The addon runs the official OpenAI tunnel-client; the API Key is not written to the profile."
+	hint.text = "Runtime API Key is stored in Windows Credential Manager, matching CWapi's credential-storage model. It is never written into the project or tunnel profile."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.modulate.a = 0.6
 	add_child(hint)
@@ -76,8 +89,9 @@ func _refresh_from_client() -> void:
 	if _client == null or _tunnel_edit == null:
 		return
 	_tunnel_edit.text = _client.get_saved_tunnel_id()
-	_api_key_edit.text = _client.get_saved_api_key()
+	_api_key_edit.text = ""
 	_on_state_changed(_client.get_state())
+	_on_credential_state_changed(_client.has_saved_api_key())
 
 func _on_connect_pressed() -> void:
 	if _client == null:
@@ -88,12 +102,35 @@ func _on_connect_pressed() -> void:
 		return
 	_client.connect_to_tunnel(_tunnel_edit.text, _api_key_edit.text)
 
+func _on_forget_pressed() -> void:
+	if _client == null:
+		return
+	_client.forget_saved_credentials()
+	_tunnel_edit.text = ""
+	_api_key_edit.text = ""
+
 func _on_state_changed(state: String) -> void:
 	if _status_label == null:
 		return
 	_status_label.text = "Status: %s" % state
 	if _connect_button != null:
 		_connect_button.text = "Disconnect" if state in ["starting", "connected"] else "Connect"
+	if state == "connected" and _api_key_edit != null:
+		_api_key_edit.text = ""
+
+func _on_credential_state_changed(present: bool) -> void:
+	if _credential_label == null:
+		return
+	if present:
+		_credential_label.text = "Runtime API Key: saved in Windows Credential Manager"
+		if _api_key_edit != null:
+			_api_key_edit.placeholder_text = "Saved key will be used if left blank"
+	else:
+		_credential_label.text = "Runtime API Key: not saved"
+		if _api_key_edit != null:
+			_api_key_edit.placeholder_text = "Runtime API key"
+	if _forget_button != null:
+		_forget_button.disabled = not present and (_tunnel_edit == null or _tunnel_edit.text.is_empty())
 
 func _on_log_message(message: String) -> void:
 	if _log_label != null:

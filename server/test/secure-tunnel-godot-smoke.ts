@@ -31,11 +31,49 @@ async function rpc(method: string, params: Record<string, unknown> = {}): Promis
   return envelope.resp_json?.result;
 }
 
-async function tool(name: string, args: Record<string, unknown> = {}): Promise<any> {
+async function toolEventually(name: string, args: Record<string, unknown> = {}, attempts = 40): Promise<any> {
+  let last: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try { return await tool(name, args); } catch (error) { last = error; }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw last;
+}
+
+async function toolRaw(name: string, args: Record<string, unknown> = {}): Promise<any> {
   const result = await rpc("tools/call", { name, arguments: args });
   const text = result?.content?.[0]?.type === "text" ? result.content[0].text : "";
-  if (result?.isError) throw new Error(`${name}: ${text}`);
-  return JSON.parse(text);
+  return { isError: Boolean(result?.isError), body: text ? JSON.parse(text) : null, text };
+}
+
+async function tool(name: string, args: Record<string, unknown> = {}): Promise<any> {
+  const raw = await toolRaw(name, args);
+  if (raw.isError) throw new Error(`${name}: ${raw.text}`);
+  return raw.body;
+}
+
+function validateSchemaShape(schema: any, path = "schema"): void {
+  assert.ok(schema && typeof schema === "object" && !Array.isArray(schema), `${path} must be an object`);
+  if (schema.type !== undefined) {
+    const allowed = new Set(["object", "array", "string", "integer", "number", "boolean", "null"]);
+    if (Array.isArray(schema.type)) for (const value of schema.type) assert.ok(allowed.has(value), `${path}.type invalid: ${value}`);
+    else assert.ok(allowed.has(schema.type), `${path}.type invalid: ${schema.type}`);
+  }
+  if (schema.properties !== undefined) {
+    assert.ok(schema.properties && typeof schema.properties === "object" && !Array.isArray(schema.properties), `${path}.properties must be object`);
+    for (const [key, child] of Object.entries(schema.properties)) validateSchemaShape(child, `${path}.properties.${key}`);
+  }
+  if (schema.required !== undefined) {
+    assert.ok(Array.isArray(schema.required), `${path}.required must be array`);
+    assert.equal(new Set(schema.required).size, schema.required.length, `${path}.required has duplicates`);
+    for (const key of schema.required) {
+      assert.equal(typeof key, "string", `${path}.required entries must be strings`);
+      assert.ok(schema.properties && Object.prototype.hasOwnProperty.call(schema.properties, key), `${path} requires undeclared property ${key}`);
+    }
+  }
+  if (schema.items !== undefined) validateSchemaShape(schema.items, `${path}.items`);
+  if (schema.enum !== undefined) assert.ok(Array.isArray(schema.enum), `${path}.enum must be array`);
+  if (schema.additionalProperties !== undefined) assert.ok(typeof schema.additionalProperties === "boolean" || (schema.additionalProperties && typeof schema.additionalProperties === "object"), `${path}.additionalProperties invalid`);
 }
 
 for (let i = 0; i < 80; i++) {
@@ -77,19 +115,142 @@ assert.equal(initializedAck.resp_code, 202);
 
 const listed = await rpc("tools/list");
 const names = new Set(listed.tools.map((item: any) => item.name));
+const toolNames = listed.tools.map((item: any) => item.name);
+assert.equal(new Set(toolNames).size, toolNames.length, "duplicate MCP tool names");
+for (const item of listed.tools) {
+  assert.match(item.name, /^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/, `invalid tool name ${item.name}`);
+  assert.equal(typeof item.description, "string", `${item.name} description type`);
+  assert.ok(item.description.trim().length > 0, `${item.name} description empty`);
+  validateSchemaShape(item.inputSchema, `${item.name}.inputSchema`);
+  assert.equal(item.inputSchema.type, "object", `${item.name} root schema must be object`);
+  assert.equal(item.inputSchema.additionalProperties, false, `${item.name} must reject unknown arguments`);
+  assert.ok(item.annotations && typeof item.annotations === "object", `${item.name} missing annotations`);
+  assert.equal(typeof item.annotations.readOnlyHint, "boolean", `${item.name} readOnlyHint missing`);
+  assert.equal(typeof item.annotations.destructiveHint, "boolean", `${item.name} destructiveHint missing`);
+}
+console.log(`CATALOGUE_SCHEMA_GATE=PASS tools=${toolNames.length}`);
+const nodeCreateSchema = listed.tools.find((item: any) => item.name === "node.create")?.inputSchema;
+assert.match(nodeCreateSchema?.properties?.parent_path?.description ?? "", /Use \. for the scene root/);
+
 for (const required of [
   "godot.get_status", "project.get_info", "scene.create", "scene.get_tree", "scene.save",
   "node.create", "node.set_property", "node.delete", "script.write", "script.read", "script.attach",
   "editor.run_project", "editor.stop",
 ]) assert.ok(names.has(required), `missing tool ${required}`);
 
+for (const required of [
+  "debugger.get_sessions", "debugger.get_breakpoints", "debugger.set_breakpoint", "debugger.toggle_profiler",
+  "runtime.status", "runtime.get_tree", "runtime.inspect", "runtime.find", "runtime.get_property",
+  "runtime.set_property", "runtime.call_method", "runtime.get_groups", "runtime.get_performance",
+  "runtime.pause", "runtime.resume",
+]) assert.ok(names.has(required), `missing runtime/debugger tool ${required}`);
+
+for (const required of [
+  "editor.inspect", "editor.get_selection", "editor.set_selection", "editor.clear_selection",
+  "editor.get_filesystem_state", "editor.scan_filesystem", "editor.reimport_files", "editor.select_file",
+  "editor.get_script_state", "editor.open_script", "editor.close_script", "editor.is_playing",
+  "editor.get_playing_scene", "editor.run_main_scene", "editor.run_current_scene", "editor.run_custom_scene",
+  "editor.stop_playing", "editor.save_all",
+]) assert.ok(names.has(required), `missing editor tool ${required}`);
+
+assert.ok(names.has("diagnostics.run_capture"), "missing diagnostics.run_capture");
+assert.ok(names.has("batch.execute"), "missing batch.execute");
+
+const batchRead = await tool("batch.execute", {
+  operations: [
+    { tool: "godot.get_status", arguments: {} },
+    { tool: "project.get_info", arguments: {} },
+  ],
+  stop_on_error: true,
+});
+assert.equal(batchRead.executed, 2);
+assert.equal(batchRead.stopped, false);
+assert.equal(batchRead.atomic, false);
+assert.ok(batchRead.results.every((item: any) => item.ok));
+
+const batchStop = await tool("batch.execute", {
+  operations: [
+    { tool: "godot.get_status", arguments: {} },
+    { tool: "missing.tool", arguments: {} },
+    { tool: "project.get_info", arguments: {} },
+  ],
+  stop_on_error: true,
+});
+assert.equal(batchStop.executed, 2);
+assert.equal(batchStop.stopped, true);
+assert.equal(batchStop.failed_index, 1);
+assert.equal(batchStop.results[1]?.ok, false);
+
+const batchRecursive = await tool("batch.execute", {
+  operations: [{ tool: "batch.execute", arguments: { operations: [{ tool: "godot.get_status" }] } }],
+});
+assert.equal(batchRecursive.executed, 1);
+assert.equal(batchRecursive.stopped, true);
+assert.equal(batchRecursive.results[0]?.error?.code, "BATCH_RECURSION_DENIED");
+
+const tooManyOps = Array.from({ length: 51 }, () => ({ tool: "godot.get_status", arguments: {} }));
+const batchLimit = await toolRaw("batch.execute", { operations: tooManyOps });
+assert.equal(batchLimit.isError, true);
+assert.equal(batchLimit.body?.code, "BATCH_TOO_LARGE");
+
+const invalidResourcePath = await toolRaw("resource.inspect", { path: "res://../outside.tres" });
+assert.equal(invalidResourcePath.isError, true);
+assert.equal(invalidResourcePath.body?.code, "INVALID_PATH");
+
+const editorBefore = await tool("editor.inspect");
+assert.equal(editorBefore.playing, false);
+assert.equal(typeof editorBefore.filesystem.scanning, "boolean");
+assert.ok(Array.isArray(editorBefore.selection.nodes));
+const editorFs = await tool("editor.get_filesystem_state");
+assert.equal(typeof editorFs.importing, "boolean");
+const editorScripts = await tool("editor.get_script_state");
+assert.ok(Array.isArray(editorScripts.open));
 const status = await tool("godot.get_status");
 assert.match(status.godot_version, /^4\.7\.2/);
 assert.equal(status.editor, true);
 
+const projectOverview = await tool("project.inspect");
+assert.equal(projectOverview.name, "Godot MCP ChatGPT Dev");
+assert.ok(Array.isArray(projectOverview.plugins));
+const projectPlugins = await tool("project.get_plugins");
+assert.ok(Array.isArray(projectPlugins));
+const projectList = await tool("project.list_directory", { path: "res://", recursive: false });
+assert.ok(projectList.items.some((item: any) => item.name === "addons"));
+const projectFind = await tool("project.find_files", { query: "plugin.gd", root: "res://addons", limit: 20 });
+assert.ok(projectFind.files.some((path: string) => path.endsWith("addons/godot_mcp_chatgpt/plugin.gd")));
+
+await tool("project.set_setting", { name: "godot_mcp_chatgpt/smoke_setting", value: 12345 });
+const smokeSetting = await tool("project.get_setting", { name: "godot_mcp_chatgpt/smoke_setting" });
+assert.equal(smokeSetting.exists, true);
+assert.equal(smokeSetting.value, 12345);
+const listedSettings = await tool("project.list_settings", { prefix: "godot_mcp_chatgpt/", limit: 20 });
+assert.ok(listedSettings.settings.some((item: any) => item.name === "godot_mcp_chatgpt/smoke_setting"));
+
+await tool("input_map.add_action", { action: "mcp_smoke_action", deadzone: 0.25 });
+await tool("input_map.add_event", { action: "mcp_smoke_action", event: { type: "key", keycode: 32 } });
+const inputAction = await tool("input_map.get_action", { action: "mcp_smoke_action" });
+assert.equal(inputAction.action, "mcp_smoke_action");
+assert.equal(inputAction.events.length, 1);
+const inputList = await tool("input_map.list");
+assert.ok(inputList.some((item: any) => item.action === "mcp_smoke_action"));
+const clearedInput = await tool("input_map.clear_action_events", { action: "mcp_smoke_action" });
+assert.equal(clearedInput.events.length, 0);
+
+await tool("project.make_directory", { path: "res://.mcp-smoke/move-test" });
+await tool("script.write", { path: "res://.mcp-smoke/move-source.gd", content: "extends RefCounted\n" });
+await tool("project.move_file", { from: "res://.mcp-smoke/move-source.gd", to: "res://.mcp-smoke/move-test/moved.gd" });
+const movedFind = await tool("project.find_files", { query: "moved.gd", root: "res://.mcp-smoke", limit: 20 });
+assert.ok(movedFind.files.includes("res://.mcp-smoke/move-test/moved.gd"));
+await tool("project.delete_file", { path: "res://.mcp-smoke/move-test/moved.gd" });
+
 await tool("scene.create", { path: "res://.mcp-smoke/secure-generated.tscn", root_type: "Node3D", root_name: "SecureRoot", overwrite: true });
 const created = await tool("node.create", { parent_path: ".", type: "Node3D", name: "Player" });
 assert.equal(created.name, "Player");
+const editorSelection = await tool("editor.set_selection", { node_paths: ["Player"], clear_first: true });
+assert.equal(editorSelection.selection.nodes.length, 1);
+assert.equal(editorSelection.selection.nodes[0]?.name, "Player");
+const clearedSelection = await tool("editor.clear_selection");
+assert.equal(clearedSelection.nodes.length, 0);
 
 const property = await tool("node.set_property", {
   node_path: "Player",
@@ -98,16 +259,215 @@ const property = await tool("node.set_property", {
 });
 assert.deepEqual(property.value, { __godot_type: "Vector3", x: 4, y: 5, z: 6 });
 
-const scriptContent = "extends Node3D\n\nvar secure_tunnel_smoke: int = 77\n";
+const sceneCurrent = await tool("scene.get_current");
+assert.equal(sceneCurrent.open, true);
+assert.equal(sceneCurrent.path, "res://.mcp-smoke/secure-generated.tscn");
+const sceneOpenList = await tool("scene.list_open");
+assert.ok(sceneOpenList.paths.includes("res://.mcp-smoke/secure-generated.tscn"));
+const sceneInspect = await tool("scene.inspect", { max_depth: 4, property_mode: "storage", max_properties: 40 });
+assert.equal(sceneInspect.root.name, "SecureRoot");
+
+const nodeInspect = await tool("node.inspect", { node_path: "Player", property_mode: "storage", max_properties: 80 });
+assert.equal(nodeInspect.node.name, "Player");
+const nodePosition = await tool("node.get_property", { node_path: "Player", property: "position" });
+assert.deepEqual(nodePosition.value, { __godot_type: "Vector3", x: 4, y: 5, z: 6 });
+const nodeProperties = await tool("node.get_properties", { node_path: "Player", mode: "all", name_contains: "position", limit: 20 });
+assert.ok(nodeProperties.properties.some((item: any) => item.name === "position"));
+const nodeMethods = await tool("node.get_methods", { node_path: "Player", name_contains: "get_child_count", limit: 20 });
+assert.ok(nodeMethods.methods.some((item: any) => item.name === "get_child_count"));
+const editorNodeCall = await tool("node.call_method", { node_path: "Player", method: "get_child_count", arguments: [] });
+assert.equal(editorNodeCall.result, 0);
+
+await tool("node.add_to_group", { node_path: "Player", group: "mcp_smoke_group", persistent: true });
+const playerGroups = await tool("node.get_groups", { node_path: "Player" });
+assert.ok(playerGroups.groups.includes("mcp_smoke_group"));
+const groupFind = await tool("node.find", { group: "mcp_smoke_group", limit: 20 });
+assert.ok(groupFind.nodes.some((item: any) => item.name === "Player"));
+await tool("node.remove_from_group", { node_path: "Player", group: "mcp_smoke_group" });
+
+await tool("node.set_metadata", { node_path: "Player", key: "mcp_smoke_meta", value: { nested: 77 } });
+const playerMeta = await tool("node.get_metadata", { node_path: "Player", key: "mcp_smoke_meta" });
+assert.equal(playerMeta.exists, true);
+assert.equal(playerMeta.value.nested, 77);
+await tool("node.remove_metadata", { node_path: "Player", key: "mcp_smoke_meta" });
+const removedMeta = await tool("node.get_metadata", { node_path: "Player", key: "mcp_smoke_meta" });
+assert.equal(removedMeta.exists, false);
+
+const duplicatedNode = await tool("node.duplicate", { node_path: "Player", name: "PlayerClone" });
+assert.equal(duplicatedNode.name, "PlayerClone");
+const renamedNode = await tool("node.rename", { node_path: "PlayerClone", name: "PlayerCopy" });
+assert.equal(renamedNode.name, "PlayerCopy");
+await tool("node.move_child", { node_path: "PlayerCopy", index: 0 });
+await tool("node.delete", { node_path: "PlayerCopy" });
+
+const scriptContent = "extends Node3D\n\nsignal smoke_signal\nvar secure_tunnel_smoke: int = 77\n\nfunc _ready() -> void:\n\tprint(\"CAPTURE_STDOUT_OK\")\n\nfunc _on_smoke() -> void:\n\tpass\n";
 await tool("script.write", { path: "res://.mcp-smoke/secure-player.gd", content: scriptContent });
 const read = await tool("script.read", { path: "res://.mcp-smoke/secure-player.gd" });
 assert.equal(read.content, scriptContent);
 await tool("script.attach", { node_path: "Player", script_path: "res://.mcp-smoke/secure-player.gd" });
+const scriptInfo = await tool("script.get_info", { path: "res://.mcp-smoke/secure-player.gd" });
+assert.equal(scriptInfo.instance_base_type, "Node3D");
+assert.ok(scriptInfo.methods.some((item: any) => item.name === "_on_smoke"));
+assert.ok(scriptInfo.signals.some((item: any) => item.name === "smoke_signal"));
+const scriptValid = await tool("script.validate", { source: scriptContent });
+assert.equal(scriptValid.valid, true);
+
+const playerSignals = await tool("node.get_signals", { node_path: "Player" });
+assert.ok(playerSignals.signals.some((item: any) => item.name === "smoke_signal"));
+await tool("node.connect_signal", { node_path: "Player", signal: "smoke_signal", target_path: "Player", method: "_on_smoke" });
+const smokeConnections = await tool("node.get_signal_connections", { node_path: "Player", signal: "smoke_signal" });
+assert.ok(smokeConnections.connections.some((item: any) => item.method === "_on_smoke"));
+await tool("node.disconnect_signal", { node_path: "Player", signal: "smoke_signal", target_path: "Player", method: "_on_smoke" });
+const smokeDisconnected = await tool("node.get_signal_connections", { node_path: "Player", signal: "smoke_signal" });
+assert.equal(smokeDisconnected.connections.length, 0);
+
+await tool("script.detach", { node_path: "Player" });
+const detachedInspect = await tool("node.inspect", { node_path: "Player", property_mode: "none" });
+assert.equal(detachedInspect.script, "");
+await tool("script.attach", { node_path: "Player", script_path: "res://.mcp-smoke/secure-player.gd" });
+
 await tool("scene.save");
+const resourceCreated = await tool("resource.create", {
+  class: "Resource",
+  path: "res://.mcp-smoke/smoke-resource.tres",
+  properties: { resource_name: "SmokeResource" },
+});
+assert.equal(resourceCreated.class, "Resource");
+const resourceInspect = await tool("resource.inspect", { path: "res://.mcp-smoke/smoke-resource.tres", property_mode: "storage", include_methods: true, limit: 100 });
+assert.equal(resourceInspect.resource.class, "Resource");
+const resourceName = await tool("resource.get_property", { path: "res://.mcp-smoke/smoke-resource.tres", property: "resource_name" });
+assert.equal(resourceName.value, "SmokeResource");
+const resourceChanged = await tool("resource.set_property", { path: "res://.mcp-smoke/smoke-resource.tres", property: "resource_name", value: "SmokeResource2" });
+assert.equal(resourceChanged.value, "SmokeResource2");
+const resourceCopy = await tool("resource.duplicate", { path: "res://.mcp-smoke/smoke-resource.tres", target_path: "res://.mcp-smoke/smoke-resource-copy.tres", deep: true });
+assert.equal(resourceCopy.class, "Resource");
+await tool("resource.save", { path: "res://.mcp-smoke/smoke-resource.tres", target_path: "res://.mcp-smoke/smoke-resource-saved.tres" });
+const resourceDeps = await tool("resource.get_dependencies", { path: "res://.mcp-smoke/smoke-resource.tres" });
+assert.ok(Array.isArray(resourceDeps.dependencies));
+const resourceCall = await tool("resource.call_method", { path: "res://.mcp-smoke/smoke-resource.tres", method: "get_class", arguments: [] });
+assert.equal(resourceCall.result, "Resource");
+
+const classSearch = await tool("classdb.search", { query: "Node3D", limit: 50 });
+assert.ok(classSearch.classes.some((item: any) => item.class === "Node3D"));
+const classInspect = await tool("classdb.inspect", { class: "Node3D", include_inherited: true, limit: 200 });
+assert.equal(classInspect.class, "Node3D");
+assert.ok(classInspect.inheritance.includes("Node"));
+const classMethods = await tool("classdb.get_methods", { class: "Node", include_inherited: true, name_contains: "get_child_count", limit: 50 });
+assert.ok(classMethods.methods.some((item: any) => item.name === "get_child_count"));
+const classCan = await tool("classdb.can_instantiate", { class: "Node3D" });
+assert.equal(classCan.exists, true);
+assert.equal(classCan.can_instantiate, true);
+
+const textSearch = await tool("project.search_text", { query: "secure_tunnel_smoke", root: "res://.mcp-smoke", extensions: ["gd"], limit: 20 });
+assert.ok(textSearch.matches.some((item: any) => item.path === "res://.mcp-smoke/secure-player.gd"));
+
+const editorRun = await tool("editor.run_current_scene");
+assert.equal(editorRun.playing, true);
+const editorPlaying = await tool("editor.get_playing_scene");
+assert.equal(editorPlaying.playing, true);
+const runtimeStatus = await toolEventually("runtime.status");
+const debuggerSessions = await tool("debugger.get_sessions");
+assert.ok(debuggerSessions.sessions.some((session: any) => session.active));
+assert.equal(runtimeStatus.current_scene, "res://.mcp-smoke/secure-generated.tscn");
+assert.ok(runtimeStatus.node_count >= 2);
+const runtimeTree = await tool("runtime.get_tree", { max_depth: 4 });
+assert.equal(runtimeTree.root.name, "SecureRoot");
+assert.equal(runtimeTree.root.children[0]?.name, "Player");
+const runtimePosition = await tool("runtime.get_property", { node_path: "Player", property: "position" });
+assert.deepEqual(runtimePosition.value, { __godot_type: "Vector3", x: 4, y: 5, z: 6 });
+const runtimeChanged = await tool("runtime.set_property", { node_path: "Player", property: "position", value: { __godot_type: "Vector3", x: 7, y: 8, z: 9 } });
+assert.deepEqual(runtimeChanged.value, { __godot_type: "Vector3", x: 7, y: 8, z: 9 });
+const runtimeCall = await tool("runtime.call_method", { node_path: ".", method: "get_child_count", arguments: [] });
+assert.equal(runtimeCall.result, 1);
+const runtimePerf = await tool("runtime.get_performance");
+assert.equal(typeof runtimePerf.fps, "number");
+const paused = await tool("runtime.pause");
+assert.equal(paused.paused, true);
+const resumed = await tool("runtime.resume");
+assert.equal(resumed.paused, false);
+const editorStopped = await tool("editor.stop_playing");
+assert.equal(editorStopped.playing, false);
 
 const tree = await tool("scene.get_tree", { max_depth: 4 });
 assert.equal(tree.root.name, "SecureRoot");
 assert.equal(tree.root.children[0]?.name, "Player");
+
+const captureSuccess = await tool("diagnostics.run_capture", {
+  scene: "res://.mcp-smoke/secure-generated.tscn",
+  quit_after: 4,
+  timeout_ms: 10000,
+});
+assert.equal(captureSuccess.process_ok, true);
+assert.equal(captureSuccess.exit_code, 0);
+assert.equal(captureSuccess.timed_out, false);
+assert.match(captureSuccess.stdout, /CAPTURE_STDOUT_OK/);
+
+await tool("scene.create", { path: "res://.mcp-smoke/capture-error.tscn", root_type: "Node", root_name: "CaptureError", overwrite: true });
+const errorScript = "extends Node\n\nfunc _ready() -> void:\n\tpush_error(\"CAPTURE_ERROR_OK\")\n\tget_tree().quit(7)\n";
+await tool("script.write", { path: "res://.mcp-smoke/capture-error.gd", content: errorScript });
+await tool("script.attach", { node_path: ".", script_path: "res://.mcp-smoke/capture-error.gd" });
+await tool("scene.save");
+const captureError = await tool("diagnostics.run_capture", {
+  scene: "res://.mcp-smoke/capture-error.tscn",
+  quit_after: 30,
+  timeout_ms: 10000,
+});
+assert.equal(captureError.process_ok, false);
+assert.equal(captureError.exit_code, 7);
+assert.equal(captureError.timed_out, false);
+assert.match(captureError.stderr, /CAPTURE_ERROR_OK/);
+
+await tool("scene.create", { path: "res://.mcp-smoke/capture-timeout.tscn", root_type: "Node", root_name: "CaptureTimeout", overwrite: true });
+const timeoutScript = "extends Node\n\nfunc _ready() -> void:\n\tOS.delay_msec(5000)\n";
+await tool("script.write", { path: "res://.mcp-smoke/capture-timeout.gd", content: timeoutScript });
+await tool("script.attach", { node_path: ".", script_path: "res://.mcp-smoke/capture-timeout.gd" });
+await tool("scene.save");
+const captureTimeout = await tool("diagnostics.run_capture", {
+  scene: "res://.mcp-smoke/capture-timeout.tscn",
+  quit_after: 30,
+  timeout_ms: 300,
+});
+assert.equal(captureTimeout.process_ok, false);
+assert.equal(captureTimeout.timed_out, true);
+assert.equal(captureTimeout.exit_code, -1);
+
+const reopenedSecure = await tool("scene.open", { path: "res://.mcp-smoke/secure-generated.tscn" });
+assert.equal(reopenedSecure.opened, true);
+const currentAfterOpen = await tool("scene.get_current");
+assert.equal(currentAfterOpen.path, "res://.mcp-smoke/secure-generated.tscn");
+const reloadedSecure = await tool("scene.reload", { path: "res://.mcp-smoke/secure-generated.tscn" });
+assert.equal(reloadedSecure.reloaded, true);
+const instantiated = await tool("scene.instantiate", { scene_path: "res://.mcp-smoke/capture-error.tscn", parent_path: ".", name: "DiagnosticInstance" });
+assert.equal(instantiated.path, "DiagnosticInstance");
+await tool("node.delete", { node_path: "DiagnosticInstance" });
+const saveAllScenes = await tool("scene.save_all");
+assert.equal(saveAllScenes.saved, true);
+
+const openedScript = await tool("editor.open_script", { path: "res://.mcp-smoke/secure-player.gd", line: 1, column: 0, grab_focus: false });
+assert.ok(openedScript.scripts.open.includes("res://.mcp-smoke/secure-player.gd"));
+const openScripts = await tool("script.list_open");
+assert.ok(openScripts.open.includes("res://.mcp-smoke/secure-player.gd"));
+const scriptsSaved = await tool("script.save_all");
+assert.equal(scriptsSaved.saved, true);
+const scriptsReloaded = await tool("script.reload_open");
+assert.equal(scriptsReloaded.reloaded, true);
+const closedScript = await tool("editor.close_script", { path: "res://.mcp-smoke/secure-player.gd" });
+assert.ok(!closedScript.scripts.open.includes("res://.mcp-smoke/secure-player.gd"));
+
+const closedScene = await tool("scene.close");
+assert.equal(closedScene.closed, true);
+const reopenedAfterClose = await tool("scene.open", { path: "res://.mcp-smoke/secure-generated.tscn" });
+assert.equal(reopenedAfterClose.opened, true);
+
+const removedAction = await tool("input_map.remove_action", { action: "mcp_smoke_action" });
+assert.equal(removedAction.removed, true);
+const removedActionCheck = await toolRaw("input_map.get_action", { action: "mcp_smoke_action" });
+assert.equal(removedActionCheck.isError, true);
+assert.equal(removedActionCheck.body?.code, "ACTION_NOT_FOUND");
+const removedSetting = await tool("project.set_setting", { name: "godot_mcp_chatgpt/smoke_setting", value: null });
+assert.equal(removedSetting.exists, false);
+const removedSettingCheck = await tool("project.get_setting", { name: "godot_mcp_chatgpt/smoke_setting" });
+assert.equal(removedSettingCheck.exists, false);
 
 const terminated = await enqueue({ command_type: "session_termination", headers: { "Mcp-Session-Id": ["smoke-session"] } });
 assert.equal(terminated.resp_type, "session_termination_response");

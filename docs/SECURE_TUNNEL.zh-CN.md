@@ -2,7 +2,7 @@
 
 [English](SECURE_TUNNEL.md) | 简体中文
 
-0.3.0 使用插件内置的官方 OpenAI `tunnel-client.exe`，并由 Godot 自己提供 loopback Streamable HTTP MCP Server。
+0.4.0 使用插件内置的官方 OpenAI `tunnel-client.exe`，并由 Godot 自己提供 loopback Streamable HTTP MCP Server。
 
 **2026-09-09 已完成真实生产连接器验证并创建成功。**
 
@@ -60,9 +60,9 @@ starting
 connected
 ```
 
-0.3.0 中，`connected` 表示 Godot 本地 MCP Server 已运行，官方 tunnel-client 子进程也保持存活。最终是否真正接通，应以 ChatGPT 能否发现工具为准。
+0.4.0 中，`connected` 表示 Godot 本地 MCP Server 已运行，官方 tunnel-client 子进程也保持存活。最终是否真正接通，应以 ChatGPT 能否发现并调用工具为准。
 
-Runtime API Key 不会被插件持久化。
+Windows 0.4.0 首次成功连接后会把 Runtime API Key 作为 Generic Credential 保存到 Windows Credential Manager；它不会进入项目、EditorSettings、Git 或生成的 tunnel profile。
 
 ## 3. 在 ChatGPT 创建连接器
 
@@ -73,11 +73,11 @@ Runtime API Key 不会被插件持久化。
 3. 选择或填写同一个 Tunnel ID；
 4. 创建和使用期间保持 Godot 打开。
 
-0.3.0 的真实验证已经成功走通这条连接器创建流程。
+0.4.0 已通过真实 ChatGPT Connector 全能力回归。
 
 ## 4. 验证工具发现
 
-当前版本应发现 13 个工具。
+当前 0.4.0 应发现 **119 个工具**。
 
 先测试：
 
@@ -196,4 +196,4 @@ runtime_error
 - 本地端口/路径每次运行生成；
 - profile 中是 `env:CONTROL_PLANE_API_KEY`，不是明文 key；
 - 插件只持久化 Tunnel ID；
-- 重启 Godot 后 Runtime API Key 需要重新输入。
+- 重启 Godot 后可使用保存的 Tunnel ID + Credential Manager Key 自动重连；如不希望保存，使用 **Forget Saved Credentials** 删除两项内容。

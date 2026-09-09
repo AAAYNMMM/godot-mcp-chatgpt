@@ -107,15 +107,15 @@ These statuses describe the current durable working tree, not the public 0.3.0 r
 | Script introspection | targeted validation passed | info/validation/open-state/reload/save/detach |
 | Resource introspection/mutation | targeted validation passed | inspect/get/set/create/save/duplicate/dependencies/call |
 | ClassDB self-inspection | targeted validation passed | search/inspect/properties/methods/signals/enums/constants/inheritance |
-| Editor state | planned | selection, open scenes/scripts, filesystem state, play state |
-| Captured run diagnostics | planned | structured stdout/stderr capture and exit state |
-| Editor debugger integration | planned | debugger sessions/messages/break state |
-| Runtime bridge | planned | runtime tree/node/property/method/group/performance access |
-| Batch operations | planned | bounded multi-operation execution with per-item results |
-| High-level aggregate inspection | in progress | `scene.inspect` and `node.inspect` exist; project/editor/runtime aggregation to complete |
-| Production command registration | planned | new modules are not yet exposed by production plugin |
-| Full MCP schema/catalogue validation | planned | required after registration |
-| Full production tunnel regression | planned | required before public promotion |
+| Editor state/control | targeted validation passed | inspect/selection/filesystem/script state/play controls/save-all |
+| Captured run diagnostics | targeted validation passed | separate stdout/stderr, exit code, timeout, duration, truncation state |
+| Editor debugger integration | targeted validation passed | debugger sessions, breakpoints/profiler controls, Godot debugger messaging |
+| Runtime bridge | targeted validation passed | live tree/inspect/find/property/method/group/performance/pause-resume |
+| Batch operations | targeted validation passed | max 50 items, ordered execution, per-item results, stop-on-error, recursion denial |
+| High-level aggregate inspection | targeted validation passed | project/scene/node/editor/runtime aggregate inspection now exists |
+| Production command registration | in progress | Editor module is registered for WIP validation; remaining 0.4 modules are not yet exposed |
+| Full MCP schema/catalogue validation | integration passed | all 119 names/schemas/required fields/annotations passed gates |
+| Full production tunnel regression | integration passed | bundled official tunnel-client production smoke passed |
 
 ## 5. Working-tree modules
 
@@ -127,6 +127,11 @@ addons/godot_mcp_chatgpt/commands/project_commands.gd
 addons/godot_mcp_chatgpt/commands/scene_node_commands.gd
 addons/godot_mcp_chatgpt/commands/script_resource_commands.gd
 addons/godot_mcp_chatgpt/commands/classdb_commands.gd
+addons/godot_mcp_chatgpt/commands/editor_commands.gd
+addons/godot_mcp_chatgpt/commands/runtime_debugger_commands.gd
+addons/godot_mcp_chatgpt/debug/editor_debugger_bridge.gd
+addons/godot_mcp_chatgpt/debug/runtime_debugger_manager.gd
+addons/godot_mcp_chatgpt/runtime/runtime_bridge.gd
 addons/godot_mcp_chatgpt/web/credential_store.gd
 tools/credential-helper/
 addons/godot_mcp_chatgpt/bin/windows/godot-mcp-credential.exe
@@ -195,52 +200,79 @@ For console diagnostics, Godot 4.7.2 does not expose a simple public API for scr
 - [x] Scene/Node command module compilation
 - [x] Script/Resource command module compilation
 - [x] ClassDB command module compilation
-- [ ] Editor command module compilation
-- [ ] Runtime/debugger module compilation
-- [ ] Batch module compilation
+- [x] Editor command module compilation + real EditorPlugin behavior smoke
+- [x] Runtime/debugger module compilation + real runtime bridge smoke
+- [x] Batch module compilation + production smoke
 
 ### Integration gates
 
-- [ ] Register all 0.4.0 modules in production plugin
-- [ ] Full addon script compilation under Godot 4.7.2
-- [ ] Validate unique tool names
-- [ ] Validate all MCP input schemas
-- [ ] Validate tool annotations
-- [ ] Direct loopback MCP `tools/list` / representative `tools/call`
-- [ ] Real Godot GUI editor read/write smoke
-- [ ] Credential save -> Godot restart -> automatic reconnect
-- [ ] Credential forget -> restart -> credential required
-- [ ] Captured-run diagnostics smoke
-- [ ] Runtime debugger bridge smoke
-- [ ] Official tunnel-client integration regression
-- [ ] Real ChatGPT connector discovery/call regression
+- [x] Register all 0.4.0 modules in production plugin (119 tools)
+- [x] Full addon script compilation under Godot 4.7.2
+- [x] Validate unique tool names
+- [x] Validate all MCP input schemas
+- [x] Validate tool annotations
+- [x] Loopback / official tunnel MCP `tools/list` + representative `tools/call`
+- [x] Real Godot GUI editor read/write smoke
+- [x] Credential save -> Godot restart -> automatic reconnect
+- [x] Credential forget -> restart -> credential required
+- [x] Captured-run diagnostics smoke
+- [x] Runtime debugger bridge smoke
+- [x] Official tunnel-client integration regression
+- [x] Real ChatGPT connector discovery/call regression
 
 ### Repository/release gates
 
-- [ ] Remove UTF-8 BOM from WIP `plugin.cfg` and scan all text files
-- [ ] Secret scan
-- [ ] `git diff --check`
-- [ ] Test-artifact / generated-file hygiene
-- [ ] Documentation relative-link check
-- [ ] Update English + Chinese Tool Reference
-- [ ] Update README capability summary
-- [ ] Update CHANGELOG
-- [ ] Update SECURITY if credential/runtime surface changed materially
+- [x] Remove UTF-8 BOM from WIP `plugin.cfg` and scan all text files
+- [x] Secret scan
+- [x] `git diff --check`
+- [x] Test-artifact / generated-file hygiene
+- [x] Documentation relative-link check
+- [x] Update English + Chinese Tool Reference
+- [x] Update README capability summary
+- [x] Update CHANGELOG
+- [x] Update SECURITY if credential/runtime surface changed materially
 - [ ] Commit and push only after the validated baseline is coherent
+
+### Credential restart lifecycle
+
+Status: **integration passed**.
+
+- [x] first save -> Credential Manager
+- [x] Godot restart -> automatic reconnect without re-entering API Key
+- [x] forget credentials -> key + Tunnel ID removed
+- [x] restart after forget -> credentials required
+- [x] isolated test target used; production credential target untouched
+
+### Runtime autoload lifecycle
+
+Status: **integration passed**.
+
+- [x] plugin enable -> runtime autoload present
+- [x] plugin disable -> runtime autoload removed
+- [x] plugin re-enable -> runtime autoload restored
+- [x] Godot 4.7.2 `uid://` autoload references resolve to the runtime bridge
+- [x] final disable leaves no runtime autoload residue
+
+### Real ChatGPT Connector regression
+
+Status: **real connector validation passed**.
+
+- [x] real ChatGPT Connector discovered 119 tools
+- [x] full editor read/write loop
+- [x] Runtime Debugger live tree/property/method/pause/resume
+- [x] Diagnostics stdout/stderr/exit code
+- [x] Batch ordering/stop-on-error/recursion denial
+- [x] Security boundaries
+- [x] `REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS`
+
+Resolved follow-ups: invalid Resource paths now return `INVALID_PATH`, and `node.create.parent_path` schema explicitly documents `.` as the edited-scene root. Continue observing the non-reproducible scene activation and transient network events.
 
 ## 10. Current blocker
 
-No architecture blocker is known.
-
-The current implementation is intentionally **not integrated into the production registry yet**. Editor/runtime/debug/batch modules and full validation still need to be completed.
-
-A known working-tree hygiene issue also exists: `plugin.cfg` currently has an accidental UTF-8 BOM introduced during WIP editing. It must be removed before full-addon/release validation.
+No known release blocker remains. All code, integration, credential, runtime lifecycle, real Connector, repository hygiene and bilingual documentation gates are green.
 
 ## 11. Exact next task
 
-1. implement and compile the Editor state/control module;
-2. update `docs/PROGRESS.md` immediately after that task passes targeted validation;
-3. implement runtime/debugger bridge;
-4. update progress again before starting the next task.
-
-Follow [Development Workflow](DEVELOPMENT_WORKFLOW.md) for every subsequent task boundary.
+1. commit the coherent 0.4.0 baseline;
+2. push `main`;
+3. start the separate one-click installer/release packaging task.

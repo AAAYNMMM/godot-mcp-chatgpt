@@ -80,9 +80,9 @@ static func register(registry: RefCounted, plugin: EditorPlugin) -> void:
 		{
 			"type": "object",
 			"properties": {
-				"parent_path": {"type": "string"},
-				"type": {"type": "string"},
-				"name": {"type": "string"},
+				"parent_path": {"type": "string", "description": "Path relative to the edited-scene root. Use . for the scene root; do not use the root node name."},
+				"type": {"type": "string", "description": "Instantiable Godot Node class name, for example CharacterBody3D."},
+				"name": {"type": "string", "description": "Optional node name."},
 			},
 			"required": ["type"],
 			"additionalProperties": false,

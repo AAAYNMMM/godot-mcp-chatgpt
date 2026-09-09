@@ -4,7 +4,7 @@
 
 ## 需要 CWapi 吗？
 
-不需要。开发过程中 CWapi 作为“已经验证可用的连接方式”提供了参考，但 `godot-mcp-chatgpt` 0.3.0 已经内置官方 OpenAI `tunnel-client`，并自己提供 Godot 本地 MCP Server。
+不需要。开发过程中 CWapi 作为“已经验证可用的连接方式”提供了参考，但 `godot-mcp-chatgpt` 0.4.0 已经内置官方 OpenAI `tunnel-client`，并自己提供 Godot 本地 MCP Server。
 
 ## 需要 Codex、Cursor 或 Claude Desktop 吗？
 
@@ -20,7 +20,7 @@
 
 ## `Status: connected` 到底表示什么？
 
-0.3.0 中表示：
+0.4.0 中表示：
 
 - Godot 本地 MCP Server 已启动；
 - 官方 `tunnel-client` 子进程已经启动并保持运行。
@@ -38,7 +38,7 @@
 5. Runtime API Key 是否具备所需 Tunnel 权限；
 6. 创建的是 Tunnel 连接，而不是手动填本地 `127.0.0.1` URL。
 
-0.3.0 已经完成真实 ChatGPT 连接器创建验证，并成功通过。
+0.4.0 已完成真实 ChatGPT Connector 全能力回归，真实发现并调用 119 个工具。
 
 ## Godot 显示 connected，但 ChatGPT 看不到工具
 
@@ -54,11 +54,11 @@
 
 ## 重启 Godot 后 API Key 为空
 
-这是设计行为。插件故意不持久化 Runtime API Key。重新输入后 Connect 即可。
+输入框保持为空是为了不把保存的 Key 回显到 UI。Windows 0.4.0 在首次成功连接后会把 Runtime API Key 保存到 Windows Credential Manager；如果 Tunnel ID 也已保存，重启 Godot 后会自动重连。
 
 ## API Key 存在哪里？
 
-插件只把 Tunnel ID 写进 Godot `EditorSettings`。Runtime API Key 通过 `CONTROL_PLANE_API_KEY` 用于启动官方 tunnel-client，不会写进生成的 profile。
+Tunnel ID 保存在 Godot `EditorSettings`。Windows 0.4.0 把 Runtime API Key 作为 Generic Credential 保存到 Windows Credential Manager，不进入项目、Git、EditorSettings 或生成的 tunnel profile。使用 **Forget Saved Credentials** 可以同时删除两项保存内容。
 
 ## 本地 MCP Server 会监听局域网吗？
 
@@ -78,11 +78,11 @@
 
 ## 为什么 ChatGPT 看不到我需要的节点属性？
 
-0.3.0 有 `node.set_property`，但还没有完整的属性枚举工具。先看路线图，不要把“缺工具”误判成“连接失败”。
+0.4.0 已包含 `node.get_property`、`node.get_properties`、`node.inspect`、`scene.inspect`、Resource 检查和 ClassDB 自省。如果某个特定属性仍无法表达，请在 bug 报告中提供准确 class/property。
 
 ## 为什么不能打开已有场景？
 
-初始 13 工具里还没有专门的 `scene.open`。
+0.4.0 已支持 `scene.open`、`scene.close`、`scene.reload`、`scene.list_open` 和 `scene.get_current`。
 
 ## 支持哪些 Godot 版本？
 
@@ -109,7 +109,7 @@ Tunnel/运行时可能能接收多个远程调用，但 Godot 编辑器修改是
 
 ## 为什么不一次性暴露几百个 Godot 工具？
 
-超大的 MCP 工具面会增加维护成本、工具 schema 上下文开销和模型选择歧义。本项目优先做少量高频工具，然后按真实用户工作流扩展。
+超大的 MCP 工具面会增加维护成本、工具 schema 上下文开销和模型选择歧义。0.4.0 已达到 119 tools，但仍坚持围绕真实工作流和有边界操作设计，而不是暴露通用 Shell 或所有可能的引擎调用。
 
 ## 怎么提交一个高质量 bug？
 

@@ -107,15 +107,15 @@ api_key: env:CONTROL_PLANE_API_KEY
 | Script 自省 | targeted validation passed | info/validate/open-state/reload/save/detach |
 | Resource 自省/修改 | targeted validation passed | inspect/get/set/create/save/duplicate/dependencies/call |
 | ClassDB 自省 | targeted validation passed | search/inspect/properties/methods/signals/enums/constants/inheritance |
-| Editor 状态 | planned | selection、打开场景/脚本、filesystem、play state |
-| 捕获运行诊断 | planned | stdout/stderr 和退出状态 |
-| Editor Debugger 集成 | planned | debugger session/message/break state |
-| Runtime bridge | planned | runtime tree/node/property/method/group/performance |
-| Batch | planned | 有边界的批量操作与逐项结果 |
-| 聚合 Inspect | in progress | 已有 `scene.inspect`、`node.inspect`；仍需 project/editor/runtime 聚合 |
-| 生产 command 注册 | planned | 新模块尚未暴露给生产插件 |
-| 完整 MCP schema/catalogue 验证 | planned | 注册完成后执行 |
-| 完整生产 Tunnel 回归 | planned | 正式升级前必须执行 |
+| Editor 状态/控制 | targeted validation passed | inspect、selection、filesystem、script state、play 控制、save-all |
+| 捕获运行诊断 | targeted validation passed | stdout/stderr 分离捕获、exit code、timeout、duration、截断状态 |
+| Editor Debugger 集成 | targeted validation passed | debugger session、断点/profiler 控制、Godot debugger message |
+| Runtime bridge | targeted validation passed | live tree/inspect/find/property/method/group/performance/pause-resume |
+| Batch | targeted validation passed | 最多 50 项、顺序执行、逐项结果、stop-on-error、递归拒绝 |
+| 聚合 Inspect | targeted validation passed | project/scene/node/editor/runtime 聚合读取均已具备 |
+| 生产 command 注册 | in progress | Editor 模块已为 WIP 行为验证接入；其余 0.4 模块尚未全部暴露 |
+| 完整 MCP schema/catalogue 验证 | integration passed | 119 tools 名称/schema/required/annotations 全量门禁通过 |
+| 完整生产 Tunnel 回归 | integration passed | bundled official tunnel-client production smoke 通过 |
 
 ## 5. 当前工作区模块
 
@@ -127,6 +127,11 @@ addons/godot_mcp_chatgpt/commands/project_commands.gd
 addons/godot_mcp_chatgpt/commands/scene_node_commands.gd
 addons/godot_mcp_chatgpt/commands/script_resource_commands.gd
 addons/godot_mcp_chatgpt/commands/classdb_commands.gd
+addons/godot_mcp_chatgpt/commands/editor_commands.gd
+addons/godot_mcp_chatgpt/commands/runtime_debugger_commands.gd
+addons/godot_mcp_chatgpt/debug/editor_debugger_bridge.gd
+addons/godot_mcp_chatgpt/debug/runtime_debugger_manager.gd
+addons/godot_mcp_chatgpt/runtime/runtime_bridge.gd
 addons/godot_mcp_chatgpt/web/credential_store.gd
 tools/credential-helper/
 addons/godot_mcp_chatgpt/bin/windows/godot-mcp-credential.exe
@@ -195,52 +200,79 @@ Godot 4.7.2 没有简单公开 API 可以直接抓取 Output Dock 全部文本�
 - [x] Scene/Node 命令模块编译
 - [x] Script/Resource 命令模块编译
 - [x] ClassDB 命令模块编译
-- [ ] Editor 命令模块编译
-- [ ] Runtime/Debugger 模块编译
-- [ ] Batch 模块编译
+- [x] Editor 命令模块编译 + 真实 EditorPlugin 行为 smoke
+- [x] Runtime/Debugger 模块编译 + 真实 runtime bridge smoke
+- [x] Batch 模块编译 + production smoke
 
 ### 集成门禁
 
-- [ ] 所有 0.4.0 模块注册进生产插件
-- [ ] Godot 4.7.2 全插件脚本编译
-- [ ] 工具名唯一性验证
-- [ ] 全 MCP input schema 验证
-- [ ] tool annotation 验证
-- [ ] loopback MCP `tools/list` + 代表性 `tools/call`
-- [ ] 真实 Godot GUI editor 读写 smoke
-- [ ] Credential 保存 -> 重启 Godot -> 自动重连
-- [ ] Forget Credential -> 重启 -> 要求重新输入
-- [ ] 捕获运行诊断 smoke
-- [ ] Runtime Debugger Bridge smoke
-- [ ] official tunnel-client 集成回归
-- [ ] 真实 ChatGPT connector discovery/call 回归
+- [x] 所有 0.4.0 模块注册进生产插件（119 tools）
+- [x] Godot 4.7.2 全插件脚本编译
+- [x] 工具名唯一性验证
+- [x] 全 MCP input schema 验证
+- [x] tool annotation 验证
+- [x] loopback / official tunnel MCP `tools/list` + 代表性 `tools/call`
+- [x] 真实 Godot GUI editor 读写 smoke
+- [x] Credential 保存 -> 重启 Godot -> 自动重连
+- [x] Forget Credential -> 重启 -> 要求重新输入
+- [x] 捕获运行诊断 smoke
+- [x] Runtime Debugger Bridge smoke
+- [x] official tunnel-client 集成回归
+- [x] 真实 ChatGPT connector discovery/call 回归
 
 ### 仓库/发布门禁
 
-- [ ] 删除 WIP `plugin.cfg` 意外 UTF-8 BOM，并扫描所有文本
-- [ ] Secret scan
-- [ ] `git diff --check`
-- [ ] 测试产物 / 生成文件卫生检查
-- [ ] 文档相对链接检查
-- [ ] 更新英文 + 中文 Tool Reference
-- [ ] 更新 README 能力摘要
-- [ ] 更新 CHANGELOG
-- [ ] 凭据/runtime surface 有实质变化时更新 SECURITY
+- [x] 删除 WIP `plugin.cfg` 意外 UTF-8 BOM，并扫描所有文本
+- [x] Secret scan
+- [x] `git diff --check`
+- [x] 测试产物 / 生成文件卫生检查
+- [x] 文档相对链接检查
+- [x] 更新英文 + 中文 Tool Reference
+- [x] 更新 README 能力摘要
+- [x] 更新 CHANGELOG
+- [x] 凭据/runtime surface 有实质变化时更新 SECURITY
 - [ ] 完整基线一致后才 commit/push
+
+### 凭据跨重启生命周期
+
+状态：**集成验证通过**。
+
+- [x] 首次保存 -> Windows Credential Manager
+- [x] 重启 Godot -> 无需重新输入 API Key 自动连接
+- [x] Forget -> Key 与 Tunnel ID 一并删除
+- [x] Forget 后重启 -> 重新要求凭据
+- [x] 使用隔离测试 target，未触碰生产凭据 target
+
+### Runtime autoload 生命周期
+
+状态：**集成验证通过**。
+
+- [x] 插件启用 -> runtime autoload 存在
+- [x] 插件禁用 -> runtime autoload 被移除
+- [x] 插件重新启用 -> runtime autoload 恢复
+- [x] Godot 4.7.2 `uid://` autoload 引用可正确解析到 runtime bridge
+- [x] 最终禁用后无 runtime autoload 残留
+
+### 真实 ChatGPT Connector 回归
+
+状态：**真实连接器验证通过**。
+
+- [x] 真实 ChatGPT Connector 发现 119 tools
+- [x] 编辑器读写完整闭环
+- [x] Runtime Debugger live tree/property/method/pause/resume
+- [x] Diagnostics stdout/stderr/exit code
+- [x] Batch 顺序/stop-on-error/递归拒绝
+- [x] Security boundaries
+- [x] `REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS`
+
+已解决 follow-up：Resource 非法路径已统一返回 `INVALID_PATH`，`node.create.parent_path` schema 已明确 `.` 表示编辑场景根节点。无法复现的 scene activation / transient network error 继续观察。
 
 ## 10. 当前 blocker
 
-没有已知架构 blocker。
-
-当前实现刻意**尚未注册到生产 command registry**。仍需完成 Editor、Runtime/Debugger、Batch 和完整集成验证。
-
-还有一个已知工作区卫生问题：WIP `plugin.cfg` 在中间编辑时意外带入 UTF-8 BOM。必须在全插件/发布验证前清掉。
+当前没有已知 release blocker。代码、集成、Credential、Runtime lifecycle、真实 Connector、仓库卫生和双语公开文档门禁均已通过。
 
 ## 11. 精确下一项任务
 
-1. 实现并编译 Editor 状态/控制模块；
-2. 该任务 targeted validation 通过后，**立即更新 `docs/PROGRESS.md`**；
-3. 再实现 Runtime/Debugger Bridge；
-4. 再次先更新 Progress，之后才能进入下一任务。
-
-后续所有任务边界遵循 [开发工作流](DEVELOPMENT_WORKFLOW.zh-CN.md)。
+1. 提交一致的 0.4.0 基线；
+2. 推送 `main`；
+3. 开始独立的一键安装器 / Release 打包任务。

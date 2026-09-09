@@ -390,12 +390,187 @@ CONTRIBUTING.zh-CN.md
 
 结果：开发进度管理已经形成强制逐任务更新规则。
 
+### Task：Editor 状态/控制模块
+
+状态：**targeted validation passed**。
+
+文件 / 模块：
+
+```text
+addons/godot_mcp_chatgpt/commands/editor_commands.gd
+```
+
+完成内容：新增 Editor 聚合状态、场景节点选择读取/设置/清空、filesystem 扫描/导入状态与控制、FileSystem 选择、Script Editor 状态/打开/关闭、play 状态、运行 main/current/custom scene、停止运行以及 save-all。为了验证真实 EditorPlugin 上下文，该模块已经接入 0.4 WIP 插件。
+
+实际验证：
+
+- Godot 4.7.2 成功加载注册 EditorCommands 后的完整插件；
+- 真实 Godot GUI + 内置官方 tunnel-client + 本地 control-plane smoke 发现 31 个工具；
+- `editor.inspect`、`editor.get_filesystem_state`、`editor.get_script_state` 返回真实 Editor 状态；
+- `editor.set_selection` 成功选择生成的 Player 节点，`editor.clear_selection` 成功清空；
+- `editor.run_current_scene` 进入 playing，`editor.get_playing_scene` 确认运行状态，`editor.stop_playing` 成功停止；
+- 结果：`PRODUCTION_PLUGIN_SMOKE=PASS`。
+
+同时在真实插件 smoke 前清除了此前登记的 WIP `plugin.cfg` UTF-8 BOM；release gate 仍需执行全仓库 BOM 扫描。
+
+### Task：Runtime / Debugger Bridge
+
+状态：**targeted validation passed**。
+
+文件 / 模块：
+
+```text
+addons/godot_mcp_chatgpt/debug/editor_debugger_bridge.gd
+addons/godot_mcp_chatgpt/debug/runtime_debugger_manager.gd
+addons/godot_mcp_chatgpt/runtime/runtime_bridge.gd
+addons/godot_mcp_chatgpt/commands/runtime_debugger_commands.gd
+```
+
+完成内容：使用 Godot 自身 Debugger 通道打通 EditorPlugin 与运行中游戏，不新增第二个网络监听端口。Runtime 工具覆盖 status/tree/inspect/find/property 读写/method call/groups/performance/pause-resume；Debugger 工具覆盖 session、断点和 profiler 控制。Runtime 请求支持可选 `session_id` 和有边界的 `timeout_ms`。
+
+实际验证：
+
+- 4 个 Runtime/Debugger 模块全部通过 Godot 4.7.2 加载；
+- 0.4 WIP 生产插件成功注册 DebuggerPlugin 和 runtime bridge；
+- 真实 Editor 以 `--remote-debug tcp://127.0.0.1:...` 启动一次性测试场景；
+- runtime bridge 通过 EngineDebugger Channel 向 Editor 发送 ready；
+- official tunnel production smoke 发现 46 个工具；
+- `runtime.status` 返回真实运行 Scene 和 node count；
+- `runtime.get_tree` 返回 SecureRoot -> Player；
+- `runtime.get_property` 读到 Player.position=(4,5,6)；
+- `runtime.set_property` 把 live Player.position 改成 (7,8,9) 并读回新值；
+- `runtime.call_method` 成功在 live root 调用 `get_child_count`；
+- `runtime.get_performance`、`runtime.pause`、`runtime.resume` 均成功；
+- `debugger.get_sessions` 返回 active session；
+- 移除临时诊断 print 后最终结果仍为 `PRODUCTION_PLUGIN_SMOKE=PASS`。
+
+结果：Runtime/Debugger 闭环已经通过和生产相同的官方 tunnel-client 路径。
+
+### Task：捕获运行诊断
+
+状态：**targeted validation passed**。
+
+文件 / 模块：
+
+```text
+addons/godot_mcp_chatgpt/commands/diagnostics_commands.gd
+tools/run-helper/main.go
+addons/godot_mcp_chatgpt/bin/windows/godot-mcp-runner.exe
+```
+
+完成内容：新增有边界的 `diagnostics.run_capture`。它只启动当前 Godot executable + 当前项目 + 可选 `res://` Scene，不提供任意 shell/executable MCP 能力；通过独立 Windows helper 分离捕获 stdout/stderr，并返回 exit code、timeout、duration 和截断状态。
+
+实际验证：官方 tunnel-client production smoke 发现 47 个 tools；正常测试场景捕获 `CAPTURE_STDOUT_OK` 且 exit code 0；错误场景通过 `push_error` 捕获 stderr 并返回 exit code 7；阻塞场景在 300ms timeout 后被 helper 强制终止并返回 `timed_out=true` / exit code -1。最终结果：`PRODUCTION_PLUGIN_SMOKE=PASS`。
+
+结果：captured-run diagnostics 已形成真实 stdout/stderr/exit/timeout 闭环，不依赖虚假读取 Output Dock。
+
+### Task：Batch 操作
+
+状态：**targeted validation passed**。
+
+文件 / 模块：
+
+```text
+addons/godot_mcp_chatgpt/commands/batch_commands.gd
+```
+
+完成内容：新增非事务的 `batch.execute`，最多 50 项，顺序执行现有 MCP tools，返回逐项结果，支持 `stop_on_error`，限制总 payload，并拒绝任何 `batch.*` 递归调用。
+
+实际验证：Godot 4.7.2 编译通过；official tunnel production smoke 发现 48 个 tools；成功顺序执行 `godot.get_status` + `project.get_info`；中间未知工具时正确 stop-on-error；递归调用返回 `BATCH_RECURSION_DENIED`；51 项请求返回 `BATCH_TOO_LARGE`；最终 `PRODUCTION_PLUGIN_SMOKE=PASS`。
+
+结果：Batch 模块专项验证通过，明确为非原子操作，不承诺 rollback。
+
+### Task：0.4.0 统一注册与全功能代表性集成
+
+状态：**integration passed**。
+
+完成内容：将 Project / InputMap / Scene / Node / Script / Resource / ClassDB / Editor / Debugger / Runtime / Diagnostics / Batch 全部接入生产 CommandRegistry；CommandRegistry 增加重复工具名显式拒绝；修复 editor scene root 不在 SceneTree 时的安全摘要；修复 `script.get_info` 对刚写入 GDScript 的缓存陈旧问题；`project.set_setting(name, null)` 现在提供明确删除语义。
+
+实际验证：Godot 4.7.2 全插件编译通过；bundled official tunnel-client production smoke 发现 **119 tools**；`CATALOGUE_SCHEMA_GATE=PASS tools=119`，全量验证工具名唯一、命名格式、description、递归 inputSchema、required、`additionalProperties=false`、`readOnlyHint`、`destructiveHint`。代表性真实行为覆盖 Project/Settings/file search+move+delete、InputMap、Scene lifecycle/inspect、Node property/method/group/metadata/duplicate/rename、Script introspection/validate/detach、Signal connect/disconnect、Resource create/get/set/duplicate/save/dependencies/call、ClassDB、Editor、Runtime、Diagnostics、Batch。测试临时 InputMap action 和 ProjectSetting 会自清理。最终 `PRODUCTION_PLUGIN_SMOKE=PASS`，Godot stderr 无 MCP 脚本错误。
+
+结果：119-tool 0.4.0 功能面已经形成统一生产注册和代表性行为基线；尚不能发布，仍需 Credential 跨重启/Forget、autoload 清理、仓库 release gates 和真实 ChatGPT 0.4 回归。
+
+### 任务：凭据跨重启生命周期
+
+状态：**集成验证通过**。
+
+已在 Windows 上使用隔离的 `godot-mcp-chatgpt/test/...` Credential Manager target 和隔离 Godot APPDATA 真实验证：
+
+- 首次连接成功保存 Runtime API Key 与 Tunnel ID；
+- 全新 Godot 进程在不提供 API Key 环境变量的情况下，从 Credential Manager 读取已保存 Key 并自动连接；
+- Forget 流程删除已保存 Key 与 Tunnel ID；
+- 再次重启后不再自动连接，回到等待/需要凭据状态；
+- 结果：`CREDENTIAL_RESTART_SMOKE=PASS`。
+
+该测试没有触碰生产 Credential Manager target。
+
+### 任务：Runtime autoload 生命周期与插件清理
+
+状态：**集成验证通过**。
+
+完成内容：RuntimeDebuggerManager 在插件禁用时会移除其保留的 runtime autoload；autoload 冲突检查提前到 debugger plugin 注册之前；同时兼容 Godot 4.7.2 将 autoload 正规化为 `uid://` 的情况，只要 UID 最终解析到本插件的 runtime bridge 就视为匹配。
+
+已在真实 Godot 4.7.2 headless editor 中通过临时测试 EditorPlugin 验证：
+
+- 目标插件启用 -> runtime autoload 正确解析到 `runtime_bridge.gd`；
+- 禁用 -> autoload 被移除；
+- 重新启用 -> Godot 将 autoload 写成 `uid://...`，manager 正确识别并恢复 runtime autoload；
+- 再次禁用 -> autoload 再次被清理；
+- 结果：`RUNTIME_AUTOLOAD_LIFECYCLE_SMOKE=PASS`。
+
+### 任务：真实 ChatGPT Connector 0.4.0 全能力回归
+
+状态：**真实连接器验证通过**。
+
+2026-09-10 在真实 ChatGPT 新会话中，通过用户实际创建的 Connector 对当前 Godot 4.7.2 编辑器进行了完整 MCP 回归。Connector 暴露 **119 个工具**，并真实验证 Project、ClassDB、Scene、Node、Groups/Metadata、Script、Signals、Resource、ProjectSettings、InputMap、Editor、Debugger/Runtime、Diagnostics、Batch 与安全边界。
+
+关键结果：
+
+- `REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS`；
+- Runtime 中将 Player.position 从 Vector3(2,3,4) 改为 Vector3(7,8,9)，读回一致；停止运行后编辑器场景仍为 Vector3(2,3,4)，证明 runtime 修改未误写回编辑器场景；
+- `runtime.call_method` 实测 `Player.add_values(12, 30) = 42`；
+- Diagnostics 正常场景 exit code 0，错误场景精确捕获 `MCP_REAL_ERROR_TEST` 且 exit code 7；
+- Batch 顺序执行、stop_on_error 和 `BATCH_RECURSION_DENIED` 均通过；
+- 路径穿越、项目外路径、Scene root 删除、非法 class/property/method 均被拒绝；
+- 测试结束后 ProjectSetting / InputMap 临时项均已清理，未修改插件目录、API Key、Tunnel ID 或 Windows Credential Manager。
+
+非阻塞 follow-up：
+
+1. 已解决：所有 Resource 源路径在 load 前统一校验；`res://../outside.tres` 现在返回 `INVALID_PATH`，并已加入 production smoke；
+2. 已解决：`node.create.parent_path` MCP schema 已明确 `.` 表示编辑场景根节点，不应填写根节点名称；
+3. 一次 `scene.create` 后短暂看到旧场景、一次 `mcp_network_error` 均无法稳定复现，继续作为观察项，不作为 0.4.0 blocker。
+### 任务：0.4.0 最终 release gates 与公开文档晋级
+
+状态：**release 验证通过**。
+
+真实 Connector 回归和 follow-up 修复完成后，最终实际执行：
+
+```text
+Godot 4.7.2 addon load: PASS
+Go helper gofmt/build/test: PASS
+CREDENTIAL_HELPER_FINAL=PASS
+npm build: PASS
+npm test: PASS
+CATALOGUE_SCHEMA_GATE=PASS tools=119
+PRODUCTION_PLUGIN_SMOKE=PASS
+Resource traversal -> INVALID_PATH regression: PASS
+node.create parent_path schema guidance regression: PASS
+BOM_CHECK=PASS
+LITERAL_NEWLINE_CHECK=PASS
+SECRET_CHECK=PASS real=0
+TOOL_REFERENCE_COVERAGE=PASS tools=119
+LINK_CHECK=PASS
+NO_IMAGE_MARKUP=PASS
+VERSION_CHECK=PASS 0.4.0
+git diff --check: PASS
+TEST_ARTIFACT_HYGIENE=PASS
+```
+
+公开双语文档已晋级 0.4.0：README、Tool Reference、Quick Start、FAQ、Architecture、Secure Tunnel、Security、Development Plan、Changelog。真实 Connector 产生的 6 个测试资产继续保留在本地忽略目录 `res://.mcp-real-test/`，供用户肉眼检查，不会进入 Git。
 ## 0.4.0 当前 blocker
 
-没有已知架构 blocker。主要剩余开发是 Editor 状态/控制、捕获诊断、Debugger/Runtime Bridge 和 Batch。新增模块尚未注册进生产 command registry。
-
-已登记一个 WIP 仓库卫生问题：`plugin.cfg` 在中间编辑时意外带入 UTF-8 BOM。它尚未推送，完整插件/release gate 前必须清理。
+当前没有已知 release blocker。0.4.0 实现、真实 Connector、仓库卫生和公开文档门禁均已通过。
 
 ## 0.4.0 精确下一项任务
 
-**实现 Editor 状态/控制模块，并执行 Godot 4.7.2 专项编译/行为验证。该任务通过后必须立即更新本 Progress 和 0.4.0 tracker，然后才能开始 Runtime/Debugger 工作。**
+**提交一致的 0.4.0 基线，推送 `main`，然后开始独立的一键安装器 / Release 打包任务。**

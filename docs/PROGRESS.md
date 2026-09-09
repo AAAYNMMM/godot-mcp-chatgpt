@@ -405,12 +405,187 @@ Validation actually run: `PAIR_CHECK=PASS`, `LINK_CHECK=PASS`, `LITERAL_NEWLINE_
 
 Result: development bookkeeping now has an explicit per-task update rule.
 
+### Task: Editor state/control module
+
+Status: **targeted validation passed**.
+
+File / module:
+
+```text
+addons/godot_mcp_chatgpt/commands/editor_commands.gd
+```
+
+What changed: added editor aggregate inspection, scene-node selection read/write/clear, filesystem scan/import state and controls, FileSystem selection, Script editor state/open/close, play-state inspection, run main/current/custom scene, stop playing, and save-all controls. The module was registered into the 0.4 WIP plugin for real EditorPlugin-context validation.
+
+Validation actually run:
+
+- Godot 4.7.2 loaded the complete plugin with EditorCommands registered;
+- real Godot GUI + bundled official tunnel-client + local control-plane smoke discovered 31 tools;
+- `editor.inspect`, `editor.get_filesystem_state`, and `editor.get_script_state` returned real editor state;
+- `editor.set_selection` selected the generated Player node and `editor.clear_selection` cleared it;
+- `editor.run_current_scene` entered playing state, `editor.get_playing_scene` confirmed it, and `editor.stop_playing` returned to stopped state;
+- result: `PRODUCTION_PLUGIN_SMOKE=PASS`.
+
+Also resolved the tracked WIP `plugin.cfg` UTF-8 BOM before the real plugin smoke. Full repository BOM scanning remains a release gate.
+
+### Task: Runtime / Debugger bridge
+
+Status: **targeted validation passed**.
+
+Files / modules:
+
+```text
+addons/godot_mcp_chatgpt/debug/editor_debugger_bridge.gd
+addons/godot_mcp_chatgpt/debug/runtime_debugger_manager.gd
+addons/godot_mcp_chatgpt/runtime/runtime_bridge.gd
+addons/godot_mcp_chatgpt/commands/runtime_debugger_commands.gd
+```
+
+What changed: added Godot-native debugger transport between the editor plugin and the running game, without a second network listener. Runtime tools cover status/tree/inspect/find/property read-write/method calls/groups/performance/pause-resume. Debugger tools expose sessions, breakpoints and profiler toggles. Runtime requests support optional `session_id` and bounded `timeout_ms`.
+
+Validation actually run:
+
+- all four Runtime/Debugger modules loaded under Godot 4.7.2;
+- the WIP production plugin registered the debugger plugin and runtime bridge;
+- the real editor launched the disposable scene with `--remote-debug tcp://127.0.0.1:...`;
+- the runtime bridge emitted a ready message through Godot's EngineDebugger channel;
+- official tunnel production smoke discovered 46 tools;
+- `runtime.status` returned the live scene and node count;
+- `runtime.get_tree` returned SecureRoot -> Player;
+- `runtime.get_property` read Player.position as (4,5,6);
+- `runtime.set_property` changed the live Player.position to (7,8,9) and returned the new live value;
+- `runtime.call_method` called `get_child_count` on the live root;
+- `runtime.get_performance`, `runtime.pause`, and `runtime.resume` succeeded;
+- `debugger.get_sessions` reported the active debugger session;
+- final result after removing temporary diagnostic prints: `PRODUCTION_PLUGIN_SMOKE=PASS`.
+
+Result: the runtime/debugger loop is functional through the same official tunnel-client production path.
+
+### Task: Captured-run diagnostics
+
+Status: **targeted validation passed**.
+
+Files / modules:
+
+```text
+addons/godot_mcp_chatgpt/commands/diagnostics_commands.gd
+tools/run-helper/main.go
+addons/godot_mcp_chatgpt/bin/windows/godot-mcp-runner.exe
+```
+
+What changed: added bounded `diagnostics.run_capture`. It can only launch the current Godot executable against the current project and an optional `res://` scene; it does not expose arbitrary shell/executable access. A dedicated Windows helper captures stdout/stderr separately and returns exit code, timeout, duration and truncation state.
+
+Validation actually run: official tunnel-client production smoke discovered 47 tools; a success scene captured `CAPTURE_STDOUT_OK` with exit code 0; an error scene captured `push_error` on stderr and exit code 7; a blocking scene was forcibly terminated by the helper at a 300ms timeout and returned `timed_out=true` / exit code -1. Final result: `PRODUCTION_PLUGIN_SMOKE=PASS`.
+
+Result: captured-run diagnostics now provide a truthful stdout/stderr/exit/timeout loop without pretending to scrape the Output dock.
+
+### Task: Batch operations
+
+Status: **targeted validation passed**.
+
+File / module:
+
+```text
+addons/godot_mcp_chatgpt/commands/batch_commands.gd
+```
+
+What changed: added non-atomic `batch.execute` with a maximum of 50 ordered existing MCP tool calls, per-item results, optional `stop_on_error`, total payload limits, and explicit denial of recursive `batch.*` calls.
+
+Validation actually run: Godot 4.7.2 compilation passed; official tunnel production smoke discovered 48 tools; sequential `godot.get_status` + `project.get_info` succeeded; an unknown middle tool stopped the batch correctly; recursive invocation returned `BATCH_RECURSION_DENIED`; a 51-operation request returned `BATCH_TOO_LARGE`; final result `PRODUCTION_PLUGIN_SMOKE=PASS`.
+
+Result: Batch targeted validation passed and is explicitly non-atomic with no rollback promise.
+
+### Task: 0.4.0 unified registration and representative full-surface integration
+
+Status: **integration passed**.
+
+What changed: wired Project / InputMap / Scene / Node / Script / Resource / ClassDB / Editor / Debugger / Runtime / Diagnostics / Batch into the production CommandRegistry; CommandRegistry now rejects duplicate names explicitly; fixed safe summaries for editor scene roots not inside SceneTree; fixed stale freshly-written GDScript metadata in `script.get_info`; `project.set_setting(name, null)` now has explicit deletion semantics.
+
+Validation actually run: full Godot 4.7.2 addon compilation passed; bundled official tunnel-client production smoke discovered **119 tools**; `CATALOGUE_SCHEMA_GATE=PASS tools=119` validated unique names, name format, descriptions, recursive inputSchema structure, required fields, `additionalProperties=false`, `readOnlyHint`, and `destructiveHint`. Representative real behavior covered Project/settings/file search+move+delete, InputMap, Scene lifecycle/inspect, Node property/method/group/metadata/duplicate/rename, Script introspection/validate/detach, Signal connect/disconnect, Resource create/get/set/duplicate/save/dependencies/call, ClassDB, Editor, Runtime, Diagnostics and Batch. Temporary InputMap/ProjectSetting values are cleaned up by the smoke. Final result: `PRODUCTION_PLUGIN_SMOKE=PASS` with no MCP script errors in Godot stderr.
+
+Result: the 119-tool 0.4.0 surface now has coherent production registration plus a representative behavior baseline. It is not release-ready yet: credential restart/forget, autoload cleanup, repository release gates and a real ChatGPT 0.4 regression remain.
+
+### Task: Credential restart lifecycle
+
+Status: **integration passed**.
+
+Validation actually run on Windows with an isolated `godot-mcp-chatgpt/test/...` Credential Manager target and isolated Godot APPDATA:
+
+- first connection persisted the Runtime API Key and Tunnel ID;
+- a fresh Godot process restarted with no API Key environment value and auto-connected using the saved Credential Manager key;
+- the forget flow deleted both saved key and Tunnel ID;
+- a third restart did not auto-connect and returned to credentials-required/waiting state;
+- result: `CREDENTIAL_RESTART_SMOKE=PASS`.
+
+The production Credential Manager target was not touched by this test.
+
+### Task: Runtime autoload lifecycle and plugin cleanup
+
+Status: **integration passed**.
+
+What changed: RuntimeDebuggerManager now removes its reserved runtime autoload when the plugin is disabled, checks conflicts before registering the debugger plugin, and accepts both `res://` and Godot 4.7.2 `uid://` autoload references when they resolve to the plugin runtime bridge.
+
+Validation actually run in a real headless Godot 4.7.2 editor using a temporary test EditorPlugin:
+
+- target plugin enabled -> runtime autoload resolved to `runtime_bridge.gd`;
+- disable -> autoload removed;
+- re-enable -> Godot rewrote the autoload as `uid://...`, manager accepted it and runtime autoload resolved correctly;
+- final disable -> autoload removed again;
+- result: `RUNTIME_AUTOLOAD_LIFECYCLE_SMOKE=PASS`.
+
+### Task: Real ChatGPT Connector 0.4.0 full-surface regression
+
+Status: **real connector validation passed**.
+
+On 2026-09-10 a fresh real ChatGPT conversation exercised the user-created Connector against the current Godot 4.7.2 editor. The Connector exposed **119 tools** and real calls covered Project, ClassDB, Scene, Node, Groups/Metadata, Script, Signals, Resource, ProjectSettings, InputMap, Editor, Debugger/Runtime, Diagnostics, Batch, and security boundaries.
+
+Key results:
+
+- `REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS`;
+- runtime Player.position changed from Vector3(2,3,4) to Vector3(7,8,9) and read back correctly; after stopping, the editor scene remained Vector3(2,3,4), proving runtime changes did not leak into the editor scene;
+- `runtime.call_method` returned `Player.add_values(12, 30) = 42`;
+- Diagnostics returned exit code 0 for the normal scene and captured `MCP_REAL_ERROR_TEST` with exit code 7 for the error scene;
+- Batch ordering, stop-on-error, and `BATCH_RECURSION_DENIED` all passed;
+- path traversal, project-external paths, scene-root deletion, and invalid class/property/method requests were rejected;
+- temporary ProjectSetting/InputMap entries were cleaned up and the test did not modify the plugin directory, API Key, Tunnel ID, or Windows Credential Manager.
+
+Non-blocking follow-ups:
+
+1. RESOLVED: all Resource source paths now validate before load; `res://../outside.tres` returns `INVALID_PATH` and is covered by production smoke;
+2. RESOLVED: `node.create.parent_path` MCP schema now explicitly says `.` means the edited-scene root and the root node name should not be used;
+3. one transient old-scene observation after `scene.create` and one `mcp_network_error` were not reproducible; keep them as observation items, not 0.4.0 blockers.
+### Task: 0.4.0 final release gates and public documentation
+
+Status: **release validation passed**.
+
+Final validation actually run after the real Connector regression and follow-up fixes:
+
+```text
+Godot 4.7.2 addon load: PASS
+Go helper gofmt/build/test: PASS
+CREDENTIAL_HELPER_FINAL=PASS
+npm build: PASS
+npm test: PASS
+CATALOGUE_SCHEMA_GATE=PASS tools=119
+PRODUCTION_PLUGIN_SMOKE=PASS
+Resource traversal -> INVALID_PATH regression: PASS
+node.create parent_path schema guidance regression: PASS
+BOM_CHECK=PASS
+LITERAL_NEWLINE_CHECK=PASS
+SECRET_CHECK=PASS real=0
+TOOL_REFERENCE_COVERAGE=PASS tools=119
+LINK_CHECK=PASS
+NO_IMAGE_MARKUP=PASS
+VERSION_CHECK=PASS 0.4.0
+git diff --check: PASS
+TEST_ARTIFACT_HYGIENE=PASS
+```
+
+Public bilingual docs were promoted to 0.4.0: README, Tool Reference, Quick Start, FAQ, Architecture, Secure Tunnel, Security, Development Plan and Changelog. The six real-Connector test assets remain locally under ignored `res://.mcp-real-test/` for visual inspection and will not enter Git.
 ## 0.4.0 current blocker
 
-No architecture blocker is known. Major remaining implementation areas are Editor state/control, captured diagnostics, Debugger/Runtime bridge and batch operations. The new modules are not yet registered into the production command registry.
-
-A WIP repository-hygiene issue is explicitly tracked: `plugin.cfg` currently contains an accidental UTF-8 BOM from intermediate editing. It has not been pushed and must be removed before the full-addon/release gates.
+No known release blocker remains. All 0.4.0 implementation, real Connector, repository hygiene and public documentation gates are green.
 
 ## 0.4.0 exact next task
 
-**Implement the Editor state/control module and run its Godot 4.7.2 targeted compilation/behavior validation. Immediately update this Progress document and the 0.4.0 tracker after that task passes, before starting Runtime/Debugger work.**
+**Commit the coherent 0.4.0 baseline, push `main`, then begin the separate one-click installer/release packaging task.**

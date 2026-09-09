@@ -2,8 +2,13 @@
 extends RefCounted
 
 var _commands: Dictionary = {}
+var _duplicate_names: Array[String] = []
 
 func add_command(name: String, description: String, input_schema: Dictionary, handler: Callable, annotations: Dictionary = {}) -> void:
+	if _commands.has(name):
+		_duplicate_names.append(name)
+		push_error("Duplicate Godot MCP command registration: %s" % name)
+		return
 	_commands[name] = {
 		"name": name,
 		"description": description,
@@ -11,6 +16,12 @@ func add_command(name: String, description: String, input_schema: Dictionary, ha
 		"annotations": annotations,
 		"handler": handler,
 	}
+
+func duplicate_names() -> Array[String]:
+	return _duplicate_names.duplicate()
+
+func command_count() -> int:
+	return _commands.size()
 
 func has_command(name: String) -> bool:
 	return _commands.has(name)

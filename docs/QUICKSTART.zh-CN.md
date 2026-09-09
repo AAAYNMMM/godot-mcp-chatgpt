@@ -144,13 +144,13 @@ scene.save
 保存到 res://prototype/player_test.tscn，不要覆盖已有文件。
 ```
 
-当前工具集刻意保持精简。如果 ChatGPT 暂时无法读取或修改某个东西，先查看 [工具参考](TOOL_REFERENCE.zh-CN.md)，不要直接判断为“连接坏了”。
+当前能力面已经达到 119 tools。如果 ChatGPT 暂时无法读取或修改某个东西，先查看 [工具参考](TOOL_REFERENCE.zh-CN.md)和实时 tool schema，不要直接判断为“连接坏了”。
 
 ## 断开连接
 
 更换 Tunnel 或轮换凭据前，先在 Godot 面板点 **Disconnect**。
 
-Runtime API Key 默认不持久化，所以重启 Godot 后需要重新输入。
+Windows 0.4.0 在首次成功连接后会把 Runtime API Key 保存到 Windows Credential Manager，重启 Godot 后可自动重连。使用 **Forget Saved Credentials** 可以删除保存的 Key 和 Tunnel ID。
 
 ## 最先检查的排错项
 
@@ -162,6 +162,6 @@ Runtime API Key 默认不持久化，所以重启 Godot 后需要重新输入。
 4. Godot 是否仍然开着？
 5. Runtime API Key 是否具备所需 Tunnel 权限？
 6. ChatGPT 能否发现 `godot.get_status`？
-7. 你要求的操作是否属于当前 13 个工具的范围？
+7. 你要求的操作是否属于当前 119-tool 能力面，并且参数是否符合 Tool Reference 约定？
 
 更多见：[FAQ / 排错](FAQ.zh-CN.md)。

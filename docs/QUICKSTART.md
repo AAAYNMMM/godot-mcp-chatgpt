@@ -68,7 +68,7 @@ Expected state:
 Status: connected
 ```
 
-In version 0.3.0 this means the bundled official OpenAI `tunnel-client` process is alive and the local Godot MCP endpoint is available to it.
+In version 0.4.0 this means the bundled official OpenAI `tunnel-client` process is alive and the local Godot MCP endpoint is available to it. After the first successful connection, the Runtime API Key is stored in Windows Credential Manager for automatic reconnect.
 
 If the state does not become connected, jump to [FAQ](FAQ.md).
 
@@ -81,7 +81,7 @@ In ChatGPT connector settings:
 3. choose or paste the same Tunnel ID;
 4. create/save the connector while Godot remains open.
 
-The 0.3.0 path has been verified to create successfully in a real ChatGPT connector flow.
+The 0.4.0 path has passed a full real ChatGPT Connector regression with all 119 tools discovered and exercised across editor/runtime workflows.
 
 ## Step 5 — Test read access first
 
@@ -143,13 +143,13 @@ a CharacterBody3D named Player, and attach a new GDScript that exposes move_spee
 Save it under res://prototype/player_test.tscn. Do not overwrite existing files.
 ```
 
-The current tool surface is intentionally small. If ChatGPT cannot inspect or change something yet, check the [Tool Reference](TOOL_REFERENCE.md) before assuming the connection is broken.
+The current surface contains 119 tools. If ChatGPT cannot inspect or change something, check the [Tool Reference](TOOL_REFERENCE.md) and the live tool schema before assuming the connection is broken.
 
 ## Disconnecting
 
 Press **Disconnect** in the Godot panel before rotating credentials or changing tunnels.
 
-The Runtime API Key is intentionally not persisted by the addon, so you will need to enter it again after restarting the editor.
+On Windows 0.4.0, the Runtime API Key is stored in Windows Credential Manager after a successful connection, so the addon can automatically reconnect after restarting Godot. Use **Forget Saved Credentials** if you want to remove the stored key and Tunnel ID.
 
 ## First troubleshooting checks
 
@@ -161,6 +161,6 @@ If something fails, check in this order:
 4. Is Godot still open?
 5. Does the Runtime API Key have the required tunnel permissions?
 6. Can ChatGPT discover `godot.get_status`?
-7. Is the requested operation actually part of the current 13-tool surface?
+7. Is the requested operation part of the current 119-tool surface, and are you using the argument conventions in the Tool Reference?
 
 More: [FAQ / Troubleshooting](FAQ.md).

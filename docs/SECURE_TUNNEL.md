@@ -2,9 +2,9 @@
 
 English | [简体中文](SECURE_TUNNEL.zh-CN.md)
 
-Version `0.3.0` uses the bundled official OpenAI `tunnel-client.exe` and a loopback Streamable HTTP MCP server hosted by Godot.
+Version `0.4.0` uses the bundled official OpenAI `tunnel-client.exe` and a loopback Streamable HTTP MCP server hosted by Godot.
 
-The real production connector path was successfully validated on **2026-09-09**.
+The real production connector path and full 119-tool surface were successfully validated through ChatGPT on **2026-09-10**.
 
 ## Production path
 
@@ -60,9 +60,9 @@ starting
 connected
 ```
 
-In 0.3.0, `connected` means the local MCP server is running and the official tunnel-client child process remains alive. The final confirmation is successful tool discovery from ChatGPT.
+In 0.4.0, `connected` means the local MCP server is running and the official tunnel-client child process remains alive. The final confirmation is successful tool discovery/calls from ChatGPT.
 
-The Runtime API Key is intentionally not persisted by the addon.
+After the first successful Windows connection, the Runtime API Key is stored in Windows Credential Manager as a Generic Credential. It is not written into the project, EditorSettings, Git, or the generated tunnel profile.
 
 ## 3. Create the ChatGPT connector
 
@@ -73,11 +73,11 @@ In ChatGPT connector settings:
 3. select or paste the same Tunnel ID;
 4. keep Godot open while the connector is created and used.
 
-This exact connector creation path succeeded in the real 0.3.0 validation.
+This exact path passed a full real 0.4.0 ChatGPT Connector regression.
 
 ## 4. Verify tool discovery
 
-The current build should expose 13 tools.
+The current 0.4.0 build should expose **119 tools**.
 
 Start with:
 
@@ -195,5 +195,6 @@ A healthy setup should satisfy:
 - local MCP address is `127.0.0.1`;
 - local port/path are generated per run;
 - profile contains `env:CONTROL_PLANE_API_KEY`, not the key;
-- only Tunnel ID is persisted by the addon;
-- Runtime API Key must be entered again after restarting Godot.
+- Tunnel ID is persisted in Godot EditorSettings;
+- Runtime API Key is persisted in Windows Credential Manager after successful connection;
+- restart can auto-connect using the saved Tunnel ID + Credential Manager key; use **Forget Saved Credentials** to remove both.

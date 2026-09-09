@@ -40,7 +40,7 @@ That makes it useful for:
 
 ## Current status
 
-Current development version: **0.3.0**
+Current development version: **0.4.0**
 
 Current primary target:
 
@@ -51,40 +51,46 @@ Current primary target:
 
 ### Real connection verified
 
-On 2026-09-09 the complete real-user path was verified successfully:
+On 2026-09-10 the 0.4.0 build passed a full real-user regression through a real ChatGPT Connector:
 
 ```text
 Godot 4.7.2
   -> bundled official OpenAI tunnel-client
   -> OpenAI Secure MCP Tunnel
-  -> ChatGPT connector creation
-  -> SUCCESS
+  -> real ChatGPT Connector
+  -> 119 Godot MCP tools discovered
+  -> editor + runtime + diagnostics + batch calls
+  -> REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS
 ```
 
-Before that real connector test, the production path also passed automated GUI smoke tests covering tool discovery, scene/node/script changes, save/readback, and session termination.
-
+The test created and reopened scenes, edited nodes/scripts/resources, queried Godot 4.7.2 ClassDB, changed a live runtime node without leaking the change back into the saved editor scene, captured process errors/exit codes, exercised bounded batch calls, and verified path/delete safety boundaries.
 ## What ChatGPT can do today
 
-The addon currently exposes **13 tools**:
+Version 0.4.0 exposes **119 tools** across the full Godot development loop:
 
-| Area | Tool | Purpose |
-| --- | --- | --- |
-| Godot | `godot.get_status` | Read Godot/editor/project status |
-| Project | `project.get_info` | Read basic project information |
-| Scene | `scene.create` | Create a `.tscn` scene |
-| Scene | `scene.get_tree` | Inspect the edited scene tree |
-| Scene | `scene.save` | Save the current scene |
-| Node | `node.create` | Add a node to the current scene |
-| Node | `node.set_property` | Change a node property |
-| Node | `node.delete` | Delete a non-root node |
-| Script | `script.write` | Write a project GDScript file |
-| Script | `script.read` | Read a project script |
-| Script | `script.attach` | Attach a GDScript to a node |
-| Editor | `editor.run_project` | Run the Godot project |
-| Editor | `editor.stop` | Stop the running project |
+| Area | Tools | What it covers |
+| --- | ---: | --- |
+| Godot | 1 | Connection/editor/version status |
+| Project | 13 | Project inspection, files, search, settings, autoloads, plugins |
+| InputMap | 6 | Actions and input events |
+| Scene | 12 | Create/open/reload/inspect/save/instantiate/close |
+| Node | 23 | Properties, methods, groups, metadata, signals, hierarchy editing |
+| Script | 10 | Read/write/inspect/validate/attach/detach/editor state |
+| Resource | 8 | Create/inspect/edit/save/duplicate/dependencies/methods |
+| ClassDB | 9 | Live Godot API introspection |
+| Editor | 20 | Selection, filesystem, scripts, save and play control |
+| Debugger | 4 | Sessions, breakpoints and profiler control |
+| Runtime | 11 | Live SceneTree inspection/control and performance |
+| Diagnostics | 1 | Bounded Godot child-run with stdout/stderr/exit/timeout |
+| Batch | 1 | Ordered bounded multi-tool execution |
 
-See [Tool Reference](docs/TOOL_REFERENCE.md) for arguments and examples.
+This means ChatGPT can now perform the loop that matters for real development:
 
+```text
+inspect project -> understand API -> edit -> save -> run -> inspect runtime/error -> fix -> rerun
+```
+
+See [Tool Reference](docs/TOOL_REFERENCE.md) for the complete 119-tool index and important argument conventions.
 ## 5-minute quick start
 
 ### 1. Install the addon
@@ -128,7 +134,7 @@ Expected panel state:
 Status: connected
 ```
 
-In 0.3.0 this means the official `tunnel-client` child process is running. The final proof is successful tool discovery from ChatGPT.
+In 0.4.0, `connected` means the official `tunnel-client` child process is alive. The definitive proof is successful tool discovery/calls from ChatGPT. After the first successful connection, the Runtime API Key is stored in Windows Credential Manager and can be reused for automatic reconnect.
 
 ### 4. Create the ChatGPT connector
 
@@ -185,10 +191,11 @@ The addon is intentionally narrow:
 
 - the local MCP server binds only to `127.0.0.1`;
 - it uses a random high port and random per-run URL path;
-- only the Tunnel ID is persisted in Godot `EditorSettings`;
-- the Runtime API Key is not written into the generated profile;
-- the profile references `env:CONTROL_PLANE_API_KEY`;
+- the Tunnel ID is persisted in Godot `EditorSettings`;
+- on Windows, the Runtime API Key is stored as a Generic Credential in Windows Credential Manager, not in the project or Git;
+- the generated tunnel profile never contains the plaintext key and references `env:CONTROL_PLANE_API_KEY`;
 - the key is removed from the parent Godot process environment after child startup;
+- **Forget Saved Credentials** removes the saved Tunnel ID and Credential Manager entry;
 - current file tools stay inside `res://` and reject `..` traversal;
 - `scene.create` will not overwrite an existing scene unless `overwrite: true` is explicitly supplied;
 - there is no generic shell execution MCP tool.
@@ -211,19 +218,13 @@ The goal is a small, reliable, high-value editor tool surface first, then expand
 
 ## Roadmap
 
-Near-term priorities:
+Near-term priorities now focus on distribution and compatibility rather than filling basic editor gaps:
 
-- richer node/property inspection;
-- open/close scene support;
-- resource creation/editing;
-- ProjectSettings and InputMap tools;
-- signal editing;
-- ClassDB lookup;
-- editor/runtime error inspection;
-- playtest diagnostics;
-- batch node/property operations;
-- clean addon packaging and release ZIP;
-- compatibility testing across more Godot 4.x versions and operating systems.
+- one-click / release ZIP installation flow;
+- cleaner plugin packaging for non-developers;
+- compatibility testing across more Godot 4.x versions and operating systems;
+- deeper debugger/profiler workflows where Godot exposes stable editor APIs;
+- continued hardening based on real ChatGPT Connector regressions.
 
 See [Development Plan](docs/DEVELOPMENT_PLAN.md).
 
@@ -251,7 +252,7 @@ The current Windows addon bundles the official OpenAI `tunnel-client` runtime at
 addons/godot_mcp_chatgpt/bin/windows/tunnel-client.exe
 ```
 
-Runtime identity used for 0.3.0 validation:
+Runtime identity used for 0.4.0 validation:
 
 ```text
 0.0.10+105e17a79a36e4e5c897fd698ed2b8dbf935b144

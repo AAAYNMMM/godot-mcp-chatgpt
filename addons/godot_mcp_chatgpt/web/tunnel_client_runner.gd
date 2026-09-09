@@ -3,18 +3,17 @@ extends Node
 
 signal state_changed(state: String)
 signal log_message(message: String)
+signal credential_state_changed(present: bool)
 
-const PLUGIN_VERSION := "0.3.0"
+const PLUGIN_VERSION := "0.4.0"
 const TUNNEL_CLIENT_ENV := "GODOT_MCP_CHATGPT_TUNNEL_CLIENT"
 const CONTROL_PLANE_URL_ENV := "GODOT_MCP_CHATGPT_CONTROL_PLANE_URL"
 const TUNNEL_ID_ENV := "GODOT_MCP_CHATGPT_TUNNEL_ID"
 const API_KEY_ENV := "GODOT_MCP_CHATGPT_API_KEY"
-const TEST_MODE_ENV := "GODOT_MCP_CHATGPT_TEST_MODE"
-const TEST_TUNNEL_ID := "tunnel_0123456789abcdef0123456789abcdef"
-const TEST_API_KEY := "devkey_123456789012345678901234567890"
 const EDITOR_TUNNEL_ID_SETTING := "godot_mcp_chatgpt/tunnel_id"
 const LEGACY_EDITOR_API_KEY_SETTING := "godot_mcp_chatgpt/api_key"
 const LocalMCPServer := preload("res://addons/godot_mcp_chatgpt/web/local_mcp_server.gd")
+const CredentialStore := preload("res://addons/godot_mcp_chatgpt/web/credential_store.gd")
 
 var _registry: RefCounted
 var _editor_settings: EditorSettings
@@ -25,16 +24,20 @@ var _api_key := ""
 var _pid := -1
 var _runtime_path := ""
 var _profile_path := ""
+var _saved_api_key_present := false
 
 func _ready() -> void:
 	set_process(true)
-	if OS.get_environment(TEST_MODE_ENV) == "1":
-		call_deferred("connect_to_tunnel", TEST_TUNNEL_ID, TEST_API_KEY)
-		return
+	_refresh_credential_state()
 	var dev_tunnel := OS.get_environment(TUNNEL_ID_ENV).strip_edges()
 	var dev_key := OS.get_environment(API_KEY_ENV).strip_edges()
 	if not dev_tunnel.is_empty() and not dev_key.is_empty():
-		call_deferred("connect_to_tunnel", dev_tunnel, dev_key)
+		call_deferred("connect_to_tunnel", dev_tunnel, dev_key, false)
+		return
+	var saved_tunnel := get_saved_tunnel_id()
+	if not saved_tunnel.is_empty() and _saved_api_key_present:
+		_emit_log("Saved Runtime API Key found in Windows Credential Manager. Connecting automatically.")
+		call_deferred("connect_to_tunnel", saved_tunnel, "", false)
 	else:
 		_emit_log("Waiting for OpenAI Tunnel ID and Runtime API Key.")
 
@@ -56,21 +59,43 @@ func get_saved_tunnel_id() -> String:
 func get_saved_api_key() -> String:
 	return ""
 
-func connect_to_tunnel(tunnel_id: String, api_key: String) -> void:
+func has_saved_api_key() -> bool:
+	return _saved_api_key_present
+
+func connect_to_tunnel(tunnel_id: String, api_key: String = "", persist_new_key: bool = true) -> void:
 	if _state in ["starting", "connected"]:
 		disconnect_from_tunnel()
 	_tunnel_id = tunnel_id.strip_edges()
-	_api_key = api_key.strip_edges()
+	var explicit_key := api_key.strip_edges()
+	if explicit_key.is_empty():
+		var stored := CredentialStore.read()
+		if not bool(stored.get("ok", false)):
+			_set_state("credential_error")
+			_emit_log(str(stored.get("error", "Unable to read Windows Credential Manager.")))
+			return
+		if bool(stored.get("present", false)):
+			_api_key = str(stored.get("value", ""))
+		else:
+			_api_key = ""
+	else:
+		_api_key = explicit_key
 	if _tunnel_id.is_empty() or _api_key.is_empty():
 		_set_state("credentials_required")
 		_emit_log("Tunnel ID and Runtime API Key are required.")
 		return
+	if not _valid_api_key(_api_key):
+		_api_key = ""
+		_set_state("credentials_required")
+		_emit_log("Runtime API Key is invalid.")
+		return
 	_runtime_path = _resolve_tunnel_client()
 	if _runtime_path.is_empty():
+		_api_key = ""
 		_set_state("runtime_missing")
 		_emit_log("Official OpenAI tunnel-client runtime was not found in this build.")
 		return
 	if _registry == null:
+		_api_key = ""
 		_set_state("registry_unavailable")
 		_emit_log("Godot command registry is unavailable.")
 		return
@@ -82,6 +107,7 @@ func connect_to_tunnel(tunnel_id: String, api_key: String) -> void:
 	add_child(_local_server)
 	var started: Dictionary = _local_server.start_server()
 	if not bool(started.get("ok", false)):
+		_api_key = ""
 		_local_server.queue_free()
 		_local_server = null
 		_set_state("local_mcp_error")
@@ -89,6 +115,7 @@ func connect_to_tunnel(tunnel_id: String, api_key: String) -> void:
 		return
 	var profile_result := _write_profile(str(started.get("endpoint", "")))
 	if not bool(profile_result.get("ok", false)):
+		_api_key = ""
 		_stop_local_server()
 		_set_state("profile_error")
 		_emit_log(str(profile_result.get("error", "Unable to write tunnel profile.")))
@@ -100,16 +127,27 @@ func connect_to_tunnel(tunnel_id: String, api_key: String) -> void:
 	_pid = OS.create_process(_runtime_path, PackedStringArray(["run", "--profile-file", _profile_path]), false)
 	OS.unset_environment("CONTROL_PLANE_API_KEY")
 	if _pid <= 0:
+		_api_key = ""
 		_stop_local_server()
 		_set_state("runtime_error")
 		_emit_log("Failed to start official OpenAI tunnel-client.")
 		return
+	var key_for_save := _api_key if not explicit_key.is_empty() else ""
 	_api_key = ""
 	await get_tree().create_timer(1.0).timeout
 	if _pid > 0 and OS.is_process_running(_pid):
+		if persist_new_key and not key_for_save.is_empty():
+			var saved := CredentialStore.write(key_for_save)
+			key_for_save = ""
+			if bool(saved.get("ok", false)):
+				_refresh_credential_state()
+				_emit_log("Runtime API Key saved in Windows Credential Manager.")
+			else:
+				_emit_log("Connected, but the Runtime API Key could not be saved: %s" % str(saved.get("error", "credential write failed")))
 		_set_state("connected")
 		_emit_log("Official OpenAI tunnel-client is running.")
 	else:
+		key_for_save = ""
 		_pid = -1
 		_stop_local_server()
 		_set_state("runtime_error")
@@ -123,6 +161,19 @@ func disconnect_from_tunnel() -> void:
 	_stop_local_server()
 	_set_state("disconnected")
 	_emit_log("Tunnel disconnected.")
+
+func forget_saved_credentials() -> Dictionary:
+	disconnect_from_tunnel()
+	var result := CredentialStore.delete()
+	if not bool(result.get("ok", false)):
+		_emit_log(str(result.get("error", "Unable to delete saved Runtime API Key.")))
+		return result
+	if _editor_settings != null and _editor_settings.has_setting(EDITOR_TUNNEL_ID_SETTING):
+		_editor_settings.erase(EDITOR_TUNNEL_ID_SETTING)
+	_tunnel_id = ""
+	_refresh_credential_state()
+	_emit_log("Saved Tunnel ID and Runtime API Key were removed.")
+	return {"ok": true}
 
 func _process(_delta: float) -> void:
 	if _pid > 0 and _state == "connected" and not OS.is_process_running(_pid):
@@ -172,9 +223,20 @@ func _save_tunnel_id() -> void:
 	if _editor_settings != null:
 		_editor_settings.set_setting(EDITOR_TUNNEL_ID_SETTING, _tunnel_id)
 
+func _refresh_credential_state() -> void:
+	var next := CredentialStore.present()
+	if next != _saved_api_key_present:
+		_saved_api_key_present = next
+		credential_state_changed.emit(_saved_api_key_present)
+	else:
+		_saved_api_key_present = next
+
 func _clear_legacy_saved_api_key() -> void:
 	if _editor_settings != null and _editor_settings.has_setting(LEGACY_EDITOR_API_KEY_SETTING):
 		_editor_settings.erase(LEGACY_EDITOR_API_KEY_SETTING)
+
+func _valid_api_key(value: String) -> bool:
+	return not value.is_empty() and value == value.strip_edges() and value.length() <= 1200 and not value.contains(" ") and not value.contains("\t") and not value.contains("\r") and not value.contains("\n")
 
 func _set_state(value: String) -> void:
 	if _state == value:

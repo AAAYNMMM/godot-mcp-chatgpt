@@ -2,6 +2,7 @@
 .godot/
 
 .mcp-smoke/
+.mcp-real-test/
 .local-test/
 
 .godot-mcp-stdout.log

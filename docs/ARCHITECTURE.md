@@ -106,26 +106,38 @@ Implemented MCP methods:
 
 ## Godot command boundary
 
-The current 13 tools are deliberately focused on the minimum useful editor-development loop:
+Version 0.4.0 exposes **119 tools** grouped around real Godot workflows rather than a generic shell:
 
 ```text
-godot.get_status
-project.get_info
-scene.get_tree
-scene.create
-scene.save
-node.create
-node.set_property
-node.delete
-script.read
-script.write
-script.attach
-editor.run_project
-editor.stop
+Project / InputMap
+Scene / Node / Signal / Group / Metadata
+Script / Resource
+ClassDB
+Editor
+Debugger / Runtime
+Diagnostics
+Batch
 ```
 
-File operations remain inside `res://`. Editor mutations are processed sequentially.
+Project file and Resource operations remain inside `res://`. Editor mutations are serialized through the Godot command layer. Exact tool schemas are documented by `tools/list`; see [Tool Reference](TOOL_REFERENCE.md).
 
+## Runtime debugger path
+
+Runtime inspection/control does not open another public network service. It uses Godot's own debugger channel:
+
+```text
+MCP runtime.* / debugger.* tool
+ -> RuntimeDebuggerManager
+ -> EditorDebuggerPlugin / EditorDebuggerSession
+ -> Godot remote-debug channel
+ -> EngineDebugger
+ -> GodotMCPChatGPTRuntime autoload
+ -> live SceneTree
+```
+
+The runtime bridge can inspect/change live nodes, call methods, read selected performance monitors, and pause/resume the running SceneTree. Runtime mutations are not automatically written back into the saved editor scene.
+
+The reserved autoload is cleaned up when the plugin is disabled and resolves both `res://` and Godot 4.7.2 `uid://` references.
 ## Bundled runtime
 
 Current Windows runtime:
@@ -149,10 +161,10 @@ control-plane stub
  -> official bundled tunnel-client.exe
  -> Godot loopback MCP
  -> real Godot 4.7.2 GUI
- -> 13 real tools
+ -> 119 real tools
 ```
 
-This path passed before the 0.3.0 release candidate was prepared. The same 0.3.0 architecture then completed a real OpenAI Tunnel + ChatGPT connector creation successfully on 2026-09-09.
+The 0.4.0 path passes catalogue/schema and representative behavior gates with all 119 tools. A real ChatGPT Connector full-surface regression completed successfully on 2026-09-10 with `REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS`.
 
 ## Non-goals
 

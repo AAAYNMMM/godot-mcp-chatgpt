@@ -54,7 +54,7 @@ Web ChatGPT
 - 启动内置官方 tunnel-client；
 - 生成 profile；
 - 用 `CONTROL_PLANE_API_KEY` 临时传 key；
-- 只持久化 Tunnel ID；
+- Tunnel ID 保存到 EditorSettings，Runtime API Key 保存到 Windows Credential Manager；
 - 监控并停止子进程。
 
 ### Loopback MCP Server
@@ -68,21 +68,10 @@ Web ChatGPT
 
 ### 当前 Godot 工具
 
-```text
-godot.get_status
-project.get_info
-scene.get_tree
-scene.create
-scene.save
-node.create
-node.set_property
-node.delete
-script.read
-script.write
-script.attach
-editor.run_project
-editor.stop
-```
+0.4.0 当前暴露 **119 个工具**，覆盖 Project/InputMap、Scene/Node、Script/Resource、ClassDB、Editor、Debugger/Runtime、Diagnostics 和 Batch。
+
+完整索引见：[工具参考](TOOL_REFERENCE.zh-CN.md)。
+## 5. 里程碑
 
 ## 5. 里程碑
 
@@ -123,20 +112,21 @@ editor.stop
 
 当前详细追踪：[`docs/DEVELOPMENT_0.4.zh-CN.md`](DEVELOPMENT_0.4.zh-CN.md)。
 
-优先级：
+完成范围：
 
-1. 更完整的节点/属性读取；
-2. scene open/close；
-3. Resource；
-4. ProjectSettings / InputMap；
-5. Signal；
-6. ClassDB；
-7. 编辑器/运行时错误；
-8. Playtest 诊断；
-9. 批量节点/属性操作；
-10. 如确有价值，再评估截图工作流。
-
+1. 119-tool 生产 registry；
+2. Project 搜索/设置、InputMap；
+3. Scene/Node 丰富读取与编辑；
+4. Signal / Group / Metadata；
+5. Script 自省/验证、Resource；
+6. ClassDB 实时 API 自省；
+7. Editor 控制 + Debugger/Runtime Bridge；
+8. 有边界 captured diagnostics；
+9. 有边界、非事务 Batch；
+10. Windows Credential Manager 保存 + 重启自动连接；
+11. 真实 ChatGPT Connector 全能力回归：`REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS`。
 ### Phase 7 — 发布加固
+状态：**进行中**。
 
 - Godot 面板增加更清晰的 tunnel health/readiness；
 - 更完整的 key 清除/轮换 UX；
@@ -158,8 +148,8 @@ editor.stop
 
 ## 7. 安全原则
 
-- 不记录 Runtime API Key；
-- 不把 key 写入 tunnel profile；
+- 不记录/回显 Runtime API Key；
+- Runtime API Key 只保存到 Windows Credential Manager，不写入项目/Git/tunnel profile；
 - 使用受限 key；
 - MCP 只监听 loopback；
 - MCP URL 使用随机路径；

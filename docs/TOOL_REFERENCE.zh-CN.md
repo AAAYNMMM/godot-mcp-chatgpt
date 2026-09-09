@@ -2,120 +2,20 @@
 
 [English](TOOL_REFERENCE.md) | 简体中文
 
-0.3.0 当前提供 13 个高频工具。工具面刻意保持精简：先把真实编辑器工作流做稳定，再扩展覆盖范围。
+**0.4.0** 共暴露 **119 个 MCP 工具**。本文是面向用户的索引；每次连接时 `tools/list` 返回的实时 JSON Schema 才是具体参数的最终权威。
 
-## 只读工具
+## 核心约定
 
-### `godot.get_status`
+- 项目文件路径必须位于 `res://` 内；`res://../...` 等路径穿越会返回 `INVALID_PATH`。
+- 编辑器场景中的节点路径相对于“当前编辑场景根节点”。根节点使用 `.`。特别是 `node.create.parent_path`：**不要填根节点名称，填 `.`**。
+- Runtime 节点路径默认相对于运行中 `current_scene`。
+- Runtime 工具支持可选 `session_id` 和 `timeout_ms`，可用于多个 Debugger Session 或自定义等待时间。
+- `batch.execute` 有顺序、有上限，但**不是事务**；前面成功的操作不会因为后面失败而自动回滚。
+- `diagnostics.run_capture` 只能启动当前 Godot executable + 当前项目，不是通用 Shell/任意进程执行工具。
 
-参数：无。
+## Godot Variant 编码
 
-返回当前 Godot 版本、是否处于编辑器环境、当前项目名。
-
-示例：
-
-```text
-调用 godot.get_status，总结当前编辑器状态。
-```
-
-### `project.get_info`
-
-参数：无。
-
-返回：
-
-- 项目名；
-- `project.godot` 绝对路径；
-- 当前编辑场景路径（如果有）。
-
-### `scene.get_tree`
-
-参数：
-
-| 名称 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| `max_depth` | integer | 否 | 0-32，默认 8 |
-
-返回当前编辑场景树，包括节点名、类名和相对路径。
-
-### `script.read`
-
-参数：
-
-| 名称 | 类型 | 必填 |
-| --- | --- | --- |
-| `path` | string | 是 |
-
-`path` 必须位于 `res://` 内，不能包含 `..` 路径穿越。
-
-示例：
-
-```text
-读取 res://player/player.gd，并说明它现在做什么。
-```
-
-## 场景工具
-
-### `scene.create`
-
-创建、保存并在编辑器中打开新的 `.tscn` 场景。
-
-参数：
-
-| 名称 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| `path` | string | 是 | 必须是 `res://...tscn` |
-| `root_type` | string | 否 | 根节点 Godot 类型 |
-| `root_name` | string | 否 | 可选根节点名 |
-| `overwrite` | boolean | 否 | 默认 false |
-
-安全行为：已有场景默认不会被覆盖，只有显式传 `overwrite: true` 才允许替换。
-
-示例：
-
-```text
-创建 res://prototype/test.tscn，根节点 Node3D，名字 TestRoot，不要覆盖已有文件。
-```
-
-### `scene.save`
-
-参数：
-
-| 名称 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| `path` | string | 否 | 可选的新 `res://...tscn` 路径 |
-
-不传 `path` 时，保存当前编辑场景到原路径。
-
-## 节点工具
-
-### `node.create`
-
-参数：
-
-| 名称 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| `type` | string | 是 | Godot 类名，例如 `Node3D` |
-| `parent_path` | string | 否 | 相对场景根节点；`.` 表示根节点 |
-| `name` | string | 否 | 可选节点名 |
-
-示例：
-
-```text
-在场景根节点下添加一个名为 Player 的 CharacterBody3D。
-```
-
-### `node.set_property`
-
-参数：
-
-| 名称 | 类型 | 必填 |
-| --- | --- | --- |
-| `node_path` | string | 是 |
-| `property` | string | 是 |
-| `value` | 任意可映射 JSON 值 | 是 |
-
-常见 Godot 类型可以使用带类型标记的对象。例如 Vector3：
+JSON 本身没有 Vector3 等 Godot 类型，因此常用类型用带标签对象传递。例如：
 
 ```json
 {
@@ -126,90 +26,286 @@
 }
 ```
 
-示例：
+0.4.0 的公共 Variant codec 还覆盖多种 Vector/Transform/Color/NodePath、数组、字典、Resource 引用和对象摘要。
 
-```text
-把 Player.position 设置为 Vector3(1, 2, 3)。
+## 类别总览
+
+| 类别 | 数量 | 主要能力 |
+| --- | ---: | --- |
+| Godot | 1 | 连接、编辑器和版本状态 |
+| Project | 13 | 项目总览、文件、搜索、ProjectSettings、Autoload、插件 |
+| InputMap | 6 | 输入 Action 与事件 |
+| Scene | 12 | 场景创建、打开、检查、保存、重载、实例化和关闭 |
+| Node | 23 | 节点属性、方法、Group、Metadata、Signal 与层级编辑 |
+| Script | 10 | 脚本读写、解析、验证、挂载和 Script Editor 状态 |
+| Resource | 8 | Resource 创建、检查、编辑、保存、复制和依赖 |
+| ClassDB | 9 | 直接查询当前 Godot 版本的类、属性、方法、Signal、枚举和常量 |
+| Editor | 20 | Selection、FileSystem、Script Editor、保存和运行控制 |
+| Debugger | 4 | 调试 Session、断点和 Profiler |
+| Runtime | 11 | 运行时 SceneTree、节点属性/方法、性能、暂停和恢复 |
+| Diagnostics | 1 | 有边界启动 Godot 子进程并读取 stdout/stderr/exit/timeout |
+| Batch | 1 | 有上限、按顺序的多工具执行 |
+
+## 完整 119-tool 索引
+
+### Godot (1)
+
+连接、编辑器和版本状态。
+
+- `godot.get_status`
+
+### Project (13)
+
+项目总览、文件、搜索、ProjectSettings、Autoload、插件。
+
+- `project.delete_file`
+- `project.find_files`
+- `project.get_autoloads`
+- `project.get_info`
+- `project.get_plugins`
+- `project.get_setting`
+- `project.inspect`
+- `project.list_directory`
+- `project.list_settings`
+- `project.make_directory`
+- `project.move_file`
+- `project.search_text`
+- `project.set_setting`
+
+### InputMap (6)
+
+输入 Action 与事件。
+
+- `input_map.add_action`
+- `input_map.add_event`
+- `input_map.clear_action_events`
+- `input_map.get_action`
+- `input_map.list`
+- `input_map.remove_action`
+
+### Scene (12)
+
+场景创建、打开、检查、保存、重载、实例化和关闭。
+
+- `scene.close`
+- `scene.create`
+- `scene.get_current`
+- `scene.get_tree`
+- `scene.get_unsaved`
+- `scene.inspect`
+- `scene.instantiate`
+- `scene.list_open`
+- `scene.open`
+- `scene.reload`
+- `scene.save`
+- `scene.save_all`
+
+### Node (23)
+
+节点属性、方法、Group、Metadata、Signal 与层级编辑。
+
+- `node.add_to_group`
+- `node.call_method`
+- `node.connect_signal`
+- `node.create`
+- `node.delete`
+- `node.disconnect_signal`
+- `node.duplicate`
+- `node.find`
+- `node.get_groups`
+- `node.get_metadata`
+- `node.get_methods`
+- `node.get_properties`
+- `node.get_property`
+- `node.get_signal_connections`
+- `node.get_signals`
+- `node.inspect`
+- `node.move_child`
+- `node.remove_from_group`
+- `node.remove_metadata`
+- `node.rename`
+- `node.reparent`
+- `node.set_metadata`
+- `node.set_property`
+
+### Script (10)
+
+脚本读写、解析、验证、挂载和 Script Editor 状态。
+
+- `script.attach`
+- `script.detach`
+- `script.get_info`
+- `script.get_unsaved`
+- `script.list_open`
+- `script.read`
+- `script.reload_open`
+- `script.save_all`
+- `script.validate`
+- `script.write`
+
+### Resource (8)
+
+Resource 创建、检查、编辑、保存、复制和依赖。
+
+- `resource.call_method`
+- `resource.create`
+- `resource.duplicate`
+- `resource.get_dependencies`
+- `resource.get_property`
+- `resource.inspect`
+- `resource.save`
+- `resource.set_property`
+
+### ClassDB (9)
+
+直接查询当前 Godot 版本的类、属性、方法、Signal、枚举和常量。
+
+- `classdb.can_instantiate`
+- `classdb.get_constants`
+- `classdb.get_enums`
+- `classdb.get_inheritance`
+- `classdb.get_methods`
+- `classdb.get_properties`
+- `classdb.get_signals`
+- `classdb.inspect`
+- `classdb.search`
+
+### Editor (20)
+
+Selection、FileSystem、Script Editor、保存和运行控制。
+
+- `editor.clear_selection`
+- `editor.close_script`
+- `editor.get_filesystem_state`
+- `editor.get_playing_scene`
+- `editor.get_script_state`
+- `editor.get_selection`
+- `editor.inspect`
+- `editor.is_playing`
+- `editor.open_script`
+- `editor.reimport_files`
+- `editor.run_current_scene`
+- `editor.run_custom_scene`
+- `editor.run_main_scene`
+- `editor.run_project`
+- `editor.save_all`
+- `editor.scan_filesystem`
+- `editor.select_file`
+- `editor.set_selection`
+- `editor.stop`
+- `editor.stop_playing`
+
+### Debugger (4)
+
+调试 Session、断点和 Profiler。
+
+- `debugger.get_breakpoints`
+- `debugger.get_sessions`
+- `debugger.set_breakpoint`
+- `debugger.toggle_profiler`
+
+### Runtime (11)
+
+运行时 SceneTree、节点属性/方法、性能、暂停和恢复。
+
+- `runtime.call_method`
+- `runtime.find`
+- `runtime.get_groups`
+- `runtime.get_performance`
+- `runtime.get_property`
+- `runtime.get_tree`
+- `runtime.inspect`
+- `runtime.pause`
+- `runtime.resume`
+- `runtime.set_property`
+- `runtime.status`
+
+### Diagnostics (1)
+
+有边界启动 Godot 子进程并读取 stdout/stderr/exit/timeout。
+
+- `diagnostics.run_capture`
+
+### Batch (1)
+
+有上限、按顺序的多工具执行。
+
+- `batch.execute`
+
+## 重要使用方式
+
+### 在场景根节点下创建节点
+
+`node.create` 的根节点写法：
+
+```json
+{
+  "parent_path": ".",
+  "type": "CharacterBody3D",
+  "name": "Player"
+}
 ```
 
-### `node.delete`
+根节点名称本身不是“相对根节点的子路径”。真实 ChatGPT 回归中已经验证该约定。
 
-参数：
+### 先理解，再修改
 
-| 名称 | 类型 | 必填 |
-| --- | --- | --- |
-| `node_path` | string | 是 |
-
-不能通过这个工具删除当前编辑场景的根节点。
-
-## 脚本工具
-
-### `script.write`
-
-参数：
-
-| 名称 | 类型 | 必填 |
-| --- | --- | --- |
-| `path` | string | 是 |
-| `content` | string | 是 |
-
-写入 `res://` 内的 UTF-8 文本文件。
-
-示例：
+面对陌生项目，推荐先调用：
 
 ```text
-新建 res://player/player.gd，写一个包含 exported move_speed float 的 GDScript，不要改其他文件。
+project.inspect
+scene.inspect
+node.inspect
+script.get_info
+classdb.inspect
 ```
 
-### `script.attach`
+这些聚合工具能显著减少 MCP 往返次数，也能避免 ChatGPT 依靠模型记忆去猜当前 Godot 版本 API。
 
-参数：
+### Runtime Debugger
 
-| 名称 | 类型 | 必填 |
-| --- | --- | --- |
-| `node_path` | string | 是 |
-| `script_path` | string | 是 |
-
-把已有 `res://` Script 资源挂载到当前编辑场景中的节点。
-
-## 编辑器工具
-
-### `editor.run_project`
-
-参数：无。
-
-通过 Godot 编辑器 API 运行项目主场景。
-
-### `editor.stop`
-
-参数：无。
-
-停止当前运行中的项目或场景。
-
-## 推荐的提问方式
-
-更推荐描述最终结果和约束：
+典型流程：
 
 ```text
-在 res://prototype/ 下创建一个一次性测试场景。
-根节点用 Node3D，添加 Player 节点；新建并挂载一个 move_speed = 5.0 的简单 GDScript。
-保存场景，不要覆盖任何已有文件。
+editor.run_current_scene
+debugger.get_sessions
+runtime.status
+runtime.get_tree
+runtime.get_property / runtime.set_property
+runtime.call_method
+runtime.get_performance
+editor.stop_playing
 ```
 
-除非你在调试 MCP 工具层，否则不需要人工逐条指定 RPC。
+真实 0.4.0 回归中，运行时 `Player.position` 被从 `(2,3,4)` 改成 `(7,8,9)`；停止运行后编辑器场景仍保持 `(2,3,4)`，证明 Runtime 修改没有误写回保存场景。
 
-## 当前限制
+### Diagnostics
 
-0.3.0 还没有专门工具覆盖：
+`diagnostics.run_capture` 分开返回 stdout、stderr、exit code、timeout、duration 和截断状态，适合让 ChatGPT 自己完成“运行 -> 看错误 -> 修复 -> 再运行”的闭环。
 
-- 打开任意已有场景；
-- 丰富的属性枚举；
-- Resource / Material；
-- InputMap；
-- Signal；
-- ClassDB；
-- 编辑器/运行时错误日志；
-- 截图；
-- 任意 Shell 命令。
+### Batch
 
-后续计划见：[开发计划](DEVELOPMENT_PLAN.zh-CN.md)。
+`batch.execute` 可以顺序执行一组已有 MCP tools，支持 `stop_on_error`。递归调用 `batch.*` 会返回 `BATCH_RECURSION_DENIED`。
+
+## 安全边界
+
+0.4.0 已实际回归：
+
+- `res://../...` 路径穿越拒绝；
+- 项目外路径拒绝；
+- Scene root 删除拒绝；
+- 非法 Node class/property/method 拒绝；
+- Resource 在 load/save 前执行 `res://` 路径检查；
+- Diagnostics 子进程有 timeout 和输出上限；
+- Batch 有数量/payload 上限并拒绝递归；
+- 不提供通用任意 Shell MCP 工具。
+
+## 真实验证
+
+2026-09-10 使用真实 ChatGPT Connector 完整发现并调用 119 个工具，最终结果：
+
+```text
+REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS
+```
+
+更多见：[常用示例](EXAMPLES.zh-CN.md)、[快速上手](QUICKSTART.zh-CN.md)、[安全说明](../SECURITY.zh-CN.md)。

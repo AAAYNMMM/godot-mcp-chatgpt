@@ -13,6 +13,10 @@ config_version=5
 config/name="Godot MCP ChatGPT Dev"
 config/features=PackedStringArray("4.7")
 
+[autoload]
+
+GodotMCPChatGPTRuntime="*res://addons/godot_mcp_chatgpt/runtime/runtime_bridge.gd"
+
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/godot_mcp_chatgpt/plugin.cfg")

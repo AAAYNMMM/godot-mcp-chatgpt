@@ -40,7 +40,7 @@ Godot 编辑器直接修改真实项目
 
 ## 当前状态
 
-当前开发版本：**0.3.0**
+当前开发版本：**0.4.0**
 
 当前主要目标环境：
 
@@ -51,40 +51,46 @@ Godot 编辑器直接修改真实项目
 
 ### 真实连接已验证
 
-2026-09-09 已经完成真实用户链路验证：
+2026-09-10，0.4.0 已通过真实 ChatGPT Connector 的完整用户链路回归：
 
 ```text
 Godot 4.7.2
   -> 插件内置官方 OpenAI tunnel-client
   -> OpenAI Secure MCP Tunnel
-  -> ChatGPT 创建连接器
-  -> 成功
+  -> 真实 ChatGPT Connector
+  -> 发现 119 个 Godot MCP tools
+  -> 编辑器 + Runtime + Diagnostics + Batch 真实调用
+  -> REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS
 ```
 
-在真实连接器成功之前，生产链路也已经通过真实 Godot GUI 自动 smoke test，覆盖工具发现、场景/节点/脚本修改、保存回读和 session termination。
-
+测试真实创建并重开场景、编辑节点/脚本/Resource、查询 Godot 4.7.2 ClassDB、修改运行时节点并确认不会误写回编辑器场景、捕获进程错误/退出码、执行有边界 Batch，并验证路径与删除安全边界。
 ## ChatGPT 现在能做什么
 
-当前插件暴露 **13 个工具**：
+0.4.0 当前暴露 **119 个工具**，覆盖完整 Godot 开发闭环：
 
-| 类别 | 工具 | 用途 |
-| --- | --- | --- |
-| Godot | `godot.get_status` | 获取 Godot、编辑器和项目状态 |
-| Project | `project.get_info` | 获取基础项目信息 |
-| Scene | `scene.create` | 创建 `.tscn` 场景 |
-| Scene | `scene.get_tree` | 查看当前编辑场景树 |
-| Scene | `scene.save` | 保存当前场景 |
-| Node | `node.create` | 向当前场景添加节点 |
-| Node | `node.set_property` | 修改节点属性 |
-| Node | `node.delete` | 删除非根节点 |
-| Script | `script.write` | 写入项目 GDScript 文件 |
-| Script | `script.read` | 读取项目脚本 |
-| Script | `script.attach` | 给节点挂载 GDScript |
-| Editor | `editor.run_project` | 运行 Godot 项目 |
-| Editor | `editor.stop` | 停止运行中的项目 |
+| 类别 | 工具数 | 覆盖范围 |
+| --- | ---: | --- |
+| Godot | 1 | 连接、编辑器和版本状态 |
+| Project | 13 | 项目总览、文件、搜索、设置、Autoload、插件 |
+| InputMap | 6 | Action 与输入事件 |
+| Scene | 12 | 创建、打开、重载、检查、保存、实例化、关闭 |
+| Node | 23 | 属性、方法、Group、Metadata、Signal、层级编辑 |
+| Script | 10 | 读写、检查、验证、挂载/卸载、编辑器状态 |
+| Resource | 8 | 创建、检查、编辑、保存、复制、依赖、方法调用 |
+| ClassDB | 9 | 当前 Godot 版本 API 自省 |
+| Editor | 20 | Selection、FileSystem、Script Editor、保存与运行控制 |
+| Debugger | 4 | Session、断点、Profiler 控制 |
+| Runtime | 11 | 运行中 SceneTree、属性/方法、性能、暂停/恢复 |
+| Diagnostics | 1 | 有边界启动 Godot 子进程并捕获 stdout/stderr/exit/timeout |
+| Batch | 1 | 有上限、顺序执行的多工具调用 |
 
-参数和示例见：[工具参考](docs/TOOL_REFERENCE.zh-CN.md)。
+现在已经能形成真正开发所需要的循环：
 
+```text
+读取项目 -> 理解 API -> 修改 -> 保存 -> 运行 -> 读取 Runtime/错误 -> 修复 -> 再运行
+```
+
+完整 119-tool 索引和关键参数约定见：[工具参考](docs/TOOL_REFERENCE.zh-CN.md)。
 ## 5 分钟快速上手
 
 ### 1. 安装插件
@@ -128,7 +134,7 @@ Runtime API Key
 Status: connected
 ```
 
-在 0.3.0 中，这表示官方 `tunnel-client` 子进程已经启动并保持运行。最终是否连接成功，应以 ChatGPT 能否发现工具为准。
+在 0.4.0 中，`connected` 表示官方 `tunnel-client` 子进程正在运行。最终连接是否成立，以 ChatGPT 能否发现并调用工具为准。首次成功连接后，Runtime API Key 会安全保存到 Windows Credential Manager，后续重启 Godot 可自动重连。
 
 ### 4. 在 ChatGPT 创建连接器
 
@@ -184,10 +190,11 @@ Godot Editor API
 
 - 本地 MCP Server 只监听 `127.0.0.1`；
 - 每次启动使用随机高位端口和随机 URL 路径；
-- Godot `EditorSettings` 只持久化 Tunnel ID；
-- Runtime API Key 不写入生成的 profile；
-- profile 使用 `env:CONTROL_PLANE_API_KEY`；
-- 子进程启动后，key 会从 Godot 父进程环境变量中清除；
+- Tunnel ID 持久化在 Godot `EditorSettings`；
+- Windows 下 Runtime API Key 作为 Generic Credential 保存到 Windows Credential Manager，不进入项目文件或 Git；
+- 生成的 tunnel profile 不包含明文 Key，只引用 `env:CONTROL_PLANE_API_KEY`；
+- 子进程启动后，Key 会从 Godot 父进程环境变量中清除；
+- **Forget Saved Credentials** 会删除保存的 Tunnel ID 和 Credential Manager 条目；
 - 当前文件工具只能操作 `res://`，并拒绝 `..` 路径穿越；
 - `scene.create` 默认拒绝覆盖已有场景，必须显式传 `overwrite: true`；
 - 不提供通用 Shell 执行 MCP 工具。
@@ -210,19 +217,13 @@ Godot Editor API
 
 ## 路线图
 
-近期优先级：
+近期重点已经从“补基础编辑器能力”转向发布和兼容性：
 
-- 更丰富的节点/属性读取；
-- 打开/关闭场景；
-- Resource 创建与编辑；
-- ProjectSettings 和 InputMap；
-- Signal 编辑；
-- ClassDB 查询；
-- 编辑器/运行时错误读取；
-- Playtest 诊断；
-- 批量节点/属性操作；
-- 干净的插件 ZIP 发布包；
-- 更多 Godot 4.x 版本和操作系统兼容测试。
+- 一键安装 / Release ZIP 安装体验；
+- 面向非开发用户的干净插件包；
+- 更多 Godot 4.x 版本和操作系统兼容测试；
+- 在 Godot 提供稳定 Editor API 的前提下继续深化 Debugger / Profiler；
+- 持续根据真实 ChatGPT Connector 回归加固行为和安全边界。
 
 详细见：[开发计划](docs/DEVELOPMENT_PLAN.zh-CN.md)。
 
