@@ -4,7 +4,7 @@ extends Node
 signal state_changed(state: String)
 signal log_message(message: String)
 
-const PLUGIN_VERSION := "0.2.2"
+const PLUGIN_VERSION := "0.2.3"
 const CLIENT_NAME := "godot-mcp-chatgpt"
 const WIRE_PROTOCOL_VERSION := "2026-08-25"
 const DEFAULT_CONTROL_PLANE_URL := "https://api.openai.com"
@@ -220,6 +220,22 @@ func _dispatch_jsonrpc(rpc: Dictionary) -> Dictionary:
 		return {"notification": true}
 
 	match method:
+		"server/discover":
+			return {"notification": false, "rpc": _rpc_result(rpc_id, {
+				"supportedVersions": ["2026-07-28"],
+				"capabilities": {"tools": {}},
+				"instructions": "Control the currently open Godot editor and project through the exposed tools. Prefer read-only inspection before destructive edits.",
+				"resultType": "complete",
+				"ttlMs": 0,
+				"cacheScope": "private",
+				"_meta": {
+					"io.modelcontextprotocol/serverInfo": {
+						"name": CLIENT_NAME,
+						"version": PLUGIN_VERSION,
+						"description": "Direct Godot editor control through OpenAI Secure MCP Tunnel",
+					},
+				},
+			})}
 		"initialize":
 			var requested := str(params.get("protocolVersion", ""))
 			var negotiated := requested if requested in MCP_PROTOCOLS else MCP_PROTOCOL_FALLBACK

@@ -47,6 +47,19 @@ for (let i = 0; i < 80; i++) {
   if (i === 79) throw new Error("secure tunnel stub is not running");
 }
 
+const discover = await rpc("server/discover", {
+  _meta: {
+    "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+    "io.modelcontextprotocol/clientInfo": { name: "secure-tunnel-smoke", version: "1.0.0" },
+  },
+});
+assert.deepEqual(discover.supportedVersions, ["2026-07-28"]);
+assert.ok(discover.capabilities.tools);
+assert.equal(discover.resultType, "complete");
+assert.equal(discover.ttlMs, 0);
+assert.equal(discover.cacheScope, "private");
+assert.equal(discover._meta?.["io.modelcontextprotocol/serverInfo"]?.name, "godot-mcp-chatgpt");
+
 const init = await rpc("initialize", {
   protocolVersion: "2025-11-25",
   capabilities: {},

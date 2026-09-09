@@ -298,3 +298,18 @@ main
 Do not work in DragonSouls for this project.
 
 Temporary upstream audit clones live in `.upstream/` and are gitignored.
+
+## ChatGPT connector compatibility — 0.2.3
+
+Implemented MCP `server/discover` for protocol `2026-07-28` because current ChatGPT tunnel connector flows may probe it before normal tool use.
+
+Validated response fields include:
+
+- `supportedVersions`;
+- `capabilities`;
+- `resultType`;
+- `ttlMs`;
+- `cacheScope`;
+- `io.modelcontextprotocol/serverInfo` metadata.
+
+A real Godot 4.7.2 GUI smoke now runs `server/discover` before legacy `initialize`, then `tools/list` and `tools/call`, and passes end to end.

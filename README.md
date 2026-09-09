@@ -26,7 +26,7 @@ There is **no local MCP server**, **no stdio transport**, **no Node bridge**, **
 
 ## Current status
 
-Development version: `0.2.2`
+Development version: `0.2.3`
 
 Validated with:
 
