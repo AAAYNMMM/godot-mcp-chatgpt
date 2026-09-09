@@ -52,6 +52,7 @@ const MANAGED_DOMAINS: Array[String] = [
 	"logs",
 	"test",
 	"autoload",
+	"content",
 ]
 
 var _registry: RefCounted

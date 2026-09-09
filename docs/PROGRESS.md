@@ -237,9 +237,26 @@ COMPACT_TOOL_SURFACE_GATE=PASS public=47 atomic=153
 PRODUCTION_PLUGIN_SMOKE=PASS
 ```
 
+### Phase D implementation — high-level content authoring
+
+Status: **targeted validation passed**.
+
+- Public surface: 48; internal atomic commands: 211.
+- Animation authoring/lifecycle/presets + UndoRedo: PASS.
+- Material/Shader, Audio, Particles, Camera: PASS.
+- Theme/UI helpers: PASS.
+- Curve/Environment/Physics Shape/Gradient/Noise helpers: PASS.
+- Saved-resource reload and cross-type regression: PASS.
+- Official OpenAI Tunnel production smoke: PASS.
+
+```text
+CATALOGUE_SCHEMA_GATE=PASS tools=48
+COMPACT_TOOL_SURFACE_GATE=PASS public=48 atomic=211
+PRODUCTION_PLUGIN_SMOKE=PASS
+```
 ### Exact next implementation task
 
-**Proceed to Phase D: Animation, Material/Shader, Audio, Particles, Camera, Theme, UI, and Resource helpers. Real Web ChatGPT Connector testing remains deferred until Phase F.**
+**Proceed to Phase E: TileMap/TileSet, GridMap, CSG, and Custom Tool Extensibility. Real Web ChatGPT Connector testing remains deferred until Phase F.**
 
 ## Documentation ownership
 

@@ -237,9 +237,26 @@ COMPACT_TOOL_SURFACE_GATE=PASS public=47 atomic=153
 PRODUCTION_PLUGIN_SMOKE=PASS
 ```
 
+### Phase D — 高层内容创作
+
+状态：**targeted validation passed**。
+
+- Public Surface：48；Internal Atomic：211；
+- Animation Authoring / Lifecycle / Preset + UndoRedo：PASS；
+- Material / Shader、Audio、Particles、Camera：PASS；
+- Theme / UI Helper：PASS；
+- Curve / Environment / Physics Shape / Gradient / Noise Helper：PASS；
+- Saved Resource Reload 与跨类型回归：PASS；
+- Official OpenAI Tunnel Production Smoke：PASS。
+
+```text
+CATALOGUE_SCHEMA_GATE=PASS tools=48
+COMPACT_TOOL_SURFACE_GATE=PASS public=48 atomic=211
+PRODUCTION_PLUGIN_SMOKE=PASS
+```
 ### 精确下一项实现任务
 
-**开始 Phase D：Animation / Material / Shader / Audio / Particles / Camera / Theme / UI / Resource Helpers。真实 Web ChatGPT Connector 测试继续统一留到 Phase F。**
+**开始 Phase E：TileMap / TileSet / GridMap / CSG / Custom Tool Extensibility。真实 Web ChatGPT Connector 测试继续统一留到 Phase F。**
 
 ## 文档职责
 

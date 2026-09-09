@@ -504,7 +504,7 @@ COMPACT_TOOL_SURFACE_GATE=PASS public=39 atomic=119
 PRODUCTION_PLUGIN_SMOKE=PASS
 ```
 
-Phase A 剩余门禁：必须在**新的 Web ChatGPT 对话**里重新发现 39 个工具，并真实调用 Direct + Manage + Batch。真实 Connector 回归通过前，不开始 Phase B。
+Compact Catalogue 的真实 Web ChatGPT Connector 回归按当前工作流统一延后到 Phase F，在所有迁移阶段完成并通过本地/Official Tunnel 验证后一次性执行。
 
 ### Phase B — Observe / Play / Debug / Diagnose
 
@@ -585,16 +585,35 @@ BOM_CHECK=PASS
 
 ### Phase D — 高层内容创作
 
-状态：**planned**。
+状态：**targeted validation passed**。
 
-- Animation；
-- Material / Shader；
-- Audio；
-- Particles；
-- Camera；
-- Theme；
-- UI / Layout / Draw Recipe；
-- Resource Helpers。
+已实现并验证：
+
+- AnimationPlayer / Library / Clip 创建、删除、校验、Property/Method Track、Key、Autoplay、Play/Stop、Simple Helper 与 fade/slide/shake/pulse Preset；
+- Animation Mutation 接入 Godot UndoRedo，并通过 Undo/Redo 回归；
+- StandardMaterial3D、CanvasItemMaterial、ShaderMaterial 创建/检查/赋值、Shader Parameter 与有边界 Preset；
+- AudioStreamPlayer / 2D / 3D 创建、Stream/Playback 配置、Play/Stop 与列表；
+- GPUParticles2D / GPUParticles3D 创建、Process Material、Draw Pass、Restart、检查与 Preset；
+- Camera2D / Camera3D 创建/配置，以及 Camera2D Limit / Damping / Follow Helper 与 Preset；
+- Theme 创建、Color/Constant/Font Size/StyleBoxFlat 与 Theme Apply；
+- 使用标准 Control Node 的 UI Anchor/Text/Layout/Build/Draw Recipe Helper；
+- Curve、Environment、Physics Shape Generate/Auto-fit、GradientTexture、NoiseTexture Helper；
+- 已保存 Resource Reload 回归与跨类型覆盖。
+
+```text
+Godot 4.7.2 addon load/parse: PASS
+npm run build: PASS
+npm test: PASS
+CATALOGUE_SCHEMA_GATE=PASS tools=48
+COMPACT_TOOL_SURFACE_GATE=PASS public=48 atomic=211
+PHASE_D_ANIMATION_LIFECYCLE=PASS
+PHASE_D_ANIMATION_UNDO_REDO=PASS
+PHASE_D_RESOURCE_RELOAD=PASS
+PHASE_D_CROSS_TYPE=PASS
+PRODUCTION_PLUGIN_SMOKE=PASS
+DIFF_CHECK=PASS
+BOM_CHECK=PASS
+```
 
 ### Phase E — World Building / Extensibility
 
@@ -677,7 +696,7 @@ Godot AI 是独立的 MIT 开源项目，本项目在 v0.5 迁移中将它作为
 
 ## 9. 当前状态
 
-状态：**Phase A–C targeted validation passed；最终真实 Web ChatGPT 集成验证延后**。
+状态：**Phase A–D targeted validation passed；最终真实 Web ChatGPT 集成验证延后**。
 
 已经锁定：
 
@@ -705,4 +724,4 @@ PLANNING_DOC_GATES=PASS
 
 ## 10. 精确下一项实现任务
 
-**开始 Phase D：Animation / Material / Shader / Audio / Particles / Camera / Theme / UI / Resource Helpers。真实 Web ChatGPT 测试继续延后到 Phase F。**
+**开始 Phase E：TileMap / TileSet / GridMap / CSG / Custom Tool Extensibility。真实 Web ChatGPT 测试继续延后到 Phase F。**

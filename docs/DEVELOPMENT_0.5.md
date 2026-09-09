@@ -503,7 +503,7 @@ COMPACT_TOOL_SURFACE_GATE=PASS public=39 atomic=119
 PRODUCTION_PLUGIN_SMOKE=PASS
 ```
 
-Remaining Phase A gate: a **fresh Web ChatGPT conversation must re-discover the 39-tool catalogue and exercise representative direct + manage + Batch calls**. Do not start Phase B until that real Connector regression passes.
+Real Web ChatGPT Connector regression for the compact catalogue is intentionally deferred to Phase F, after all migration phases are implemented and locally/Official-Tunnel validated.
 
 ### Phase B — Observe, play, debug, diagnose
 
@@ -584,16 +584,35 @@ Real Web ChatGPT validation remains intentionally deferred to Phase F per the re
 
 ### Phase D — High-level content authoring
 
-Status: **planned**.
+Status: **targeted validation passed**.
 
-- Animation;
-- Material/shader;
-- Audio;
-- Particles;
-- Camera;
-- Theme;
-- UI/layout/draw recipes;
-- resource helper operations.
+Implemented and validated:
+
+- AnimationPlayer/library/clip creation, delete, validation, property/method tracks, keys, autoplay, play/stop, simple helpers and fade/slide/shake/pulse presets;
+- Animation mutations integrated with Godot UndoRedo, including undo/redo regression;
+- StandardMaterial3D, CanvasItemMaterial and ShaderMaterial creation/inspection/assignment, shader parameters and bounded presets;
+- AudioStreamPlayer / 2D / 3D creation, stream/playback configuration, play/stop and listing;
+- GPUParticles2D / GPUParticles3D creation, process materials, draw passes, restart, inspection and presets;
+- Camera2D / Camera3D creation/configuration, Camera2D limits/damping/follow helpers and presets;
+- Theme creation, colors/constants/font sizes/StyleBoxFlat and theme application;
+- UI anchor/text/layout/build/draw-recipe helpers using normal Control nodes;
+- Curve editing, Environment helpers, physics-shape generation/auto-fit, GradientTexture and NoiseTexture helpers;
+- saved Resource reload regression and cross-type coverage.
+
+```text
+Godot 4.7.2 addon load/parse: PASS
+npm run build: PASS
+npm test: PASS
+CATALOGUE_SCHEMA_GATE=PASS tools=48
+COMPACT_TOOL_SURFACE_GATE=PASS public=48 atomic=211
+PHASE_D_ANIMATION_LIFECYCLE=PASS
+PHASE_D_ANIMATION_UNDO_REDO=PASS
+PHASE_D_RESOURCE_RELOAD=PASS
+PHASE_D_CROSS_TYPE=PASS
+PRODUCTION_PLUGIN_SMOKE=PASS
+DIFF_CHECK=PASS
+BOM_CHECK=PASS
+```
 
 ### Phase E — World building and extensibility
 
@@ -676,7 +695,7 @@ Rules for implementation:
 
 ## 9. Current status
 
-Status: **Phases A–C targeted validation passed; final integrated Web ChatGPT validation deferred**.
+Status: **Phases A–D targeted validation passed; final integrated Web ChatGPT validation deferred**.
 
 Locked decisions:
 
@@ -704,4 +723,4 @@ PLANNING_DOC_GATES=PASS
 
 ## 10. Exact next implementation task
 
-**Proceed to Phase D: Animation, Material/Shader, Audio, Particles, Camera, Theme, UI, and Resource helpers. Real Web ChatGPT testing remains deferred to Phase F.**
+**Proceed to Phase E: TileMap/TileSet, GridMap, CSG, and Custom Tool Extensibility. Real Web ChatGPT testing remains deferred to Phase F.**

@@ -160,10 +160,10 @@ const expectedDirect = [
 ];
 const expectedManage = [
   "project.manage", "input_map.manage", "scene.manage", "node.manage", "script.manage",
-  "resource.manage", "classdb.manage", "editor.manage", "debugger.manage", "runtime.manage", "logs.manage", "test.manage", "autoload.manage",
+  "resource.manage", "classdb.manage", "editor.manage", "debugger.manage", "runtime.manage", "logs.manage", "test.manage", "autoload.manage", "content.manage",
 ];
 for (const required of [...expectedDirect, ...expectedManage]) assert.ok(names.has(required), "missing compact public tool " + required);
-assert.equal(toolNames.length, 47, "unexpected compact public tool count");
+assert.equal(toolNames.length, 48, "unexpected compact public tool count");
 assert.ok(toolNames.length <= 50, "compact public tool surface exceeds release gate");
 let derivedAtomicCount = 4;
 for (const manageName of expectedManage) {
@@ -173,7 +173,7 @@ for (const manageName of expectedManage) {
   assert.ok(Array.isArray(ops) && ops.length > 0, manageName + " missing op enum");
   derivedAtomicCount += ops.length;
 }
-assert.equal(derivedAtomicCount, 153, "compact surface does not cover all registered atomic commands");
+assert.equal(derivedAtomicCount, 211, "compact surface does not cover all registered atomic commands");
 console.log("COMPACT_TOOL_SURFACE_GATE=PASS public=" + toolNames.length + " atomic=" + derivedAtomicCount);
 
 const invalidManagedParams = await toolRaw("project.get_info", { unexpected: true });
@@ -326,6 +326,167 @@ await tool("project.delete_file", { path: "res://.mcp-smoke/move-test/moved.gd" 
 await tool("scene.create", { path: "res://.mcp-smoke/secure-generated.tscn", root_type: "Node3D", root_name: "SecureRoot", overwrite: true });
 const created = await tool("node.create", { parent_path: ".", type: "Node3D", name: "Player" });
 assert.equal(created.name, "Player");
+// Phase D: high-level content authoring through the compact content.manage surface.
+await tool("node.create", { parent_path: ".", type: "Node2D", name: "PhaseD2D" });
+await tool("node.create", { parent_path: ".", type: "Label", name: "PhaseDLabel" });
+await tool("node.create", { parent_path: ".", type: "MeshInstance3D", name: "PhaseDMesh" });
+await tool("resource.create", { class: "BoxMesh", path: "res://.mcp-smoke/phase-d-boxmesh.tres", properties: { size: { __godot_type: "Vector3", x: 1, y: 2, z: 3 } } });
+const assignedMesh = await tool("content.resource_assign", { node_path: "PhaseDMesh", property: "mesh", resource_path: "res://.mcp-smoke/phase-d-boxmesh.tres" });
+assert.equal(assignedMesh.undoable, true);
+
+const animPlayer = await tool("content.animation_player_create", { parent_path: ".", name: "PhaseDAnimation" });
+assert.equal(animPlayer.type, "AnimationPlayer");
+const animCreated = await tool("content.animation_create", { player_path: "PhaseDAnimation", animation: "phase_d_anim", length: 1.0, loop_mode: "linear" });
+assert.equal(animCreated.undoable, true);
+const animTrack = await tool("content.animation_add_property_track", { player_path: "PhaseDAnimation", animation: "phase_d_anim", target_path: "PhaseD2D", property: "position", keys: [
+  { time: 0, value: { __godot_type: "Vector2", x: 0, y: 0 } },
+  { time: 1, value: { __godot_type: "Vector2", x: 64, y: 32 } },
+] });
+assert.equal(animTrack.keys, 2);
+const animMethod = await tool("content.animation_add_method_track", { player_path: "PhaseDAnimation", animation: "phase_d_anim", target_path: "PhaseD2D", keys: [{ time: 0.5, method: "set_meta", arguments: ["phase_d", true] }] });
+assert.equal(animMethod.keys, 1);
+const animInfo = await tool("content.animation_get", { player_path: "PhaseDAnimation", animation: "phase_d_anim" });
+assert.equal(animInfo.tracks.length, 2);
+const animUndo = await tool("editor.undo");
+assert.equal(animUndo.performed, true);
+const animAfterUndo = await tool("content.animation_get", { player_path: "PhaseDAnimation", animation: "phase_d_anim" });
+assert.equal(animAfterUndo.tracks.length, 1);
+const animRedo = await tool("editor.redo");
+assert.equal(animRedo.performed, true);
+const animAfterRedo = await tool("content.animation_get", { player_path: "PhaseDAnimation", animation: "phase_d_anim" });
+assert.equal(animAfterRedo.tracks.length, 2);
+const animValid = await tool("content.animation_validate", { player_path: "PhaseDAnimation", animation: "phase_d_anim" });
+assert.equal(animValid.valid, true);
+const animList = await tool("content.animation_list", { player_path: "PhaseDAnimation" });
+assert.ok(animList.libraries.some((lib: any) => lib.animations.some((a: any) => a.name === "phase_d_anim")));
+await tool("content.animation_set_autoplay", { player_path: "PhaseDAnimation", animation: "phase_d_anim" });
+await tool("content.animation_play", { player_path: "PhaseDAnimation", animation: "phase_d_anim", custom_speed: 1.0 });
+await tool("content.animation_stop", { player_path: "PhaseDAnimation", keep_state: false });
+const simpleAnim = await tool("content.animation_create_simple", { player_path: "PhaseDAnimation", animation: "phase_d_simple", target_path: "PhaseD2D", property: "rotation", from: 0, to: 1.0, duration: 0.25, loop_mode: "none" });
+assert.equal(simpleAnim.keys, 2);
+const deletedAnim = await tool("content.animation_delete", { player_path: "PhaseDAnimation", animation: "phase_d_simple" });
+assert.equal(deletedAnim.deleted, true);
+await tool("editor.undo");
+const restoredAnim = await tool("content.animation_get", { player_path: "PhaseDAnimation", animation: "phase_d_simple" });
+assert.equal(restoredAnim.tracks.length, 1);
+await tool("editor.redo");
+const deletedAgain = await toolRaw("content.animation_get", { player_path: "PhaseDAnimation", animation: "phase_d_simple" });
+assert.equal(deletedAgain.isError, true);
+assert.equal(deletedAgain.body?.code, "ANIMATION_NOT_FOUND");
+const presetAnim = await tool("content.animation_apply_preset", { player_path: "PhaseDAnimation", animation: "phase_d_pulse", target_path: "PhaseD2D", preset: "pulse", duration: 0.4, amplitude: 0.1 });
+assert.equal(presetAnim.type, "value");
+
+const materialCreated = await tool("content.material_create", { path: "res://.mcp-smoke/phase-d-material.tres", kind: "standard_3d", properties: { albedo_color: { __godot_type: "Color", r: 0.2, g: 0.4, b: 0.8, a: 1 } } });
+assert.equal(materialCreated.class, "StandardMaterial3D");
+await tool("content.material_set_param", { path: "res://.mcp-smoke/phase-d-material.tres", property: "roughness", value: 0.35 });
+await tool("content.material_apply_preset", { path: "res://.mcp-smoke/phase-d-material.tres", preset: "metallic" });
+const materialInfo = await tool("content.material_get", { path: "res://.mcp-smoke/phase-d-material.tres" });
+assert.equal(materialInfo.class, "StandardMaterial3D");
+const materialAssigned = await tool("content.material_assign", { node_path: "PhaseDMesh", material_path: "res://.mcp-smoke/phase-d-material.tres", property: "material_override" });
+assert.equal(materialAssigned.undoable, true);
+const materialList = await tool("content.material_list", { root: "res://.mcp-smoke", limit: 50 });
+assert.ok(materialList.materials.includes("res://.mcp-smoke/phase-d-material.tres"));
+const shaderCreated = await tool("content.material_create", { path: "res://.mcp-smoke/phase-d-shader-material.tres", kind: "shader", shader_code: "shader_type spatial; uniform float glow = 1.0; void fragment(){ ALBEDO = vec3(glow); }" });
+assert.equal(shaderCreated.class, "ShaderMaterial");
+const shaderParam = await tool("content.material_set_shader_param", { path: "res://.mcp-smoke/phase-d-shader-material.tres", param: "glow", value: 0.6 });
+assert.equal(shaderParam.value, 0.6);
+const canvasMaterial = await tool("content.material_create", { path: "res://.mcp-smoke/phase-d-canvas-material.tres", kind: "canvas_item", properties: {} });
+assert.equal(canvasMaterial.class, "CanvasItemMaterial");
+
+await tool("resource.create", { class: "AudioStreamWAV", path: "res://.mcp-smoke/phase-d-audio.tres", properties: {} });
+const audioCreated = await tool("content.audio_player_create", { parent_path: ".", name: "PhaseDAudio", dimension: "global" });
+assert.equal(audioCreated.type, "AudioStreamPlayer");
+const audio2d = await tool("content.audio_player_create", { parent_path: ".", name: "PhaseDAudio2D", dimension: "2d" });
+assert.equal(audio2d.type, "AudioStreamPlayer2D");
+const audio3d = await tool("content.audio_player_create", { parent_path: ".", name: "PhaseDAudio3D", dimension: "3d" });
+assert.equal(audio3d.type, "AudioStreamPlayer3D");
+await tool("content.audio_set_stream", { player_path: "PhaseDAudio", stream_path: "res://.mcp-smoke/phase-d-audio.tres" });
+const audioConfig = await tool("content.audio_set_playback", { player_path: "PhaseDAudio", volume_db: -6, pitch_scale: 1.1, autoplay: false, bus: "Master" });
+assert.ok(audioConfig.changed.includes("volume_db"));
+const audioList = await tool("content.audio_list");
+assert.ok(audioList.players.some((x: any) => x.name === "PhaseDAudio"));
+await tool("content.audio_play", { player_path: "PhaseDAudio", from_position: 0 });
+await tool("content.audio_stop", { player_path: "PhaseDAudio" });
+
+const particleCreated = await tool("content.particle_create", { parent_path: ".", name: "PhaseDParticles", dimension: "3d", create_process_material: true });
+assert.equal(particleCreated.class, "GPUParticles3D");
+await tool("content.particle_set_main", { node_path: "PhaseDParticles", properties: { amount: 24, lifetime: 1.5, emitting: false } });
+await tool("content.particle_set_process", { node_path: "PhaseDParticles", properties: { spread: 30, initial_velocity_min: 2, initial_velocity_max: 4 } });
+await tool("content.particle_set_draw_pass", { node_path: "PhaseDParticles", resource_path: "res://.mcp-smoke/phase-d-boxmesh.tres" });
+await tool("content.particle_apply_preset", { node_path: "PhaseDParticles", preset: "sparks" });
+const particleInfo = await tool("content.particle_get", { node_path: "PhaseDParticles" });
+assert.equal(particleInfo.node.class, "GPUParticles3D");
+await tool("content.particle_restart", { node_path: "PhaseDParticles", keep_seed: true });
+const particle2d = await tool("content.particle_create", { parent_path: ".", name: "PhaseDParticles2D", dimension: "2d", create_process_material: true });
+assert.equal(particle2d.class, "GPUParticles2D");
+await tool("content.particle_apply_preset", { node_path: "PhaseDParticles2D", preset: "snow" });
+const particle2dInfo = await tool("content.particle_get", { node_path: "PhaseDParticles2D" });
+assert.equal(particle2dInfo.node.class, "GPUParticles2D");
+
+await tool("node.create", { parent_path: ".", type: "Node2D", name: "CameraTarget" });
+const camera2d = await tool("content.camera_create", { parent_path: ".", name: "PhaseDCamera2D", dimension: "2d" });
+assert.equal(camera2d.type, "Camera2D");
+await tool("content.camera_configure", { node_path: "PhaseDCamera2D", properties: { zoom: { __godot_type: "Vector2", x: 1.25, y: 1.25 }, enabled: true } });
+await tool("content.camera_set_limits_2d", { node_path: "PhaseDCamera2D", left: -100, top: -80, right: 100, bottom: 80 });
+await tool("content.camera_set_damping_2d", { node_path: "PhaseDCamera2D", enabled: true, speed: 7 });
+await tool("content.camera_apply_preset", { node_path: "PhaseDCamera2D", preset: "platformer_2d" });
+const cameraFollow = await tool("content.camera_follow_2d", { node_path: "PhaseDCamera2D", target_path: "CameraTarget", offset: { __godot_type: "Vector2", x: 4, y: 8 } });
+assert.equal(cameraFollow.mode, "child_follow");
+const cameraList = await tool("content.camera_list");
+assert.ok(cameraList.cameras.some((x: any) => x.name === "PhaseDCamera2D"));
+const camera3d = await tool("content.camera_create", { parent_path: ".", name: "PhaseDCamera3D", dimension: "3d" });
+assert.equal(camera3d.type, "Camera3D");
+await tool("content.camera_apply_preset", { node_path: "PhaseDCamera3D", preset: "cinematic_3d" });
+const camera3dInfo = await tool("content.camera_get", { node_path: "PhaseDCamera3D" });
+assert.equal(camera3dInfo.node.class, "Camera3D");
+
+await tool("content.theme_create", { path: "res://.mcp-smoke/phase-d-theme.tres" });
+await tool("content.theme_set_color", { path: "res://.mcp-smoke/phase-d-theme.tres", name: "font_color", theme_type: "Label", color: { __godot_type: "Color", r: 0.9, g: 0.8, b: 0.2, a: 1 } });
+await tool("content.theme_set_constant", { path: "res://.mcp-smoke/phase-d-theme.tres", name: "outline_size", theme_type: "Label", value: 2 });
+await tool("content.theme_set_font_size", { path: "res://.mcp-smoke/phase-d-theme.tres", name: "font_size", theme_type: "Label", size: 22 });
+await tool("content.theme_set_stylebox_flat", { path: "res://.mcp-smoke/phase-d-theme.tres", name: "panel", theme_type: "Panel", background: { __godot_type: "Color", r: 0.1, g: 0.1, b: 0.15, a: 1 }, corner_radius: 8 });
+const themeApplied = await tool("content.theme_apply", { node_path: "PhaseDLabel", theme_path: "res://.mcp-smoke/phase-d-theme.tres" });
+assert.equal(themeApplied.undoable, true);
+await tool("content.ui_set_text", { node_path: "PhaseDLabel", text: "Phase D UI" });
+await tool("content.ui_set_anchor_preset", { node_path: "PhaseDLabel", preset: "center", margin: 0 });
+const builtLayout = await tool("content.ui_build_layout", { parent_path: ".", layout: "vbox", name: "PhaseDLayout", children: [
+  { type: "Label", name: "Heading", properties: { text: "Heading" } },
+  { type: "Button", name: "Action", properties: { text: "Action" } },
+] });
+assert.equal(builtLayout.count, 2);
+const recipe = await tool("content.ui_draw_recipe", { parent_path: ".", recipe: "button_row", name: "PhaseDRecipe", buttons: ["One", "Two", "Three"] });
+assert.equal(recipe.count, 3);
+
+const curve = await tool("content.curve_set_points", { path: "res://.mcp-smoke/phase-d-curve.tres", min_value: -1, max_value: 1, points: [{ x: 0, y: 0 }, { x: 1, y: 1 }] });
+assert.equal(curve.points, 2);
+const environment = await tool("content.environment_create", { path: "res://.mcp-smoke/phase-d-environment.tres", properties: { background_mode: 1, background_color: { __godot_type: "Color", r: 0.02, g: 0.03, b: 0.05, a: 1 } } });
+assert.equal(environment.saved, true);
+const shape = await tool("content.physics_shape_generate", { path: "res://.mcp-smoke/phase-d-box-shape.tres", kind: "box_3d", size: { __godot_type: "Vector3", x: 2, y: 3, z: 4 } });
+assert.equal(shape.class, "BoxShape3D");
+await tool("node.create", { parent_path: ".", type: "ColorRect", name: "PhaseDFitSource" });
+await tool("node.set_property", { node_path: "PhaseDFitSource", property: "size", value: { __godot_type: "Vector2", x: 120, y: 50 } });
+await tool("node.create", { parent_path: ".", type: "CollisionShape2D", name: "PhaseDFitShape" });
+const fitted = await tool("content.physics_shape_autofit", { source_node_path: "PhaseDFitSource", shape_node_path: "PhaseDFitShape", save_path: "res://.mcp-smoke/phase-d-fit-shape.tres", padding: 4 });
+assert.equal(fitted.shape_class, "RectangleShape2D");
+const gradient = await tool("content.gradient_texture_create", { path: "res://.mcp-smoke/phase-d-gradient.tres", dimension: "1d", width: 128, points: [
+  { offset: 0, color: { __godot_type: "Color", r: 0, g: 0, b: 0, a: 1 } },
+  { offset: 1, color: { __godot_type: "Color", r: 1, g: 1, b: 1, a: 1 } },
+] });
+assert.equal(gradient.class, "GradientTexture1D");
+const noise = await tool("content.noise_texture_create", { path: "res://.mcp-smoke/phase-d-noise.tres", width: 64, height: 64, seed: 1234, frequency: 0.02, noise_type: "perlin" });
+assert.equal(noise.seed, 1234);
+for (const [path, expectedClass] of [
+  ["res://.mcp-smoke/phase-d-curve.tres", "Curve"],
+  ["res://.mcp-smoke/phase-d-environment.tres", "Environment"],
+  ["res://.mcp-smoke/phase-d-box-shape.tres", "BoxShape3D"],
+  ["res://.mcp-smoke/phase-d-fit-shape.tres", "RectangleShape2D"],
+  ["res://.mcp-smoke/phase-d-gradient.tres", "GradientTexture1D"],
+  ["res://.mcp-smoke/phase-d-noise.tres", "NoiseTexture2D"],
+] as const) {
+  const reloaded = await tool("resource.inspect", { path, property_mode: "storage", limit: 20 });
+  assert.equal(reloaded.resource.class, expectedClass, `reloaded class mismatch for ${path}`);
+}
+
 const editorSelection = await tool("editor.set_selection", { node_paths: ["Player"], clear_first: true });
 assert.equal(editorSelection.selection.nodes.length, 1);
 assert.equal(editorSelection.selection.nodes[0]?.name, "Player");
