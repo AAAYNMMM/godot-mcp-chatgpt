@@ -273,6 +273,4 @@ No known release blocker remains. All code, integration, credential, runtime lif
 
 ## 11. Exact next task
 
-1. commit the coherent 0.4.0 baseline;
-2. push `main`;
-3. start the separate one-click installer/release packaging task.
+Per user request, do not start the one-click installer / Release packaging yet. Wait for the user to choose the next development task.

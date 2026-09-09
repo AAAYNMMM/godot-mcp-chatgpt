@@ -582,10 +582,20 @@ TEST_ARTIFACT_HYGIENE=PASS
 ```
 
 Public bilingual docs were promoted to 0.4.0: README, Tool Reference, Quick Start, FAQ, Architecture, Secure Tunnel, Security, Development Plan and Changelog. The six real-Connector test assets remain locally under ignored `res://.mcp-real-test/` for visual inspection and will not enter Git.
+
+### Task: 0.4.0 commit and push
+
+Status: **complete**.
+
+- Release baseline commit: `3f8ce7e` (`release: complete 0.4.0 Godot MCP surface`);
+- pushed successfully to `origin/main`;
+- the validated 119-tool / real Connector / Credential / Runtime / Diagnostics / Batch / release-gate baseline remains the 0.4.0 source of truth;
+- one-click installer / Release packaging is intentionally paused per user request.
+
 ## 0.4.0 current blocker
 
-No known release blocker remains. All 0.4.0 implementation, real Connector, repository hygiene and public documentation gates are green.
+No known release blocker remains. 0.4.0 has been committed and pushed to `main`.
 
 ## 0.4.0 exact next task
 
-**Commit the coherent 0.4.0 baseline, push `main`, then begin the separate one-click installer/release packaging task.**
+**Do not start the one-click installer yet. Wait for the user to choose the next development task.**

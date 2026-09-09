@@ -567,10 +567,20 @@ TEST_ARTIFACT_HYGIENE=PASS
 ```
 
 公开双语文档已晋级 0.4.0：README、Tool Reference、Quick Start、FAQ、Architecture、Secure Tunnel、Security、Development Plan、Changelog。真实 Connector 产生的 6 个测试资产继续保留在本地忽略目录 `res://.mcp-real-test/`，供用户肉眼检查，不会进入 Git。
+
+### 任务：0.4.0 提交与推送
+
+状态：**完成**。
+
+- 发布基线提交：`3f8ce7e` (`release: complete 0.4.0 Godot MCP surface`)；
+- 已推送到 `origin/main`；
+- 0.4.0 真实 Connector、119-tool、Credential、Runtime、Diagnostics、Batch 与 release gates 均保持通过；
+- 按用户要求，一键安装器 / Release 打包任务暂不开始。
+
 ## 0.4.0 当前 blocker
 
-当前没有已知 release blocker。0.4.0 实现、真实 Connector、仓库卫生和公开文档门禁均已通过。
+当前没有已知 release blocker。0.4.0 已提交并推送到 `main`。
 
 ## 0.4.0 精确下一项任务
 
-**提交一致的 0.4.0 基线，推送 `main`，然后开始独立的一键安装器 / Release 打包任务。**
+**当前不开始一键安装器。等待用户指定下一项开发任务。**

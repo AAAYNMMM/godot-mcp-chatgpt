@@ -269,10 +269,8 @@ Godot 4.7.2 没有简单公开 API 可以直接抓取 Output Dock 全部文本�
 
 ## 10. 当前 blocker
 
-当前没有已知 release blocker。代码、集成、Credential、Runtime lifecycle、真实 Connector、仓库卫生和双语公开文档门禁均已通过。
+当前没有已知 release blocker。0.4.0 基线已通过提交 `3f8ce7e` 推送到 `main`。
 
 ## 11. 精确下一项任务
 
-1. 提交一致的 0.4.0 基线；
-2. 推送 `main`；
-3. 开始独立的一键安装器 / Release 打包任务。
+按用户要求，一键安装器 / Release 打包暂不开始。等待用户指定下一项开发任务。
