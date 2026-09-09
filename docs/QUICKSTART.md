@@ -19,15 +19,31 @@ You do **not** need CWapi, Node.js, Codex, Claude Desktop, Cursor, or another lo
 
 ## Step 1 — Install the addon
 
-Place the addon at:
+### Recommended: Windows x64 installer
+
+Download `godot-mcp-chatgpt-v0.4.0-windows-x64-installer.exe` from [GitHub Releases](https://github.com/AAAYNMMM/godot-mcp-chatgpt/releases), run it, then select the target project's `project.godot` file.
+
+The installer validates that the selected path is a Godot project, installs the embedded addon only to:
 
 ```text
-<your-project>/addons/godot_mcp_chatgpt/
+<selected-project>/addons/godot_mcp_chatgpt/
 ```
 
-The folder must contain `plugin.cfg`.
+and enables the editor plugin by default. Re-running the installer upgrades that project's existing copy. No project or user path is hard-coded into the executable.
 
-In Godot open:
+The current installer is unsigned. Windows SmartScreen may therefore show an unknown-publisher warning. The Release includes `SHA256SUMS.txt` for verification.
+
+If the project is already open in Godot, restart/reopen it after installation so the new plugin files load cleanly.
+
+### Manual alternative
+
+Extract the addon ZIP so this exists:
+
+```text
+<your-project>/addons/godot_mcp_chatgpt/plugin.cfg
+```
+
+Then open:
 
 ```text
 Project -> Project Settings -> Plugins

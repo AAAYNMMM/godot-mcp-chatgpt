@@ -95,21 +95,30 @@ Godot 4.7.2
 
 ### 1. 安装插件
 
-把这个目录放进你的 Godot 项目：
+**Windows x64 推荐方式：**从 [GitHub Releases](https://github.com/AAAYNMMM/godot-mcp-chatgpt/releases) 下载 `godot-mcp-chatgpt-v0.4.0-windows-x64-installer.exe`，运行后选择目标 Godot 项目的 `project.godot`。安装器会：
+
+- 只安装到 `<所选项目>/addons/godot_mcp_chatgpt/`；
+- 默认自动启用 EditorPlugin；
+- 已安装旧版本时直接升级；
+- 不包含任何写死的用户路径或项目路径。
+
+当前安装器还没有代码签名，因此 Windows SmartScreen 可能提示“未知发布者”。如需校验下载文件，请使用同一个 Release 中的 `SHA256SUMS.txt`。
+
+**手动方式：**下载 addon ZIP 并解压，最终确认存在：
 
 ```text
-addons/godot_mcp_chatgpt/
+<你的项目>/addons/godot_mcp_chatgpt/plugin.cfg
 ```
 
-然后打开：
+手动安装后打开：
 
 ```text
 项目 -> 项目设置 -> 插件
 ```
 
-启用 **Godot MCP ChatGPT**。
+并启用 **Godot MCP ChatGPT**。
 
-Godot 底部会出现 **MCP ChatGPT** 面板。
+项目/插件加载完成后，Godot 底部会出现 **MCP ChatGPT** 面板。
 
 ### 2. 准备 OpenAI Tunnel
 
@@ -217,12 +226,12 @@ Godot Editor API
 
 ## 路线图
 
-近期重点已经从“补基础编辑器能力”转向发布和兼容性：
+近期重点已经转向兼容性和分发加固：
 
-- 一键安装 / Release ZIP 安装体验；
-- 面向非开发用户的干净插件包；
+- 如果未来具备代码签名条件，提供更友好的 Windows 签名分发；
 - 更多 Godot 4.x 版本和操作系统兼容测试；
 - 在 Godot 提供稳定 Editor API 的前提下继续深化 Debugger / Profiler；
+- 如后续采用对应官方 Tunnel runtime，再考虑 macOS / Linux 打包；
 - 持续根据真实 ChatGPT Connector 回归加固行为和安全边界。
 
 详细见：[开发计划](docs/DEVELOPMENT_PLAN.zh-CN.md)。

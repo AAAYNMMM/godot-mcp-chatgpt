@@ -10,3 +10,6 @@
 
 server/node_modules/
 server/dist/
+dist/
+tools/installer/payload.zip
+tools/installer/.build/

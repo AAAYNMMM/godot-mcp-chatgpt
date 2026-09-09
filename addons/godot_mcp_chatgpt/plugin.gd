@@ -59,7 +59,9 @@ func _show_connection_panel() -> void:
 
 func _disable_plugin() -> void:
 	if _runtime_manager != null:
-		_runtime_manager.remove_runtime_autoload()
+		var cleanup: Dictionary = _runtime_manager.remove_runtime_autoload()
+		if not bool(cleanup.get("ok", false)):
+			push_warning("[GodotMCPChatGPT] Runtime autoload cleanup: %s" % str(cleanup))
 
 func _exit_tree() -> void:
 	if _runtime_manager != null:

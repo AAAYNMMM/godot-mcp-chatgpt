@@ -577,10 +577,56 @@ TEST_ARTIFACT_HYGIENE=PASS
 - 0.4.0 真实 Connector、119-tool、Credential、Runtime、Diagnostics、Batch 与 release gates 均保持通过；
 - 按用户要求，一键安装器 / Release 打包任务暂不开始。
 
+### 任务：Windows 项目级一键安装器
+
+状态：**集成验证通过**。
+
+已在 `tools/installer/` 实现可分发的 Windows x64 单文件安装器。安装器内嵌完整 `addons/godot_mcp_chatgpt/`，用户只需选择目标项目的 `project.godot`；安装目标固定为该项目自己的 `addons/godot_mcp_chatgpt/`，默认自动启用编辑器插件，支持升级替换、旧版本备份/失败回滚，不包含任何用户或机器硬编码路径。同一构建脚本还会生成可手动解压的 addon ZIP 和 SHA-256 校验文件。
+
+干净项目验证过程中发现了一个真实外部项目问题：Godot 4.7.2 的 `add_autoload_singleton()` 会让 Runtime bridge 在当前 Editor 会话中生效，但不会立即可靠写回磁盘。现在 `RuntimeDebuggerManager` 在添加/删除保留 autoload 后显式调用 `ProjectSettings.save()`，保存失败会明确返回/警告，不再依赖 Godot 之后某个时机自动持久化。
+
+已使用包含空格和中文的项目路径真实验证：
+
+```text
+INSTALLER_CLEAN_INSTALL=PASS
+INSTALLER_UPGRADE=PASS
+INSTALLER_NO_ENABLE=PASS
+INSTALLER_INVALID_PROJECT=PASS
+INSTALLER_GODOT_4_7_2_LOAD=PASS
+RUNTIME_AUTOLOAD_LIFECYCLE_NODE_SMOKE=PASS
+INSTALLER_SMOKE=PASS version=0.4.0
+```
+
+升级回归同时确认：不会删除其他 EditorPlugin、旧版 `godot_mcp_chatgpt` 内的 stale 文件会被清除、不会重复添加插件 entry、`project.godot` 的 CRLF 会保留、临时安装/备份目录会清理干净。 公开安装说明也已同步到 README、Quick Start、CHANGELOG、SECURITY，并明确未签名/SmartScreen 提示及 SHA-256 校验方式。
+### 任务：安装器提交前 Release 门禁
+
+状态：**release 验证通过**。
+
+安装器、Runtime autoload 持久化修复、公开文档和 payload 全文件哈希回归完成后的最终提交前结果：
+
+```text
+npm build: PASS
+npm test: PASS
+CATALOGUE_SCHEMA_GATE=PASS tools=119
+PRODUCTION_PLUGIN_SMOKE=PASS
+RUNTIME_AUTOLOAD_LIFECYCLE_NODE_SMOKE=PASS
+INSTALLER_SMOKE=PASS version=0.4.0
+installed addon full file-set/SHA-256 match: PASS
+DIFF_CHECK=PASS
+BOM_CHECK=PASS
+INSTALLER_HARDCODE_CHECK=PASS
+LINK_CHECK=PASS
+NO_IMAGE_MARKUP=PASS
+SECRET_CHECK=PASS fixtures=3 real=0
+VERSION_CHECK=PASS 0.4.0
+ARTIFACT_HYGIENE=PASS
+INSTALLER_PRECOMMIT_GATES=PASS
+```
+
 ## 0.4.0 当前 blocker
 
-当前没有已知 release blocker。0.4.0 已提交并推送到 `main`。
+安装器已通过干净安装、升级、非法路径、no-enable、中文/空格路径和真实 Godot 4.7.2 加载验证，目前没有已知 installer blocker。
 
 ## 0.4.0 精确下一项任务
 
-**当前不开始一键安装器。等待用户指定下一项开发任务。**
+**完成安装器/Release 公开文档和仓库门禁，提交安装器 + Runtime autoload 持久化修复；从最终 commit 重建产物并重新跑 installer smoke，然后发布 GitHub Release `v0.4.0`，上传 installer EXE、addon ZIP、SHA-256 清单。**

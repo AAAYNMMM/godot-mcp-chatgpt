@@ -592,10 +592,56 @@ Status: **complete**.
 - the validated 119-tool / real Connector / Credential / Runtime / Diagnostics / Batch / release-gate baseline remains the 0.4.0 source of truth;
 - one-click installer / Release packaging is intentionally paused per user request.
 
+### Task: One-click Windows project installer
+
+Status: **integration passed**.
+
+Implemented a distributable Windows x64 single-file installer under `tools/installer/`. The installer embeds the complete `addons/godot_mcp_chatgpt/` payload, asks the user to select a target project's `project.godot`, installs only into that project's `addons/godot_mcp_chatgpt/`, enables the editor plugin by default, supports upgrade replacement with backup/rollback behavior, and does not hard-code any user or machine path. A portable addon ZIP and SHA-256 manifest are produced by the same reproducible build script.
+
+During clean-project validation, a real external-project issue was found: Godot 4.7.2 `add_autoload_singleton()` made the Runtime bridge available in the editor session but did not immediately persist it to disk. `RuntimeDebuggerManager` now calls `ProjectSettings.save()` after adding/removing its reserved autoload and reports save failures instead of silently relying on later editor persistence.
+
+Validation actually run with a project path containing spaces and Chinese characters:
+
+```text
+INSTALLER_CLEAN_INSTALL=PASS
+INSTALLER_UPGRADE=PASS
+INSTALLER_NO_ENABLE=PASS
+INSTALLER_INVALID_PROJECT=PASS
+INSTALLER_GODOT_4_7_2_LOAD=PASS
+RUNTIME_AUTOLOAD_LIFECYCLE_NODE_SMOKE=PASS
+INSTALLER_SMOKE=PASS version=0.4.0
+```
+
+The upgrade regression also verified that unrelated editor plugins are preserved, stale files inside the old `godot_mcp_chatgpt` addon are removed, the MCP plugin entry is not duplicated, CRLF is preserved in `project.godot`, and temporary install/backup directories are cleaned up. Public installer documentation was updated in README, Quick Start, CHANGELOG and SECURITY, including the unsigned/SmartScreen note and SHA-256 verification path.
+### Task: Installer pre-commit release gates
+
+Status: **release validation passed**.
+
+Final pre-commit results after the installer, Runtime autoload persistence fix, public docs and payload hash regression:
+
+```text
+npm build: PASS
+npm test: PASS
+CATALOGUE_SCHEMA_GATE=PASS tools=119
+PRODUCTION_PLUGIN_SMOKE=PASS
+RUNTIME_AUTOLOAD_LIFECYCLE_NODE_SMOKE=PASS
+INSTALLER_SMOKE=PASS version=0.4.0
+installed addon full file-set/SHA-256 match: PASS
+DIFF_CHECK=PASS
+BOM_CHECK=PASS
+INSTALLER_HARDCODE_CHECK=PASS
+LINK_CHECK=PASS
+NO_IMAGE_MARKUP=PASS
+SECRET_CHECK=PASS fixtures=3 real=0
+VERSION_CHECK=PASS 0.4.0
+ARTIFACT_HYGIENE=PASS
+INSTALLER_PRECOMMIT_GATES=PASS
+```
+
 ## 0.4.0 current blocker
 
-No known release blocker remains. 0.4.0 has been committed and pushed to `main`.
+No known installer blocker remains after clean-install, upgrade, invalid-path, no-enable, Unicode/space-path, and real Godot 4.7.2 load validation.
 
 ## 0.4.0 exact next task
 
-**Do not start the one-click installer yet. Wait for the user to choose the next development task.**
+**Finish installer/release documentation and repository gates, commit the installer + Runtime autoload persistence fix, rebuild artifacts from the final commit, rerun installer smoke, then publish GitHub Release `v0.4.0` with installer EXE, addon ZIP and SHA-256 manifest.**

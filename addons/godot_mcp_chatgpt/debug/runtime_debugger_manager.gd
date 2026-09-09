@@ -23,6 +23,13 @@ func setup(editor_plugin: EditorPlugin) -> Dictionary:
     _editor_plugin.add_debugger_plugin(_debugger)
     if not ProjectSettings.has_setting(autoload_key):
         _editor_plugin.add_autoload_singleton(RUNTIME_AUTOLOAD_NAME, RUNTIME_SCRIPT)
+        var save_error: Error = ProjectSettings.save()
+        if save_error != OK:
+            _editor_plugin.remove_autoload_singleton(RUNTIME_AUTOLOAD_NAME)
+            _editor_plugin.remove_debugger_plugin(_debugger)
+            _debugger = null
+            _editor_plugin = null
+            return {"ok": false, "error": "RUNTIME_AUTOLOAD_SAVE_FAILED", "message": error_string(save_error)}
     return {"ok": true}
 
 func shutdown() -> void:
@@ -32,15 +39,20 @@ func shutdown() -> void:
     _editor_plugin = null
     _responses.clear()
 
-func remove_runtime_autoload() -> void:
+func remove_runtime_autoload() -> Dictionary:
     if _editor_plugin == null:
-        return
+        return {"ok": true, "removed": false}
     var autoload_key := "autoload/" + RUNTIME_AUTOLOAD_NAME
     if not ProjectSettings.has_setting(autoload_key):
-        return
+        return {"ok": true, "removed": false}
     var existing := str(ProjectSettings.get_setting(autoload_key, ""))
-    if _autoload_matches_runtime(existing):
-        _editor_plugin.remove_autoload_singleton(RUNTIME_AUTOLOAD_NAME)
+    if not _autoload_matches_runtime(existing):
+        return {"ok": false, "error": "RUNTIME_AUTOLOAD_CONFLICT", "existing": existing}
+    _editor_plugin.remove_autoload_singleton(RUNTIME_AUTOLOAD_NAME)
+    var save_error: Error = ProjectSettings.save()
+    if save_error != OK:
+        return {"ok": false, "error": "RUNTIME_AUTOLOAD_SAVE_FAILED", "message": error_string(save_error)}
+    return {"ok": true, "removed": true}
 
 func _autoload_matches_runtime(value: String) -> bool:
     var reference := value.trim_prefix("*")

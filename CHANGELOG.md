@@ -20,6 +20,8 @@ Date: 2026-09-10
 - Added bounded non-atomic `batch.execute` with `stop_on_error` and recursion denial.
 - Added Windows Credential Manager persistence for the Runtime API Key, automatic reconnect after restart, and **Forget Saved Credentials**.
 - Added explicit Resource path validation and clearer `node.create.parent_path` schema guidance.
+- Added a single-file Windows x64 project installer that embeds the addon, lets users select any Godot project, enables the plugin by default, and supports clean upgrades without hard-coded paths.
+- Runtime autoload add/remove now calls `ProjectSettings.save()` so newly installed external projects persist the Runtime bridge immediately.
 
 ### Security / reliability
 
@@ -44,6 +46,7 @@ Runtime autoload disable/re-enable lifecycle
 BOM / secret / diff / documentation-link gates
 Real ChatGPT Connector full-surface regression
 REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS
+INSTALLER_SMOKE=PASS version=0.4.0
 ```
 
 The real Connector regression exercised editor changes, runtime mutation/readback, diagnostics, Batch and security boundaries through ChatGPT itself.

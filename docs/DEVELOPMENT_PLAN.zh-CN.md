@@ -128,14 +128,22 @@ Web ChatGPT
 ### Phase 7 — 发布加固
 状态：**进行中**。
 
-- Godot 面板增加更清晰的 tunnel health/readiness；
-- 更完整的 key 清除/轮换 UX；
-- 干净项目安装测试；
-- Windows 发布 ZIP；
+0.4.0 已完成：
+
+- 干净项目安装验证；
+- Windows x64 项目级一键安装器；
+- addon ZIP + SHA-256 Release 产物；
+- Runtime API Key 受保护持久化与 Forget UX；
+- 真实 Connector、安装器、仓库和文档门禁。
+
+后续事项：
+
+- Godot 面板更清晰的 tunnel health/readiness；
+- Windows 安装器代码签名/信誉策略；
 - 更多 Godot 4.x 兼容测试；
-- macOS/Linux runtime 打包；
-- 第三方二进制来源和许可证审计；
-- 官方 tunnel-client 更新策略。
+- 如需要，再做 macOS/Linux tunnel-client 打包；
+- 未来 runtime 更新时继续做第三方二进制来源/许可证审计；
+- 官方 tunnel-client 后续版本的更新策略。
 
 ## 6. 性能原则
 

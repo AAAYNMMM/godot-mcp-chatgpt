@@ -19,15 +19,31 @@
 
 ## 第 1 步：安装插件
 
-把插件放到：
+### 推荐：Windows x64 一键安装器
+
+从 [GitHub Releases](https://github.com/AAAYNMMM/godot-mcp-chatgpt/releases) 下载 `godot-mcp-chatgpt-v0.4.0-windows-x64-installer.exe`，运行后选择目标项目的 `project.godot`。
+
+安装器会验证所选路径确实是 Godot 项目，并且只把内嵌插件安装到：
 
 ```text
-<你的项目>/addons/godot_mcp_chatgpt/
+<所选项目>/addons/godot_mcp_chatgpt/
 ```
 
-目录里应当能看到 `plugin.cfg`。
+默认自动启用 EditorPlugin；再次运行安装器会升级这个项目已有的插件副本。安装器里没有写死任何用户路径或项目路径。
 
-在 Godot 中打开：
+当前安装器未做代码签名，所以 Windows SmartScreen 可能提示“未知发布者”。Release 同时提供 `SHA256SUMS.txt`，可用于校验文件。
+
+如果目标项目已经在 Godot 中打开，安装后请重启/重新打开项目，让新插件文件完整加载。
+
+### 手动备选方式
+
+解压 addon ZIP，最终确认存在：
+
+```text
+<你的项目>/addons/godot_mcp_chatgpt/plugin.cfg
+```
+
+然后在 Godot 中打开：
 
 ```text
 项目 -> 项目设置 -> 插件

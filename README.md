@@ -95,21 +95,30 @@ See [Tool Reference](docs/TOOL_REFERENCE.md) for the complete 119-tool index and
 
 ### 1. Install the addon
 
-Copy this directory into your Godot project:
+**Recommended on Windows x64:** download `godot-mcp-chatgpt-v0.4.0-windows-x64-installer.exe` from [GitHub Releases](https://github.com/AAAYNMMM/godot-mcp-chatgpt/releases), run it, and select the target project's `project.godot` file. The installer:
+
+- installs only to `<selected-project>/addons/godot_mcp_chatgpt/`;
+- enables the editor plugin automatically;
+- supports upgrading an existing installation;
+- does not contain a hard-coded user/project path.
+
+The current executable is not code-signed, so Windows SmartScreen may show an unknown-publisher warning. Verify the accompanying `SHA256SUMS.txt` from the same Release if you want to confirm the downloaded file.
+
+**Manual alternative:** download the addon ZIP and extract it so this file exists:
 
 ```text
-addons/godot_mcp_chatgpt/
+<your-project>/addons/godot_mcp_chatgpt/plugin.cfg
 ```
 
-Then open:
+For a manual install, open:
 
 ```text
 Project -> Project Settings -> Plugins
 ```
 
-Enable **Godot MCP ChatGPT**.
+and enable **Godot MCP ChatGPT**.
 
-A bottom editor panel named **MCP ChatGPT** will appear.
+A bottom editor panel named **MCP ChatGPT** will appear after the project/plugin is loaded.
 
 ### 2. Prepare an OpenAI tunnel
 
@@ -218,12 +227,12 @@ The goal is a small, reliable, high-value editor tool surface first, then expand
 
 ## Roadmap
 
-Near-term priorities now focus on distribution and compatibility rather than filling basic editor gaps:
+Near-term priorities now focus on compatibility and distribution hardening:
 
-- one-click / release ZIP installation flow;
-- cleaner plugin packaging for non-developers;
+- code-signed/reputation-friendly Windows distribution if a signing path becomes available;
 - compatibility testing across more Godot 4.x versions and operating systems;
 - deeper debugger/profiler workflows where Godot exposes stable editor APIs;
+- macOS/Linux packaging if official tunnel runtimes are adopted there;
 - continued hardening based on real ChatGPT Connector regressions.
 
 See [Development Plan](docs/DEVELOPMENT_PLAN.md).

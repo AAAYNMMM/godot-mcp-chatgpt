@@ -231,7 +231,7 @@ For console diagnostics, Godot 4.7.2 does not expose a simple public API for scr
 - [x] Update README capability summary
 - [x] Update CHANGELOG
 - [x] Update SECURITY if credential/runtime surface changed materially
-- [ ] Commit and push only after the validated baseline is coherent
+- [x] 0.4.0 baseline committed and pushed; installer follow-up commit pending
 
 ### Credential restart lifecycle
 
@@ -267,10 +267,42 @@ Status: **real connector validation passed**.
 
 Resolved follow-ups: invalid Resource paths now return `INVALID_PATH`, and `node.create.parent_path` schema explicitly documents `.` as the edited-scene root. Continue observing the non-reproducible scene activation and transient network events.
 
+### One-click installer / Release packaging
+
+Status: **integration passed; release publication pending**.
+
+- [x] Windows x64 single-file installer source under `tools/installer/`
+- [x] complete addon embedded into installer; no user/machine path is hard-coded
+- [x] GUI project selection via `project.godot`
+- [x] default automatic editor-plugin enablement
+- [x] `--project`, `--silent`, `--result`, `--no-enable` automation switches
+- [x] clean install with Unicode + spaces in project path
+- [x] upgrade replacement with stale-file removal and unrelated-plugin preservation
+- [x] invalid project rejection
+- [x] `--no-enable` behavior
+- [x] installed addon loaded by real Godot 4.7.2; persisted Runtime autoload lifecycle revalidated
+- [x] Runtime autoload persistence fixed with `ProjectSettings.save()`
+- [ ] final commit-based artifact rebuild
+- [ ] final installer smoke from commit-based artifact
+- [ ] GitHub Release `v0.4.0` publish
+### Installer final pre-commit gates
+
+Status: **release validation passed**.
+
+```text
+PRODUCTION_PLUGIN_SMOKE=PASS
+RUNTIME_AUTOLOAD_LIFECYCLE_NODE_SMOKE=PASS
+INSTALLER_SMOKE=PASS version=0.4.0
+INSTALLER_PRECOMMIT_GATES=PASS
+```
+
 ## 10. Current blocker
 
-No known release blocker remains. All code, integration, credential, runtime lifecycle, real Connector, repository hygiene and bilingual documentation gates are green.
+No known installer blocker remains. Publication is pending only the final documentation/hygiene pass, commit-based rebuild, repeat smoke, and GitHub Release upload.
 
 ## 11. Exact next task
 
-Per user request, do not start the one-click installer / Release packaging yet. Wait for the user to choose the next development task.
+1. finish installer/release public documentation and static gates;
+2. commit installer source plus Runtime autoload persistence fix;
+3. rebuild release artifacts from that exact commit and rerun installer smoke;
+4. publish GitHub Release `v0.4.0` with installer EXE, addon ZIP and SHA-256 manifest.

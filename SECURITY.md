@@ -105,6 +105,18 @@ It returns separate stdout/stderr, exit code, timeout state, duration and trunca
 - can stop on the first error;
 - is **non-atomic** and does not roll back earlier successful operations.
 
+## Installer boundary
+
+The Windows x64 installer is project-scoped. It does not scan for projects or install globally. The user selects a specific `project.godot`, and the installer only writes to:
+
+```text
+<selected-project>/addons/godot_mcp_chatgpt/
+<selected-project>/project.godot
+```
+
+It validates the project before installation, extracts an embedded addon payload through traversal checks, stages the replacement inside the selected project, backs up an existing `godot_mcp_chatgpt` addon during upgrade, restores it if activation fails, preserves unrelated editor-plugin entries, and removes installer staging/backup files after success.
+
+The installer does not require administrator privileges and contains no hard-coded user/project path. The current Release executable is not code-signed; users who need provenance verification should compare it with the published `SHA256SUMS.txt`.
 ## No arbitrary shell MCP tool
 
 Version 0.4.0 does not expose a generic arbitrary shell/PowerShell/cmd executable tool through MCP. Adding one would materially change the trust boundary and requires explicit security review.

@@ -20,6 +20,8 @@
 - 新增有上限、非事务的 `batch.execute`，支持 `stop_on_error` 并拒绝递归 Batch。
 - Runtime API Key 改为保存到 Windows Credential Manager，支持 Godot 重启后自动重连，并增加 **Forget Saved Credentials**。
 - Resource 路径统一安全校验；`node.create.parent_path` schema 明确 `.` 表示编辑场景根节点。
+- 新增 Windows x64 项目级单文件安装器：内嵌完整 addon，可选择任意 Godot 项目，默认自动启用插件，支持无写死路径的干净安装与升级。
+- Runtime autoload 添加/删除后显式调用 `ProjectSettings.save()`，确保新安装到外部项目时 Runtime bridge 立即持久化。
 
 ### 安全 / 可靠性
 
@@ -44,6 +46,7 @@ Runtime autoload disable/re-enable lifecycle
 BOM / secret / diff / 文档链接门禁
 真实 ChatGPT Connector 全能力回归
 REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS
+INSTALLER_SMOKE=PASS version=0.4.0
 ```
 
 真实 Connector 回归由 ChatGPT 本身完成编辑器修改、Runtime 读写、Diagnostics、Batch 和安全边界验证。

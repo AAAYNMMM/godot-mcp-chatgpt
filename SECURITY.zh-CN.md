@@ -105,6 +105,19 @@ EditorDebuggerPlugin
 - 支持第一项错误后停止；
 - **不是事务**，不会回滚前面已经成功的操作。
 
+## 安装器边界
+
+Windows x64 安装器是项目级安装器，不扫描项目，也不做全局安装。用户必须明确选择一个 `project.godot`，安装器只会写入：
+
+```text
+<所选项目>/addons/godot_mcp_chatgpt/
+<所选项目>/project.godot
+```
+
+安装前会校验目标项目；内嵌 addon 解包时有路径穿越检查；升级时先在所选项目内 staging，再备份已有 `godot_mcp_chatgpt`，新版本激活失败时会恢复旧版本；不会删除其他 EditorPlugin entry；成功后会清理安装临时目录和备份。
+
+安装器不需要管理员权限，也不包含写死的用户/项目路径。当前 Release EXE 未做代码签名；需要校验来源时，请使用发布页提供的 `SHA256SUMS.txt`。
+
 ## 不提供通用 Shell MCP
 
 0.4.0 不暴露通用任意 Shell / PowerShell / cmd / executable MCP 工具。未来如果增加，会显著扩大信任边界，必须单独做安全评审。

@@ -163,13 +163,21 @@ Completed scope:
 ### Phase 7 — Release hardening
 Status: **in progress**.
 
-- improve tunnel-client health/readiness reporting in the Godot panel;
-- secure key lifecycle/clear UX;
+Completed in 0.4.0:
+
 - clean-project addon installation test;
-- Windows packaging/release ZIP;
+- Windows x64 one-click project installer;
+- portable addon ZIP + SHA-256 release artifacts;
+- protected Runtime API Key persistence and Forget UX;
+- real Connector, installer, repository and documentation gates.
+
+Remaining follow-up work:
+
+- improve tunnel-client health/readiness reporting in the Godot panel;
+- code signing/reputation strategy for Windows builds;
 - additional Godot 4.x compatibility testing;
 - macOS/Linux tunnel-client packaging if desired;
-- third-party binary provenance/license audit;
+- third-party binary provenance/license audit for future runtime updates;
 - runtime update strategy for future official tunnel-client releases.
 
 ## 6. Performance rules

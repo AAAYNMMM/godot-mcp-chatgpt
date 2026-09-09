@@ -231,7 +231,7 @@ Godot 4.7.2 没有简单公开 API 可以直接抓取 Output Dock 全部文本�
 - [x] 更新 README 能力摘要
 - [x] 更新 CHANGELOG
 - [x] 凭据/runtime surface 有实质变化时更新 SECURITY
-- [ ] 完整基线一致后才 commit/push
+- [x] 0.4.0 基线已提交并推送；安装器 follow-up commit 待完成
 
 ### 凭据跨重启生命周期
 
@@ -267,10 +267,42 @@ Godot 4.7.2 没有简单公开 API 可以直接抓取 Output Dock 全部文本�
 
 已解决 follow-up：Resource 非法路径已统一返回 `INVALID_PATH`，`node.create.parent_path` schema 已明确 `.` 表示编辑场景根节点。无法复现的 scene activation / transient network error 继续观察。
 
+### 一键安装器 / Release 打包
+
+状态：**集成验证通过；等待发布**。
+
+- [x] `tools/installer/` 下 Windows x64 单文件安装器源码
+- [x] 完整 addon 内嵌进安装器；无用户/机器硬编码路径
+- [x] GUI 选择目标 `project.godot`
+- [x] 默认自动启用 EditorPlugin
+- [x] `--project`、`--silent`、`--result`、`--no-enable` 自动化参数
+- [x] 中文 + 空格项目路径干净安装
+- [x] 升级替换、stale 文件清理、其他插件保留
+- [x] 非法项目拒绝
+- [x] `--no-enable` 行为
+- [x] 安装结果通过真实 Godot 4.7.2 加载；Runtime autoload 磁盘持久化生命周期已重新验证
+- [x] 使用 `ProjectSettings.save()` 修复 Runtime autoload 持久化
+- [ ] 从最终 commit 重建产物
+- [ ] 对最终 commit 产物重新跑 installer smoke
+- [ ] 发布 GitHub Release `v0.4.0`
+### 安装器最终提交前门禁
+
+状态：**release 验证通过**。
+
+```text
+PRODUCTION_PLUGIN_SMOKE=PASS
+RUNTIME_AUTOLOAD_LIFECYCLE_NODE_SMOKE=PASS
+INSTALLER_SMOKE=PASS version=0.4.0
+INSTALLER_PRECOMMIT_GATES=PASS
+```
+
 ## 10. 当前 blocker
 
-当前没有已知 release blocker。0.4.0 基线已通过提交 `3f8ce7e` 推送到 `main`。
+当前没有已知 installer blocker。只剩最终公开文档/仓库门禁、基于最终 commit 的重建与复测，以及 GitHub Release 上传。
 
 ## 11. 精确下一项任务
 
-按用户要求，一键安装器 / Release 打包暂不开始。等待用户指定下一项开发任务。
+1. 完成安装器/Release 公开文档和静态门禁；
+2. 提交安装器源码 + Runtime autoload 持久化修复；
+3. 从该精确 commit 重建发布产物并重新跑 installer smoke；
+4. 发布 GitHub Release `v0.4.0`，上传 installer EXE、addon ZIP 和 SHA-256 清单。
