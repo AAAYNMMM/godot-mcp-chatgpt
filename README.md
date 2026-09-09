@@ -1,25 +1,59 @@
 ﻿# godot-mcp-chatgpt
 
-Remote MCP bridge for Web ChatGPT to control the Godot editor directly, without using a general-purpose coding workspace as the runtime control path.
+Direct Web MCP control for the Godot Editor.
 
-Target path:
+## Goal
 
 ```text
 Web ChatGPT
-  -> MCP over HTTPS
-  -> authenticated relay/tunnel
-  -> local bridge
-  -> Godot editor addon
-  -> Godot
+  -> Web MCP relay
+  -> Tunnel ID + API Key
+  -> Godot addon outbound WSS connection
+  -> Godot Editor
 ```
 
-The intended pairing UX is a simple **Tunnel ID + API Key** while keeping the Godot-side listener bound to localhost.
+This project does **not** use the traditional local stdio MCP + Node bridge architecture. The normal user enables the addon, enters a Tunnel ID and API Key, and connects.
 
-## Development status
+## Current status
 
-The project is currently in the architecture/bootstrap stage.
+The first Godot 4.7.2 addon skeleton is implemented and loads successfully. It includes:
 
-- [Development plan](docs/DEVELOPMENT_PLAN.md)
-- [Progress and new-window handoff](docs/PROGRESS.md)
+- a Godot dock for Tunnel ID + API Key;
+- outbound WSS relay client/reconnect logic;
+- remote tool catalogue registration;
+- tool call/result dispatch;
+- a small command registry;
+- `godot.get_status` and `project.get_info` test commands.
 
-The next milestone is an upstream audit and minimal local migration from compatible MIT-licensed Godot MCP projects, followed by a working local bridge baseline before remote transport is added.
+The public Web MCP relay is the next major component.
+
+## Development
+
+The repository root is a minimal Godot development project. With Godot 4.7.2 installed:
+
+```powershell
+& 'C:\Users\11830\AppData\Local\Programs\Godot\4.7.2\godot.exe' --editor --path .
+```
+
+Headless plugin-load validation:
+
+```powershell
+& 'C:\Users\11830\AppData\Local\Programs\Godot\4.7.2\godot.exe' --headless --editor --path . --quit
+```
+
+For a development relay endpoint, set:
+
+```text
+GODOT_MCP_CHATGPT_RELAY_URL=wss://...
+```
+
+Normal release users should not need to set the relay URL.
+
+## Continuity
+
+Read:
+
+- `docs/DEVELOPMENT_PLAN.md`
+- `docs/PROGRESS.md`
+
+before continuing implementation in a new development window.

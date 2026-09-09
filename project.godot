@@ -1,0 +1,14 @@
+﻿; Engine configuration file.
+; Development fixture for loading the addon directly from this repository.
+
+config_version=5
+
+[application]
+config/name="Godot MCP ChatGPT Dev"
+
+[editor_plugins]
+enabled=PackedStringArray("res://addons/godot_mcp_chatgpt/plugin.cfg")
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

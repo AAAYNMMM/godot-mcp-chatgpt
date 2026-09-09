@@ -1,181 +1,154 @@
 ﻿# Development Progress
 
-This file is the handoff source of truth for future ChatGPT windows and development sessions.
+## Project
 
-## Project identity
-
-- Repository: `https://github.com/AAAYNMMM/godot-mcp-chatgpt`
-- Owner: `AAAYNMMM`
+- Repository: `AAAYNMMM/godot-mcp-chatgpt`
 - Branch: `main`
 - Visibility: public
-- Development interface requested by user: `MCPcoding`
-- Finished product dependency on CWapi: **none**
-- Target Godot: Godot 4.7.2 Standard x64
-- Godot scripting: GDScript
-- Main user platform: Windows
+- Target editor: Godot 4.7.2 Standard x64 / GDScript
+- Goal: Web ChatGPT -> remote MCP -> Godot Editor
+- Finished product must not depend on CWapi.
 
-## Goal
+## Current architecture decision
 
-Build a purpose-specific remote MCP path:
+On 2026-09-09 the architecture was simplified.
+
+**Do not preserve the upstream local MCP connection path.**
+
+Current target:
 
 ```text
 Web ChatGPT
-  -> remote MCP (Streamable HTTP)
-  -> authenticated tunnel/relay
-  -> local bridge
-  -> localhost Godot addon
-  -> Godot Editor
+  -> Streamable HTTP MCP relay
+  -> Tunnel ID + API Key routing
+  -> outbound WSS from Godot addon
+  -> direct Godot command registry
+  -> Godot Editor APIs
 ```
 
-Connection UX target:
+Normal users should only enter:
+
+1. Tunnel ID
+2. API Key
+
+The release build owns the relay URL internally.
+
+## Completed
+
+### Repository bootstrap
+
+- Public repository created.
+- Continuity/development docs created.
+- MCPcoding durable workspace established.
+- Windows global `gh` login reuse was verified earlier.
+
+### Upstream audit
+
+Inspected on 2026-09-09:
+
+- `NPGameDev/godot-mcp-toolkit`
+- `NPGameDev/godot-mcp-server`
+
+Both contain MIT licenses with copyright `2026 NPGameDev` and an explicit note that project logo/banner/name branding is not licensed for reuse.
+
+Decision:
+
+- reuse/migrate selected Godot editor command behavior from toolkit as needed;
+- do not migrate the local stdio MCP/Node/localhost bridge architecture;
+- create third-party notices when source code is actually copied.
+
+### Direct Web client skeleton
+
+Created:
+
+- `addons/godot_mcp_chatgpt/plugin.cfg`
+- `addons/godot_mcp_chatgpt/plugin.gd`
+- `addons/godot_mcp_chatgpt/ui/connection_dock.gd`
+- `addons/godot_mcp_chatgpt/web/web_mcp_client.gd`
+- `addons/godot_mcp_chatgpt/core/command_registry.gd`
+- `addons/godot_mcp_chatgpt/core/builtin_commands.gd`
+- root `project.godot` development fixture
+- `.gitignore` excluding `.upstream/` and `.godot/`
+
+Implemented behavior:
+
+- Godot dock with Tunnel ID and masked API Key fields;
+- Connect/Disconnect button and connection state;
+- editor-local credential persistence;
+- relay URL hidden from normal UI;
+- dev relay URL override through `GODOT_MCP_CHATGPT_RELAY_URL` or ProjectSettings;
+- outbound `WebSocketPeer` connection;
+- automatic reconnect after transient disconnect;
+- registration frame containing tool catalogue;
+- `registered`, `tool_call`, `tool_result`, `ping/pong`, fatal error handling;
+- serial request queue;
+- two minimal read-only commands: `godot.get_status` and `project.get_info`.
+
+### Godot validation
+
+Command run successfully:
 
 ```text
-Tunnel ID + API Key
+C:\Users\11830\AppData\Local\Programs\Godot\4.7.2\godot.exe --headless --editor --path . --quit
 ```
 
-This should replace using CWapi Coding mode as the runtime control path for Godot. MCPcoding is only being used to develop this repository.
+Result:
 
-## Current status
+- exit code 0;
+- plugin initialized during editor startup;
+- no GDScript parse/startup error was emitted.
 
-Last updated: 2026-09-09
+## Important design details
 
-### Completed
+- No local MCP server is planned.
+- No stdio transport is planned.
+- No local Node bridge is planned.
+- No Godot localhost listener is planned for the editor-control path.
+- The addon connects outward to the relay.
+- The relay is the MCP server that Web ChatGPT sees.
+- Tool schemas are supplied by the connected Godot addon during registration.
 
-- [x] User approved the Web ChatGPT -> MCP -> Godot architecture.
-- [x] Decided not to use a GitHub fork.
-- [x] Decided to migrate/reimplement only required upstream pieces.
-- [x] Created public GitHub repository `AAAYNMMM/godot-mcp-chatgpt`.
-- [x] Confirmed the repository has a `main` branch.
-- [x] Opened a dedicated MCPcoding durable workspace for this repository.
-- [x] Added the initial development plan.
-- [x] Added this progress/handoff document.
+## Current limitations / not yet implemented
 
-### Important environment note
+- No public relay exists yet in this repository.
+- No end-to-end WSS integration test yet.
+- Only two minimal test commands exist.
+- Upstream Godot command modules have not yet been copied/migrated.
+- API key is currently stored in editor-local EditorSettings; release security storage needs review.
+- No cancellation/request timeout protocol yet.
 
-When repository creation was performed through MCPcoding, CWapi's process environment had:
+## Next exact task
+
+1. Build a small fake WSS relay test harness.
+2. Start the addon against it using `GODOT_MCP_CHATGPT_RELAY_URL`.
+3. Verify full frame flow:
+   - register
+   - registered
+   - tool_call `godot.get_status`
+   - tool_result
+4. Then migrate/reimplement scene and node commands from the upstream toolkit.
+5. Add attribution files when the first upstream source is copied.
+
+## MCPcoding continuation notes
+
+Repository URL for coding workspace:
 
 ```text
-GH_CONFIG_DIR=E:\Downloads\cwapi2005\CWapi-data\auth\github
+https://github.com/AAAYNMMM/godot-mcp-chatgpt
 ```
 
-That location was not logged into GitHub.
+Target ref:
 
-The user's actual Windows GitHub CLI configuration was found at:
+```text
+main
+```
+
+Do not work in `DragonSouls` for this project.
+
+If `gh` inside MCPcoding does not see the user's normal Windows login, the user's global GitHub CLI config was previously found at:
 
 ```text
 C:\Users\11830\AppData\Roaming\GitHub CLI
 ```
 
-Using that directory explicitly confirmed the active authenticated account:
-
-```text
-AAAYNMMM
-```
-
-For future local `gh` commands through MCPcoding, if `gh auth status` unexpectedly reports no login, invoke it with the user's global config, for example in PowerShell:
-
-```powershell
-$env:GH_CONFIG_DIR='C:\Users\11830\AppData\Roaming\GitHub CLI'
-gh auth status
-```
-
-Do not ask the user to log in again unless that global config genuinely stops working.
-
-## Architecture decisions locked in
-
-- [x] Godot-side listener stays localhost-only.
-- [x] Public exposure happens through a dedicated relay/tunnel layer.
-- [x] Prefer an outbound persistent local connection instead of inbound port forwarding.
-- [x] Public MCP target is Streamable HTTP.
-- [x] Tunnel ID identifies a local connection but is not the secret.
-- [x] API key is the authentication secret.
-- [x] Do not route editor operations through Coding mode in the finished product.
-- [x] Do not add arbitrary shell execution as a default Godot MCP feature.
-- [x] Optimize the MCP tool surface for Web ChatGPT rather than exposing a huge static catalog by default.
-- [x] Preserve MIT attribution/license notices for any migrated upstream source.
-
-## Upstream candidates
-
-Primary projects to audit next:
-
-- `NPGameDev/godot-mcp-server`
-- `NPGameDev/godot-mcp-toolkit`
-
-Do not blindly copy the full repositories. Inspect license and component boundaries first.
-
-## Next task — Phase 1
-
-Status: **NOT STARTED**
-
-The next window should do the following without asking the user to restate the project:
-
-1. Open/resume this exact repository with MCPcoding:
-   - repository URL: `https://github.com/AAAYNMMM/godot-mcp-chatgpt.git`
-   - target ref: `main`
-2. Read:
-   - `docs/DEVELOPMENT_PLAN.md`
-   - `docs/PROGRESS.md`
-3. Audit the two upstream projects:
-   - exact license files;
-   - server package/runtime;
-   - MCP entrypoint/transport;
-   - Godot bridge;
-   - tool registry/schema;
-   - addon entrypoint;
-   - addon local socket;
-   - addon request dispatch.
-4. Write the audit result back into this file or a new `docs/UPSTREAM_AUDIT.md`.
-5. Add repository licensing files:
-   - project `LICENSE`;
-   - `THIRD_PARTY_NOTICES.md`.
-6. Migrate only the smallest local working slice.
-7. Build/test it.
-8. Update this file before ending the development session.
-
-## Phase tracking
-
-| Phase | State | Notes |
-|---|---|---|
-| 0. Repository + continuity docs | Completed | Bootstrap docs committed and pushed |
-| 1. Upstream audit + minimal migration | Not started | Next task |
-| 2. Streamable HTTP MCP | Not started | Preserve local baseline first |
-| 3. Tunnel ID + API key | Not started | Includes relay/reconnect |
-| 4. Godot editor UX | Not started | Dock/panel controls |
-| 5. Web GPT optimization | Not started | Tool discovery/compact schemas |
-| 6. Hardening + release | Not started | Tests, packaging, security |
-
-## Development-session update rule
-
-Every meaningful development session should update this file before finishing.
-
-Record:
-- date;
-- commit SHA;
-- files/components added;
-- tests run and results;
-- decisions changed;
-- known bugs/blockers;
-- the single best next task.
-
-This is required so a new Web ChatGPT window can resume without relying on chat memory.
-
-## Session log
-
-### 2026-09-09 — repository bootstrap
-
-- Commit: `804b368`
-- Added: `docs/DEVELOPMENT_PLAN.md`, `docs/PROGRESS.md`
-- Updated: `README.md`
-- Validation: `git diff --check` passed (line-ending warning only); files were verified present and readable.
-- Push: `main` pushed successfully to GitHub.
-- Decision changes: none beyond the architecture decisions recorded above.
-- Blockers: none.
-- Best next task: Phase 1 upstream audit and minimal local migration.
-## Known blockers
-
-None at the architecture/documentation stage.
-
-## Best next action
-
-Start the upstream audit and establish a local working baseline before implementing any Internet-facing relay code.
-
+The temporary upstream audit clones live under `.upstream/` and are intentionally gitignored.
