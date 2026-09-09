@@ -1,321 +1,205 @@
-﻿# Development Plan
+# Development Plan
 
-## 1. Product definition
+## 1. Product goal
 
-`godot-mcp-chatgpt` is a Godot Editor addon for direct Web ChatGPT control through remote MCP.
+Build a small Godot 4.x editor addon that lets Web ChatGPT control the Godot editor through OpenAI Secure MCP Tunnel with only two user-provided values:
 
-The project intentionally **does not keep the upstream local-MCP architecture**. There is no user-facing stdio MCP server, no Node process launched beside Godot, no localhost MCP bridge, and no local MCP client configuration.
+1. Tunnel ID
+2. Runtime API Key
 
-Final user flow:
+Production runtime must be Godot-only.
 
-```text
-Godot Editor
-  -> install/enable addon
-  -> enter Tunnel ID
-  -> enter API Key
-  -> Connect
-```
+## 2. Locked architecture decision
 
-Everything else is internal.
-
-## 2. Target architecture
+As of 2026-09-09:
 
 ```text
 Web ChatGPT
-    |
-    | MCP over HTTPS / Streamable HTTP
-    v
-Web MCP relay
-    |
-    | authenticated tunnel routing
-    | tunnel_id + api_key
-    v
-Godot addon outbound WSS client
-    |
-    | direct command dispatch
-    v
-Godot Editor API
+  -> OpenAI Secure MCP Tunnel
+  -> direct HTTPS tunnel protocol in Godot
+  -> in-process MCP request handling
+  -> Godot command registry
+  -> Godot Editor API
 ```
 
-The relay is the MCP server seen by Web ChatGPT. The Godot addon is an outbound tunnel client and command executor.
+Do **not** reintroduce:
 
-The old upstream path is explicitly removed:
+- stdio MCP;
+- local MCP server;
+- Node bridge;
+- localhost WebSocket bridge;
+- custom public relay;
+- `.mcp.json` client configuration as the normal connection path.
+
+The repository's Node code is test infrastructure only.
+
+## 3. Protocol contract
+
+Reference implementation/documentation:
+
+- `openai/tunnel-client`
+- canonical wire protocol: `docs/protocol.md` in that project
+- wire contract version currently implemented: `2026-08-25`
+
+Required control-plane calls:
 
 ```text
-Codex/Claude/Cursor
-  -> stdio MCP server
-  -> Node bridge
-  -> localhost WebSocket
-  -> Godot addon
+GET /v1/tunnels/{id}
+GET /v1/tunnels/{id}/poll
+POST /v1/tunnels/{id}/response
 ```
 
-We do not preserve that path for compatibility.
+The Godot implementation must preserve opaque request IDs/shard tokens, correlate responses exactly, stop on auth failures, use bounded retries for transient failures, and never log API keys/shard tokens.
 
-## 3. User-facing scope
+## 4. MCP surface
 
-The normal control panel should expose only:
+Initial MCP server behavior implemented directly in Godot:
 
-- Tunnel ID
-- API Key
-- Connect / Disconnect
-- connection status
-- concise diagnostics
+- initialize
+- ping
+- tools/list
+- tools/call
+- lifecycle notification ACK
+- session termination ACK
 
-The relay URL is not a normal user setting. Release builds provide it internally. Development builds may override it with `GODOT_MCP_CHATGPT_RELAY_URL` or `godot_mcp_chatgpt/relay_url`.
+No prompts/resources/roots capability is advertised yet.
 
-## 4. Components
+## 5. Current Godot tool milestone
 
-### 4.1 Godot control panel
-
-Responsibilities:
-
-- accept Tunnel ID and API Key;
-- save them in editor-local settings, never the project repository;
-- start/stop the remote connection;
-- show connection/auth/reconnect state;
-- avoid logging the API key.
-
-### 4.2 Web MCP client script
-
-Responsibilities:
-
-- create an outbound WSS connection to the relay;
-- authenticate with Tunnel ID + API Key;
-- reconnect after transient disconnects;
-- publish the Godot tool catalogue to the relay;
-- receive remote tool calls;
-- execute them through the local command registry;
-- return structured tool results/errors;
-- answer relay heartbeat messages.
-
-### 4.3 Godot command registry
-
-Responsibilities:
-
-- define command names, descriptions, JSON input schemas, annotations and handlers;
-- expose a compact catalogue for remote MCP `tools/list`;
-- validate/routinely guard Godot operations;
-- execute calls in a deterministic order where mutations require serialization.
-
-### 4.4 Web MCP relay
-
-Responsibilities:
-
-- expose the MCP endpoint Web ChatGPT connects to;
-- authenticate the caller using Tunnel ID + API Key;
-- map a tunnel to exactly one connected Godot addon instance;
-- translate MCP `tools/list` to the catalogue registered by that Godot instance;
-- translate MCP `tools/call` to tunnel `tool_call` messages;
-- correlate `tool_result` messages with the original MCP request;
-- enforce request size/time/rate limits;
-- never route requests between tunnels.
-
-The relay can be implemented later without changing the editor UX or command layer because the addon uses a small versioned tunnel protocol.
-
-## 5. Tunnel protocol v1
-
-Addon registration:
-
-```json
-{
-  "type": "register",
-  "protocol": "godot-mcp-chatgpt/1",
-  "tunnel_id": "godot_xxx",
-  "api_key": "gdmcp_xxx",
-  "client": {
-    "plugin_version": "0.1.0",
-    "godot_version": "4.7.2",
-    "project_name": "Example"
-  },
-  "tools": []
-}
-```
-
-Relay acknowledgement:
-
-```json
-{"type":"registered"}
-```
-
-Tool call:
-
-```json
-{
-  "type": "tool_call",
-  "request_id": "...",
-  "name": "project.get_info",
-  "arguments": {}
-}
-```
-
-Tool result:
-
-```json
-{
-  "type": "tool_result",
-  "request_id": "...",
-  "ok": true,
-  "result": {}
-}
-```
-
-Heartbeat:
-
-```json
-{"type":"ping","ts":123}
-{"type":"pong","ts":123}
-```
-
-Fatal authentication errors use an `error` frame with `fatal: true` and must stop automatic reconnect until the user changes credentials or reconnects manually.
-
-## 6. Upstream migration policy
-
-Repositories evaluated:
-
-- `NPGameDev/godot-mcp-toolkit` — MIT
-- `NPGameDev/godot-mcp-server` — MIT
-
-Both licenses were verified in-repository on 2026-09-09. Upstream branding/artwork is excluded from the MIT grant and must not be copied.
-
-### Keep/migrate from `godot-mcp-toolkit`
-
-Primarily editor-side behavior:
-
-- command implementations;
-- command contracts/schemas;
-- safe scene operations;
-- path/security guards;
-- playtest/editor diagnostics;
-- selected command-registry behavior;
-- selected dock UX ideas when useful.
-
-### Do not migrate from `godot-mcp-server` as runtime architecture
-
-The following are intentionally obsolete for this project:
-
-- `StdioServerTransport` startup path;
-- local Node MCP process;
-- localhost bridge client;
-- editor port scanning/discovery;
-- local token files used only for Node-to-Godot auth;
-- local `.mcp.json` client setup;
-- local MCP compatibility machinery.
-
-Server-side tool schemas/metadata can still be consulted when they help define the Web tool catalogue, but the local server itself is not a product component.
-
-## 7. Current repository layout
+Current 13 tools:
 
 ```text
-godot-mcp-chatgpt/
-├─ addons/
-│  └─ godot_mcp_chatgpt/
-│     ├─ plugin.cfg
-│     ├─ plugin.gd
-│     ├─ core/
-│     │  ├─ command_registry.gd
-│     │  └─ builtin_commands.gd
-│     ├─ ui/
-│     │  └─ connection_dock.gd
-│     └─ web/
-│        └─ web_mcp_client.gd
-├─ docs/
-│  ├─ DEVELOPMENT_PLAN.md
-│  └─ PROGRESS.md
-├─ project.godot
-└─ README.md
+godot.get_status
+project.get_info
+scene.get_tree
+scene.create
+scene.save
+node.create
+node.set_property
+node.delete
+script.read
+script.write
+script.attach
+editor.run_project
+editor.stop
 ```
 
-The repository root is also a minimal Godot development project so the addon can be loaded and validated directly with Godot CLI.
+File operations remain inside `res://`.
 
-## 8. Development phases
+## 6. Milestones
 
-### Phase 0 — repository + continuity docs
-
+### Phase 0 — Repository continuity
 Status: complete.
 
-### Phase 1 — direct Web client skeleton
+- public repository;
+- README;
+- development plan;
+- progress handoff.
 
-Deliverables:
+### Phase 1 — Direct Godot addon skeleton
+Status: complete.
 
-- addon loads in Godot 4.7.2;
-- Tunnel ID/API Key dock;
-- credentials stored editor-locally;
-- outbound WSS connection;
-- reconnect state machine;
-- tool catalogue registration;
-- tool-call/result framing;
-- minimal command registry;
-- at least two read-only test commands.
+- EditorPlugin;
+- connection dock;
+- command registry;
+- initial tools;
+- Godot 4.7.2 script compilation.
 
-Status: implemented; relay end-to-end test remains.
+### Phase 2 — Transport exploration
+Status: superseded/complete.
 
-### Phase 2 — migrate useful Godot commands
+A custom Relay + WSS implementation was built and successfully tested against real Godot. It was then removed from the production design after the official OpenAI Secure MCP Tunnel client/protocol became the better fit.
 
-Migrate/reimplement the editor operations that matter most:
+Do not restore this architecture unless the official tunnel becomes technically unusable and the decision is explicitly revisited.
 
-1. scene inspect/open/save;
-2. node create/update/delete/query;
-3. script create/read/update/attach;
-4. play/stop and errors;
-5. resources and project settings;
-6. ClassDB lookup.
+### Phase 3 — Direct Secure MCP Tunnel client
+Status: complete for local protocol simulation.
 
-Do not blindly copy the full upstream surface. Prefer a smaller Web-GPT-friendly catalogue and add advanced categories after the core path works.
+Implemented:
 
-### Phase 3 — Web MCP relay
+- metadata validation request;
+- bearer authentication;
+- official client headers;
+- 15-second long poll;
+- command batch processing;
+- response correlation;
+- response POST;
+- retry/backoff;
+- auth failure state;
+- MCP initialize/tools/call handling;
+- notification/session termination ACK;
+- response timeout drop behavior;
+- real Godot GUI smoke test.
 
-Implement the public relay that exposes Streamable HTTP MCP and translates to the v1 WSS tunnel protocol.
+### Phase 4 — Real OpenAI control-plane test
+Status: next; requires user-operated credentials/UI.
 
-Acceptance:
+Acceptance flow:
 
-- Web MCP client sees tools supplied by the connected Godot instance;
-- valid Tunnel ID + API Key invokes `godot.get_status` and `project.get_info`;
-- invalid credentials fail;
-- two tunnels cannot cross-route requests.
+1. user creates/selects an OpenAI tunnel;
+2. user creates a restricted Runtime API Key with Tunnels Read + Use;
+3. user enters both in Godot dock;
+4. Godot status becomes connected;
+5. user configures ChatGPT connector with Connection: Tunnel and same tunnel ID;
+6. ChatGPT discovers tools;
+7. ChatGPT calls `godot.get_status`;
+8. ChatGPT creates/modifies a disposable test scene;
+9. verify resulting scene in the visible Godot editor.
 
-### Phase 4 — integration + hardening
+### Phase 5 — Tool expansion
+After real tunnel success.
 
-- cancellation/timeouts;
-- request size limits;
-- API key rotation;
-- heartbeat timeout;
-- permission profile if needed;
-- safe path enforcement;
-- mutation serialization;
-- relay deployment/package docs;
-- tests.
+Priorities:
 
-## 9. Security boundary
+- node.get_properties / richer property inspection;
+- scene.open / close;
+- resource create/edit;
+- project settings + InputMap;
+- signals;
+- ClassDB lookup;
+- editor/runtime error inspection;
+- playtest diagnostics;
+- batched node/property operations;
+- optional screenshots if supported safely/efficiently.
 
-- Godot opens **no public listening socket**.
-- Godot makes only an outbound WSS connection.
-- API key must never be printed or included in diagnostics.
-- Tunnel ID is an identifier, not a secret.
-- Project-changing commands need argument validation and project-path guards.
-- The relay must use TLS and isolate tunnel sessions.
-- Current prototype stores credentials in Godot EditorSettings; before a hardened public release, review whether OS-backed secret storage is practical.
+### Phase 6 — Release hardening
 
-## 10. Performance model
+- OS-grade credential storage or an explicit secure-storage strategy;
+- key clear/rotate UX;
+- connection health diagnostics;
+- protocol compatibility tests against newer tunnel wire versions;
+- addon packaging/release ZIP;
+- clean-project installation test;
+- Godot compatibility matrix;
+- license/notice audit.
 
-A normal operation should be:
+## 7. Performance rules
 
-```text
-ChatGPT MCP tools/call
- -> relay lookup
- -> one WSS tool_call
- -> one Godot command execution
- -> one WSS tool_result
- -> MCP result
-```
+- no shell spawn for ordinary Godot operations;
+- no local network hop;
+- process tunnel commands sequentially by default to protect editor state;
+- keep tool schemas compact;
+- prefer high-value tools over a huge eager catalogue;
+- batch operations later when they materially reduce tunnel round trips.
 
-No shell spawn, no local Node process, no localhost bridge hop.
+## 8. Security rules
 
-## 11. Next development task
+- never log API keys or shard tokens;
+- runtime key must be restricted to minimum tunnel permissions;
+- no admin key in the Godot addon;
+- outbound control-plane host defaults to `https://api.openai.com`;
+- alternate control-plane URL is development-only through environment variable;
+- filesystem tools remain project-scoped unless explicitly designed otherwise;
+- destructive tool annotations must be honest;
+- existing scenes are not overwritten without explicit `overwrite: true`.
 
-Continue from Phase 1/2 boundary:
+## 9. Continuation rule
 
-1. create a fake/local relay integration test for the v1 frames;
-2. prove `register -> registered -> tool_call -> tool_result` end to end;
-3. migrate the first practical scene/node command slice from the upstream MIT addon;
-4. add third-party notices only when upstream source is actually copied;
-5. keep `docs/PROGRESS.md` updated after every meaningful milestone.
+Every meaningful development window must update `docs/PROGRESS.md` with:
+
+- completed changes;
+- tests actually run;
+- current blocking issue;
+- exact next task.
+
+A new ChatGPT window should read `README.md`, `docs/ARCHITECTURE.md`, and `docs/PROGRESS.md` before changing architecture.

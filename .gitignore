@@ -1,2 +1,11 @@
-﻿.upstream/
+.upstream/
 .godot/
+
+.mcp-smoke/
+.local-test/
+
+.godot-mcp-stdout.log
+.godot-mcp-stderr.log
+
+server/node_modules/
+server/dist/

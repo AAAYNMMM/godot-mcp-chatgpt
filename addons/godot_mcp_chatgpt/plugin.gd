@@ -1,7 +1,7 @@
-﻿@tool
+@tool
 extends EditorPlugin
 
-const WebMCPClient := preload("res://addons/godot_mcp_chatgpt/web/web_mcp_client.gd")
+const SecureTunnelClient := preload("res://addons/godot_mcp_chatgpt/web/secure_tunnel_client.gd")
 const CommandRegistry := preload("res://addons/godot_mcp_chatgpt/core/command_registry.gd")
 const BuiltinCommands := preload("res://addons/godot_mcp_chatgpt/core/builtin_commands.gd")
 const ConnectionDock := preload("res://addons/godot_mcp_chatgpt/ui/connection_dock.gd")
@@ -11,10 +11,11 @@ var _client: Node
 var _dock: Control
 
 func _enter_tree() -> void:
+	print("[GodotMCPChatGPT] Editor plugin loaded.")
 	_registry = CommandRegistry.new()
 	BuiltinCommands.register(_registry, self)
 
-	_client = WebMCPClient.new()
+	_client = SecureTunnelClient.new()
 	_client.name = "WebMCPClient"
 	_client.set_registry(_registry)
 	_client.set_editor_settings(get_editor_interface().get_editor_settings())
@@ -31,7 +32,7 @@ func _exit_tree() -> void:
 		_dock.queue_free()
 		_dock = null
 	if _client != null:
-		_client.disconnect_from_relay()
+		_client.disconnect_from_tunnel()
 		_client.queue_free()
 		_client = null
 	_registry = null

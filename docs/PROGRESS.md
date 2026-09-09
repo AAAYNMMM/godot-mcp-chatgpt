@@ -1,154 +1,285 @@
-﻿# Development Progress
+# Development Progress
 
 ## Project
 
 - Repository: `AAAYNMMM/godot-mcp-chatgpt`
 - Branch: `main`
 - Visibility: public
-- Target editor: Godot 4.7.2 Standard x64 / GDScript
-- Goal: Web ChatGPT -> remote MCP -> Godot Editor
-- Finished product must not depend on CWapi.
+- Target: Godot 4.7.2 Standard x64 / GDScript
+- Production dependency: Godot editor only
+- Runtime architecture: direct OpenAI Secure MCP Tunnel protocol
 
-## Current architecture decision
+## Current state — 2026-09-09
 
-On 2026-09-09 the architecture was simplified.
+The project is at **Phase 4: real OpenAI control-plane / ChatGPT test**.
 
-**Do not preserve the upstream local MCP connection path.**
+All work that can be completed without the user's real OpenAI Tunnel ID and Runtime API Key has been exercised locally.
 
-Current target:
+## Completed architecture pivot
 
-```text
-Web ChatGPT
-  -> Streamable HTTP MCP relay
-  -> Tunnel ID + API Key routing
-  -> outbound WSS from Godot addon
-  -> direct Godot command registry
-  -> Godot Editor APIs
-```
-
-Normal users should only enter:
-
-1. Tunnel ID
-2. API Key
-
-The release build owns the relay URL internally.
-
-## Completed
-
-### Repository bootstrap
-
-- Public repository created.
-- Continuity/development docs created.
-- MCPcoding durable workspace established.
-- Windows global `gh` login reuse was verified earlier.
-
-### Upstream audit
-
-Inspected on 2026-09-09:
-
-- `NPGameDev/godot-mcp-toolkit`
-- `NPGameDev/godot-mcp-server`
-
-Both contain MIT licenses with copyright `2026 NPGameDev` and an explicit note that project logo/banner/name branding is not licensed for reuse.
-
-Decision:
-
-- reuse/migrate selected Godot editor command behavior from toolkit as needed;
-- do not migrate the local stdio MCP/Node/localhost bridge architecture;
-- create third-party notices when source code is actually copied.
-
-### Direct Web client skeleton
-
-Created:
-
-- `addons/godot_mcp_chatgpt/plugin.cfg`
-- `addons/godot_mcp_chatgpt/plugin.gd`
-- `addons/godot_mcp_chatgpt/ui/connection_dock.gd`
-- `addons/godot_mcp_chatgpt/web/web_mcp_client.gd`
-- `addons/godot_mcp_chatgpt/core/command_registry.gd`
-- `addons/godot_mcp_chatgpt/core/builtin_commands.gd`
-- root `project.godot` development fixture
-- `.gitignore` excluding `.upstream/` and `.godot/`
-
-Implemented behavior:
-
-- Godot dock with Tunnel ID and masked API Key fields;
-- Connect/Disconnect button and connection state;
-- editor-local credential persistence;
-- relay URL hidden from normal UI;
-- dev relay URL override through `GODOT_MCP_CHATGPT_RELAY_URL` or ProjectSettings;
-- outbound `WebSocketPeer` connection;
-- automatic reconnect after transient disconnect;
-- registration frame containing tool catalogue;
-- `registered`, `tool_call`, `tool_result`, `ping/pong`, fatal error handling;
-- serial request queue;
-- two minimal read-only commands: `godot.get_status` and `project.get_info`.
-
-### Godot validation
-
-Command run successfully:
+Earlier in development a custom remote MCP Relay was implemented:
 
 ```text
-C:\Users\11830\AppData\Local\Programs\Godot\4.7.2\godot.exe --headless --editor --path . --quit
+ChatGPT -> Streamable HTTP relay -> WSS -> Godot
 ```
 
-Result:
+That implementation successfully controlled a real Godot editor, but it is no longer the production architecture.
 
-- exit code 0;
-- plugin initialized during editor startup;
-- no GDScript parse/startup error was emitted.
+After reviewing the public `openai/tunnel-client` project and wire protocol, the final path became:
 
-## Important design details
+```text
+ChatGPT
+  -> OpenAI Secure MCP Tunnel
+  -> secure_tunnel_client.gd
+  -> CommandRegistry
+  -> Godot Editor
+```
 
-- No local MCP server is planned.
-- No stdio transport is planned.
-- No local Node bridge is planned.
-- No Godot localhost listener is planned for the editor-control path.
-- The addon connects outward to the relay.
-- The relay is the MCP server that Web ChatGPT sees.
-- Tool schemas are supplied by the connected Godot addon during registration.
+The custom relay runtime was removed. Do not bring it back by default.
 
-## Current limitations / not yet implemented
+## Production addon implemented
 
-- No public relay exists yet in this repository.
-- No end-to-end WSS integration test yet.
-- Only two minimal test commands exist.
-- Upstream Godot command modules have not yet been copied/migrated.
-- API key is currently stored in editor-local EditorSettings; release security storage needs review.
-- No cancellation/request timeout protocol yet.
+Key files:
 
-## Next exact task
+```text
+addons/godot_mcp_chatgpt/plugin.cfg
+addons/godot_mcp_chatgpt/plugin.gd
+addons/godot_mcp_chatgpt/ui/connection_dock.gd
+addons/godot_mcp_chatgpt/web/secure_tunnel_client.gd
+addons/godot_mcp_chatgpt/core/command_registry.gd
+addons/godot_mcp_chatgpt/core/builtin_commands.gd
+```
 
-1. Build a small fake WSS relay test harness.
-2. Start the addon against it using `GODOT_MCP_CHATGPT_RELAY_URL`.
-3. Verify full frame flow:
-   - register
-   - registered
-   - tool_call `godot.get_status`
-   - tool_result
-4. Then migrate/reimplement scene and node commands from the upstream toolkit.
-5. Add attribution files when the first upstream source is copied.
+The dock accepts only:
 
-## MCPcoding continuation notes
+- OpenAI Tunnel ID
+- Runtime API Key
 
-Repository URL for coding workspace:
+The production client defaults to:
+
+```text
+https://api.openai.com
+```
+
+A local control-plane override exists only through:
+
+```text
+GODOT_MCP_CHATGPT_CONTROL_PLANE_URL
+```
+
+for automated protocol testing.
+
+## Secure Tunnel protocol behavior implemented
+
+- bearer auth on every request;
+- `X-Tunnel-Client-Name`;
+- `X-Tunnel-Client-Version`;
+- `X-Tunnel-Client-Wire-Protocol-Version: 2026-08-25`;
+- per-process `X-Tunnel-Client-Instance-Id`;
+- `X-Tunnel-MCP-Server-Info` main channel with `proc_affinity: true`;
+- tunnel metadata check;
+- long polling `/poll`;
+- posting `/response`;
+- `X-Tunnel-Shard-Token` correlation;
+- sequential command processing;
+- bounded exponential retry with jitter;
+- 401/403 -> authentication failure state;
+- 404 tunnel-not-found handling;
+- `response_timeout` parsing and expired-command drop;
+- session termination ACK;
+- notification ACK.
+
+## MCP behavior implemented in-process
+
+- `initialize`;
+- `ping`;
+- `tools/list`;
+- `tools/call`;
+- JSON-RPC method-not-found / invalid-request handling;
+- no-ID notification handling.
+
+## Current tools
+
+13 tools are exposed and have been exercised through the tunnel protocol:
+
+```text
+godot.get_status
+project.get_info
+scene.get_tree
+scene.create
+scene.save
+node.create
+node.set_property
+node.delete
+script.read
+script.write
+script.attach
+editor.run_project
+editor.stop
+```
+
+Notable safety behavior:
+
+- `scene.create` requires explicit `overwrite: true` when target exists;
+- script/file paths are constrained to `res://` and reject `..` traversal;
+- scene root deletion is denied;
+- destructive annotations are emitted to MCP.
+
+## Bugs found by real Godot testing
+
+### Plugin silently not instantiating
+
+Root cause: `plugin.cfg` had a UTF-8 BOM from an early PowerShell write. Godot scanned/loaded scripts but did not instantiate the EditorPlugin correctly.
+
+Fix: addon/config files are UTF-8 without BOM.
+
+### False-positive script validation
+
+`godot --editor --quit` did not force compile every plugin dependency. A dedicated `.local-test/check_scripts.gd` loader now forces all addon scripts to compile under Godot 4.7.2.
+
+This caught and fixed:
+
+- invalid two-argument `EditorSettings.get_setting()` usage;
+- a strict type inference issue in the dock.
+
+### Godot scanning Node dependencies
+
+Root cause: repository development project saw `server/node_modules` as project resources.
+
+Fix: `server/.gdignore`. Upstream audit clones are also hidden from Godot scanning locally.
+
+### Recreating an already-open scene
+
+Root cause: writing a scene file then calling `open_scene_from_path()` on the same already-open path did not refresh the in-memory editor tab. Repeated smoke tests produced duplicate/generated node names.
+
+Fix:
+
+- default deny overwrite;
+- explicit `overwrite: true`;
+- close the open target scene tab on Godot 4.5+;
+- reopen the freshly written scene deferred by one editor frame.
+
+Repeated real-Godot smoke runs then passed.
+
+## Automated validation completed
+
+### Godot script compilation
+
+Godot 4.7.2 successfully loads:
+
+```text
+plugin.gd
+command_registry.gd
+builtin_commands.gd
+connection_dock.gd
+secure_tunnel_client.gd
+```
+
+with no parse/compile errors.
+
+### Test-harness build/unit test
+
+```text
+cd server
+npm run build
+npm test
+```
+
+Passes contract checks for:
+
+- authorization;
+- required tunnel client headers;
+- server-info declaration;
+- command queueing;
+- request/shard correlation;
+- response delivery.
+
+### Real Godot GUI + Secure Tunnel protocol smoke
+
+A real Godot 4.7.2 GUI editor connected to the local OpenAI Tunnel protocol simulator and successfully executed:
+
+1. tunnel metadata validation;
+2. long poll;
+3. MCP initialize;
+4. initialized notification ACK;
+5. tools/list;
+6. godot.get_status;
+7. scene.create;
+8. node.create;
+9. node.set_property Vector3;
+10. script.write;
+11. script.read;
+12. script.attach;
+13. scene.save;
+14. scene.get_tree readback;
+15. tunnel session termination;
+16. `response_timeout: 0s` drop with no late response.
+
+Latest smoke result:
+
+```json
+{
+  "ok": true,
+  "transport": "openai-secure-mcp-tunnel-protocol",
+  "godot": "4.7.2-stable (official)",
+  "tools": 13,
+  "scene": "res://.mcp-smoke/secure-generated.tscn",
+  "player": {
+    "__godot_type": "Vector3",
+    "x": 4,
+    "y": 5,
+    "z": 6
+  }
+}
+```
+
+## Development-only test harness
+
+`server/` now contains only a local Secure Tunnel control-plane simulator and tests. It is not production runtime code.
+
+## Next exact task — requires user operation
+
+Perform the first real OpenAI control-plane test.
+
+The user must supply/use their own real credentials through the UI; do not request that they paste the Runtime API Key into chat.
+
+Steps:
+
+1. Create/select a tunnel at OpenAI Platform Tunnels management.
+2. Create a restricted Runtime API Key with Tunnels Read + Use.
+3. Open the test Godot project/plugin.
+4. Paste Tunnel ID + Runtime API Key into the Godot dock locally and press Connect.
+5. Confirm dock becomes `connected`.
+6. Open ChatGPT connector settings.
+7. Choose `Connection: Tunnel` and select/paste the same tunnel ID.
+8. Let ChatGPT discover the tools.
+9. First call `godot.get_status`.
+10. Then create a disposable scene and node to verify a visible write action.
+
+See `docs/SECURE_TUNNEL.md`.
+
+## After real test passes
+
+- remove any protocol incompatibility found against the live service;
+- expand high-value Godot tools;
+- improve secret storage;
+- package an installable addon release;
+- add compatibility tests for additional Godot 4.x versions.
+
+## MCPcoding continuation
+
+Repository:
 
 ```text
 https://github.com/AAAYNMMM/godot-mcp-chatgpt
 ```
 
-Target ref:
+Branch:
 
 ```text
 main
 ```
 
-Do not work in `DragonSouls` for this project.
+Do not work in DragonSouls for this project.
 
-If `gh` inside MCPcoding does not see the user's normal Windows login, the user's global GitHub CLI config was previously found at:
-
-```text
-C:\Users\11830\AppData\Roaming\GitHub CLI
-```
-
-The temporary upstream audit clones live under `.upstream/` and are intentionally gitignored.
+Temporary upstream audit clones live in `.upstream/` and are gitignored.

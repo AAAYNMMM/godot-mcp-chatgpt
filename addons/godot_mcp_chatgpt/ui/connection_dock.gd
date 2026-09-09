@@ -1,4 +1,4 @@
-﻿@tool
+@tool
 extends VBoxContainer
 
 var _client: Node
@@ -29,7 +29,7 @@ func _build_ui() -> void:
 	add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.text = "Web MCP connection"
+	subtitle.text = "OpenAI Secure MCP Tunnel"
 	subtitle.modulate.a = 0.7
 	add_child(subtitle)
 
@@ -39,7 +39,7 @@ func _build_ui() -> void:
 	tunnel_label.text = "Tunnel ID"
 	add_child(tunnel_label)
 	_tunnel_edit = LineEdit.new()
-	_tunnel_edit.placeholder_text = "godot_xxxxxxxx"
+	_tunnel_edit.placeholder_text = "tunnel_..."
 	_tunnel_edit.clear_button_enabled = true
 	add_child(_tunnel_edit)
 
@@ -47,7 +47,7 @@ func _build_ui() -> void:
 	key_label.text = "API Key"
 	add_child(key_label)
 	_api_key_edit = LineEdit.new()
-	_api_key_edit.placeholder_text = "gdmcp_..."
+	_api_key_edit.placeholder_text = "Runtime API key"
 	_api_key_edit.secret = true
 	_api_key_edit.secret_character = "•"
 	add_child(_api_key_edit)
@@ -67,7 +67,7 @@ func _build_ui() -> void:
 	add_child(_log_label)
 
 	var hint := Label.new()
-	hint.text = "Only Tunnel ID and API Key are required. The relay endpoint is provided by the plugin build."
+	hint.text = "Only the OpenAI Tunnel ID and Runtime API Key are required."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.modulate.a = 0.6
 	add_child(hint)
@@ -82,11 +82,11 @@ func _refresh_from_client() -> void:
 func _on_connect_pressed() -> void:
 	if _client == null:
 		return
-	var state := _client.get_state()
+	var state: String = str(_client.get_state())
 	if state in ["connecting", "authenticating", "connected", "reconnecting"]:
-		_client.disconnect_from_relay()
+		_client.disconnect_from_tunnel()
 		return
-	_client.connect_to_relay(_tunnel_edit.text, _api_key_edit.text)
+	_client.connect_to_tunnel(_tunnel_edit.text, _api_key_edit.text)
 
 func _on_state_changed(state: String) -> void:
 	if _status_label == null:
