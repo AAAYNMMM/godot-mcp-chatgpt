@@ -265,3 +265,152 @@ Documentation policy for future work:
 - Do not modify CWapi; it was inspected read-only to understand the known-good tunnel integration pattern.
 - The user's global GitHub CLI authentication is under their Windows user profile and can be reused if MCPcoding does not inherit it automatically.
 - Godot development target is currently Windows + Godot 4.7.2 Standard + GDScript.
+## 0.4.0 full-capability development — active working tree
+
+Status updated: 2026-09-09.
+
+Active tracker: [`DEVELOPMENT_0.4.md`](DEVELOPMENT_0.4.md)
+
+Development process: [`DEVELOPMENT_WORKFLOW.md`](DEVELOPMENT_WORKFLOW.md)
+
+Public validated baseline remains **0.3.0**. The 0.4.0 capability work below exists in the durable working tree and has **not** been promoted to the public Tool Reference or pushed as a validated release baseline.
+
+### Task: Windows Credential Manager persistence
+
+Status: **targeted validation passed; integration/restart validation pending**.
+
+Files / module:
+
+```text
+tools/credential-helper/
+addons/godot_mcp_chatgpt/bin/windows/godot-mcp-credential.exe
+addons/godot_mcp_chatgpt/web/credential_store.gd
+addons/godot_mcp_chatgpt/web/tunnel_client_runner.gd
+addons/godot_mcp_chatgpt/ui/connection_dock.gd
+```
+
+What changed:
+
+- inspected CWapi read-only and confirmed its Runtime API Key is stored as a Windows Credential Manager Generic Credential;
+- implemented the same Windows storage mechanism under an independent `godot-mcp-chatgpt/...` credential target;
+- kept the tunnel profile on `api_key: env:CONTROL_PLANE_API_KEY`;
+- added saved-key presence/read/write/delete plumbing and a Forget Saved Credentials flow;
+- prepared automatic reconnect from saved Tunnel ID + Credential Manager key.
+
+Validation actually run:
+
+- isolated helper `write -> present -> read -> delete -> present` round trip;
+- read value matched the test secret;
+- test credential was removed after the test;
+- Godot 4.7.2 loaded `credential_store.gd` and the modified credential-related addon scripts successfully.
+
+Result: targeted credential storage behavior passed.
+
+Known limitation / blocker: Godot process restart -> automatic reconnect and Forget -> restart behavior have not yet been production-smoke tested.
+
+### Task: Project / ProjectSettings / InputMap capability module
+
+Status: **targeted validation passed**.
+
+Files / module:
+
+```text
+addons/godot_mcp_chatgpt/core/command_utils.gd
+addons/godot_mcp_chatgpt/commands/project_commands.gd
+```
+
+What changed: added project inspection/discovery/search, project settings, autoload/plugin discovery, project-scoped file operations and InputMap operations.
+
+Validation actually run: Godot 4.7.2 loaded the shared command utility and Project command module without parse/compile errors.
+
+Result: module compilation passed. Production registry integration remains pending.
+
+### Task: Scene / Node capability module
+
+Status: **targeted validation passed**.
+
+File / module:
+
+```text
+addons/godot_mcp_chatgpt/commands/scene_node_commands.gd
+```
+
+What changed: added scene lifecycle/inspection and broad Node inspection/mutation, group, signal and metadata operations.
+
+Validation actually run: after resolving Godot 4.7 strict typing/scope issues, Godot 4.7.2 loaded the final module without parse/compile errors.
+
+Result: module compilation passed. Production registry integration and GUI behavior smoke remain pending.
+
+### Task: Script / Resource capability module
+
+Status: **targeted validation passed**.
+
+File / module:
+
+```text
+addons/godot_mcp_chatgpt/commands/script_resource_commands.gd
+```
+
+What changed: added script introspection/validation/editor state helpers and Resource inspection/mutation/create/save/duplicate/dependency/method operations.
+
+Validation actually run: Godot 4.7.2 loaded the rewritten module without parse/compile errors.
+
+Result: module compilation passed. Representative real Resource mutations still require integration smoke.
+
+### Task: ClassDB self-inspection module
+
+Status: **targeted validation passed**.
+
+File / module:
+
+```text
+addons/godot_mcp_chatgpt/commands/classdb_commands.gd
+```
+
+What changed: added current-engine ClassDB search/inspect/properties/methods/signals/enums/constants/inheritance/can-instantiate capabilities.
+
+Validation actually run: Godot 4.7.2 loaded the module without parse/compile errors after correcting reserved-identifier usage.
+
+Result: module compilation passed.
+
+### Task: Development documentation system
+
+Status: **complete**.
+
+Files / module:
+
+```text
+docs/DEVELOPMENT_WORKFLOW.md
+docs/DEVELOPMENT_WORKFLOW.zh-CN.md
+docs/DEVELOPMENT_0.4.md
+docs/DEVELOPMENT_0.4.zh-CN.md
+docs/DEVELOPMENT_PLAN.md
+docs/DEVELOPMENT_PLAN.zh-CN.md
+docs/PROGRESS.md
+docs/PROGRESS.zh-CN.md
+CONTRIBUTING.md
+CONTRIBUTING.zh-CN.md
+```
+
+What changed:
+
+- established explicit source-of-truth roles for public docs, roadmap, active-version tracking and handoff progress;
+- made progress documentation part of the definition of done;
+- required a Progress + active-version update after every logically complete task and before starting the next task;
+- standardized task status vocabulary and validation evidence;
+- added a dedicated 0.4.0 full-capability checklist and release gates;
+- recorded current uncommitted 0.4.0 work honestly without promoting it into the public 0.3.0 Tool Reference.
+
+Validation actually run: `PAIR_CHECK=PASS`, `LINK_CHECK=PASS`, `LITERAL_NEWLINE_CHECK=PASS`, `DOC_BOM_CHECK=PASS`, and `DOC_DIFF_CHECK=PASS`.
+
+Result: development bookkeeping now has an explicit per-task update rule.
+
+## 0.4.0 current blocker
+
+No architecture blocker is known. Major remaining implementation areas are Editor state/control, captured diagnostics, Debugger/Runtime bridge and batch operations. The new modules are not yet registered into the production command registry.
+
+A WIP repository-hygiene issue is explicitly tracked: `plugin.cfg` currently contains an accidental UTF-8 BOM from intermediate editing. It has not been pushed and must be removed before the full-addon/release gates.
+
+## 0.4.0 exact next task
+
+**Implement the Editor state/control module and run its Godot 4.7.2 targeted compilation/behavior validation. Immediately update this Progress document and the 0.4.0 tracker after that task passes, before starting Runtime/Debugger work.**

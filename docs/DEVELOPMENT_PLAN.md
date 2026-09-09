@@ -154,8 +154,10 @@ Acceptance flow:
 
 Real connector creation succeeded with the production 0.3.0 architecture. Future failures should be debugged against this known-good baseline before changing transport architecture.
 
-### Phase 6 — Tool expansion
-Status: **next** after the successful real connector validation.
+### Phase 6 — Tool expansion / 0.4.0 full-capability build
+Status: **in progress**.
+
+Detailed active tracker: [`docs/DEVELOPMENT_0.4.md`](DEVELOPMENT_0.4.md).
 
 Priority order:
 
@@ -203,11 +205,13 @@ Priority order:
 
 ## 8. Continuation rule
 
-Every meaningful development window must update `docs/PROGRESS.md` with:
+Every logically complete development task must update `docs/PROGRESS.md` **before the next task begins**. A task is not complete until implementation, applicable validation, and progress-document update are all done.
+
+Follow [`docs/DEVELOPMENT_WORKFLOW.md`](DEVELOPMENT_WORKFLOW.md). Each progress update must record:
 
 - completed changes;
 - tests actually run;
 - current blocker, if any;
 - exact next task.
 
-A new ChatGPT window should read `README.md`, `docs/ARCHITECTURE.md`, and `docs/PROGRESS.md` before making architecture changes.
+A new ChatGPT window should read `docs/ARCHITECTURE.md`, this plan, the active version tracker, and `docs/PROGRESS.md` before making architecture changes.

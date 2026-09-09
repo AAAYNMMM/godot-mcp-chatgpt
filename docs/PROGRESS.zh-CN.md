@@ -250,3 +250,152 @@ Secure Tunnel 设置
 - 不修改 CWapi；之前只读检查它来确认可用 Tunnel 架构；
 - Godot 当前开发目标：Windows + Godot 4.7.2 Standard + GDScript；
 - 每个有实质进展的新窗口都要同步更新中英文进度文档。
+## 0.4.0 完全体开发 — 当前工作区
+
+状态更新时间：2026-09-09。
+
+当前追踪：[`DEVELOPMENT_0.4.zh-CN.md`](DEVELOPMENT_0.4.zh-CN.md)
+
+开发流程：[`DEVELOPMENT_WORKFLOW.zh-CN.md`](DEVELOPMENT_WORKFLOW.zh-CN.md)
+
+公开已验证基线仍然是 **0.3.0**。以下 0.4.0 能力存在于持久工作区，**尚未**升级到公开 Tool Reference，也没有作为已验证 release 基线推送。
+
+### Task：Windows Credential Manager 持久化
+
+状态：**targeted validation passed；集成/重启验证待完成**。
+
+文件 / 模块：
+
+```text
+tools/credential-helper/
+addons/godot_mcp_chatgpt/bin/windows/godot-mcp-credential.exe
+addons/godot_mcp_chatgpt/web/credential_store.gd
+addons/godot_mcp_chatgpt/web/tunnel_client_runner.gd
+addons/godot_mcp_chatgpt/ui/connection_dock.gd
+```
+
+完成内容：
+
+- 只读检查 CWapi，确认 Runtime API Key 使用 Windows Credential Manager Generic Credential；
+- 使用相同 Windows 存储机制，但采用独立 `godot-mcp-chatgpt/...` Credential Target；
+- tunnel profile 继续只写 `api_key: env:CONTROL_PLANE_API_KEY`；
+- 增加保存凭据存在/读/写/删除和 Forget Saved Credentials；
+- 准备通过保存的 Tunnel ID + Credential Manager API Key 自动重连。
+
+实际验证：
+
+- helper 隔离 `write -> present -> read -> delete -> present` round trip；
+- 读取值和测试 secret 一致；
+- 测试 Credential 验证后已删除；
+- Godot 4.7.2 成功加载 `credential_store.gd` 和修改后的凭据相关插件脚本。
+
+结果：凭据存储专项验证通过。
+
+已知限制 / blocker：尚未执行“关闭 Godot -> 重启 -> 自动连接”和“Forget -> 重启 -> 要求重新输入”的生产 smoke。
+
+### Task：Project / ProjectSettings / InputMap 能力模块
+
+状态：**targeted validation passed**。
+
+文件 / 模块：
+
+```text
+addons/godot_mcp_chatgpt/core/command_utils.gd
+addons/godot_mcp_chatgpt/commands/project_commands.gd
+```
+
+完成内容：项目总览/发现/搜索、ProjectSettings、Autoload/Plugin 发现、项目范围文件操作和 InputMap 操作。
+
+实际验证：Godot 4.7.2 加载公共 command utility 和 Project 命令模块，无 parse/compile error。
+
+结果：模块编译通过。仍待生产 registry 集成。
+
+### Task：Scene / Node 能力模块
+
+状态：**targeted validation passed**。
+
+文件 / 模块：
+
+```text
+addons/godot_mcp_chatgpt/commands/scene_node_commands.gd
+```
+
+完成内容：Scene 生命周期/聚合读取，以及更完整的 Node inspect/mutation、Group、Signal、Metadata 操作。
+
+实际验证：修正 Godot 4.7 严格类型/作用域问题后，Godot 4.7.2 成功加载最终模块，无 parse/compile error。
+
+结果：模块编译通过。仍待生产 registry 集成和 GUI 行为 smoke。
+
+### Task：Script / Resource 能力模块
+
+状态：**targeted validation passed**。
+
+文件 / 模块：
+
+```text
+addons/godot_mcp_chatgpt/commands/script_resource_commands.gd
+```
+
+完成内容：Script 自省/验证/编辑器状态辅助，以及 Resource inspect/get/set/create/save/duplicate/dependencies/call。
+
+实际验证：Godot 4.7.2 成功加载重写后的模块，无 parse/compile error。
+
+结果：模块编译通过。仍需代表性真实 Resource 修改集成 smoke。
+
+### Task：ClassDB 自省模块
+
+状态：**targeted validation passed**。
+
+文件 / 模块：
+
+```text
+addons/godot_mcp_chatgpt/commands/classdb_commands.gd
+```
+
+完成内容：当前 Godot 引擎 ClassDB search/inspect/properties/methods/signals/enums/constants/inheritance/can-instantiate。
+
+实际验证：修正保留标识符问题后，Godot 4.7.2 成功加载模块，无 parse/compile error。
+
+结果：模块编译通过。
+
+### Task：开发文档体系完善
+
+状态：**complete**。
+
+文件 / 模块：
+
+```text
+docs/DEVELOPMENT_WORKFLOW.md
+docs/DEVELOPMENT_WORKFLOW.zh-CN.md
+docs/DEVELOPMENT_0.4.md
+docs/DEVELOPMENT_0.4.zh-CN.md
+docs/DEVELOPMENT_PLAN.md
+docs/DEVELOPMENT_PLAN.zh-CN.md
+docs/PROGRESS.md
+docs/PROGRESS.zh-CN.md
+CONTRIBUTING.md
+CONTRIBUTING.zh-CN.md
+```
+
+完成内容：
+
+- 明确 README、Tool Reference、Changelog、Development Plan、版本追踪和 Progress 各自的事实边界；
+- 将进度文档写入 Definition of Done；
+- 强制每完成一个逻辑独立任务后，先更新 Progress + 当前版本 tracker，再进入下一项；
+- 统一开发状态词和验证证据要求；
+- 新增 0.4.0 完全体 checklist 和 release gates；
+- 真实登记当前未提交 0.4.0 工作区状态，不提前污染公开 0.3.0 Tool Reference。
+
+实际验证：`PAIR_CHECK=PASS`、`LINK_CHECK=PASS`、`LITERAL_NEWLINE_CHECK=PASS`、`DOC_BOM_CHECK=PASS`、`DOC_DIFF_CHECK=PASS`。
+
+结果：开发进度管理已经形成强制逐任务更新规则。
+
+## 0.4.0 当前 blocker
+
+没有已知架构 blocker。主要剩余开发是 Editor 状态/控制、捕获诊断、Debugger/Runtime Bridge 和 Batch。新增模块尚未注册进生产 command registry。
+
+已登记一个 WIP 仓库卫生问题：`plugin.cfg` 在中间编辑时意外带入 UTF-8 BOM。它尚未推送，完整插件/release gate 前必须清理。
+
+## 0.4.0 精确下一项任务
+
+**实现 Editor 状态/控制模块，并执行 Godot 4.7.2 专项编译/行为验证。该任务通过后必须立即更新本 Progress 和 0.4.0 tracker，然后才能开始 Runtime/Debugger 工作。**

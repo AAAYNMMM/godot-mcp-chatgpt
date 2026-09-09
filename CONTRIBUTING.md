@@ -111,6 +111,21 @@ Keep commands, identifiers and exact error strings unchanged when translating.
 
 Do not add decorative screenshots, badges, GIFs or other images unless the repository policy changes explicitly.
 
+## Development progress bookkeeping
+
+For repository development work, documentation is part of the definition of done.
+
+After every logically complete task:
+
+1. run the relevant targeted validation;
+2. update the active `docs/DEVELOPMENT_<version>.md` tracker;
+3. update `docs/PROGRESS.md` with the actual result and exact next task;
+4. synchronize the Simplified Chinese counterpart;
+5. only then move to the next task.
+
+Code written without the required validation/progress update is still work in progress.
+
+See [Development Workflow](docs/DEVELOPMENT_WORKFLOW.md).
 ## Security
 
 Never commit:

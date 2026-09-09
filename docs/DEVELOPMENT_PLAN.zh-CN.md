@@ -118,8 +118,10 @@ editor.stop
 
 真实用户 Tunnel ID / Runtime API Key 已成功创建 ChatGPT Tunnel 连接器。
 
-### Phase 6 — 工具扩展
-状态：**下一阶段**。
+### Phase 6 — 工具扩展 / 0.4.0 完全体开发
+状态：**进行中**。
+
+当前详细追踪：[`docs/DEVELOPMENT_0.4.zh-CN.md`](DEVELOPMENT_0.4.zh-CN.md)。
 
 优先级：
 
@@ -167,11 +169,13 @@ editor.stop
 
 ## 8. 连续开发规则
 
-每个有实质进展的开发窗口都更新 `docs/PROGRESS.md` / `docs/PROGRESS.zh-CN.md`：
+**每完成一个逻辑独立开发任务后，都必须先更新 `docs/PROGRESS.md` / `docs/PROGRESS.zh-CN.md`，再开始下一项任务。** 只有“实现完成 + 适用验证完成 + 进度文档更新”都完成后，任务才算完成。
+
+详细规则见 [`docs/DEVELOPMENT_WORKFLOW.zh-CN.md`](DEVELOPMENT_WORKFLOW.zh-CN.md)。每次更新至少记录：
 
 - 完成内容；
 - 实际跑过的测试；
 - 当前阻塞；
 - 下一步。
 
-新窗口在改架构前，必须先读 README、ARCHITECTURE 和 PROGRESS。
+新窗口在改架构前，必须先读 ARCHITECTURE、本计划、当前版本追踪文档和 PROGRESS。
