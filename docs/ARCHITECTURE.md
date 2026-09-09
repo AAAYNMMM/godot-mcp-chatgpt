@@ -1,5 +1,7 @@
 # Architecture
 
+English | [简体中文](ARCHITECTURE.zh-CN.md)
+
 ## Locked production topology
 
 As of version `0.3.0`, the production architecture is:
@@ -150,7 +152,7 @@ control-plane stub
  -> 13 real tools
 ```
 
-This path passed before the 0.3.0 release candidate was prepared.
+This path passed before the 0.3.0 release candidate was prepared. The same 0.3.0 architecture then completed a real OpenAI Tunnel + ChatGPT connector creation successfully on 2026-09-09.
 
 ## Non-goals
 

@@ -1,8 +1,22 @@
-# Real OpenAI Secure MCP Tunnel Test
+# OpenAI Secure MCP Tunnel Setup
 
-This is the next test that requires the user's own OpenAI Tunnel ID / Runtime API Key and ChatGPT connector UI.
+English | [简体中文](SECURE_TUNNEL.zh-CN.md)
 
-Version `0.3.0` no longer implements the OpenAI tunnel protocol directly in GDScript. The addon launches the bundled official OpenAI `tunnel-client.exe`, which forwards the tunnel to a private loopback Streamable HTTP MCP server inside Godot.
+Version `0.3.0` uses the bundled official OpenAI `tunnel-client.exe` and a loopback Streamable HTTP MCP server hosted by Godot.
+
+The real production connector path was successfully validated on **2026-09-09**.
+
+## Production path
+
+```text
+ChatGPT
+ -> OpenAI Secure MCP Tunnel
+ -> bundled official tunnel-client.exe
+ -> Godot loopback Streamable HTTP MCP
+ -> Godot editor tools
+```
+
+CWapi is not part of the runtime path.
 
 ## What the user needs
 
@@ -13,11 +27,17 @@ Tunnel ID
 Runtime API Key
 ```
 
-Do not paste the Runtime API Key into chat or commit it to Git.
+Never paste the Runtime API Key into chat, Git, screenshots or public issues.
 
-## 1. Open the Godot panel
+## 1. Enable the addon
 
-Enable **Godot MCP ChatGPT** under Godot plugins if necessary.
+In Godot:
+
+```text
+Project -> Project Settings -> Plugins
+```
+
+Enable **Godot MCP ChatGPT**.
 
 Open the bottom panel:
 
@@ -25,68 +45,47 @@ Open the bottom panel:
 MCP ChatGPT
 ```
 
-It contains Tunnel ID, Runtime API Key, Connect/Disconnect, status, and one short log line.
+## 2. Enter the tunnel credentials
 
-## 2. Enter the real credentials
+Enter the same Tunnel ID that you will later select in ChatGPT.
 
-Enter the same Tunnel ID that will be selected in ChatGPT.
-
-Enter a dedicated restricted Runtime API Key with the tunnel permissions required by the current OpenAI setup.
+Enter a dedicated restricted Runtime API Key with the tunnel permissions required by your OpenAI workspace.
 
 Press **Connect**.
 
-Expected successful startup states:
+Expected state transition:
 
 ```text
 starting
 connected
 ```
 
-In version 0.3.0, `connected` means the official tunnel-client child process started and remains alive. It does not by itself prove that ChatGPT has already discovered the tools.
+In 0.3.0, `connected` means the local MCP server is running and the official tunnel-client child process remains alive. The final confirmation is successful tool discovery from ChatGPT.
 
-Potential local failure states include:
-
-```text
-credentials_required
-runtime_missing
-registry_unavailable
-local_mcp_error
-profile_error
-runtime_error
-```
-
-The Runtime API Key is not persisted by the addon.
+The Runtime API Key is intentionally not persisted by the addon.
 
 ## 3. Create the ChatGPT connector
 
-In the ChatGPT/workspace UI that supports custom MCP over Secure Tunnel:
+In ChatGPT connector settings:
 
-1. create/configure a connector;
+1. create a connector;
 2. choose **Connection: Tunnel**;
 3. select or paste the same Tunnel ID;
-4. let ChatGPT discover the MCP server/tools while Godot remains open.
+4. keep Godot open while the connector is created and used.
 
-The expected production path is:
+This exact connector creation path succeeded in the real 0.3.0 validation.
 
-```text
-ChatGPT
- -> OpenAI Secure MCP Tunnel
- -> bundled official tunnel-client.exe
- -> Godot loopback Streamable HTTP MCP
- -> Godot editor tools
-```
+## 4. Verify tool discovery
 
-No CWapi process is part of this path.
+The current build should expose 13 tools.
 
-## 4. First read test
-
-Use the connector to call:
+Start with:
 
 ```text
 godot.get_status
 ```
 
-Expected data includes:
+Expected result includes:
 
 ```text
 godot_version: 4.7.2...
@@ -94,13 +93,15 @@ editor: true
 project_name: ...
 ```
 
-ChatGPT should discover 13 tools in the current build.
+Then try:
 
-## 5. First visible write test
+```text
+project.get_info
+```
 
-Use a disposable test location, not an important game scene.
+## 5. Verify a visible write
 
-Suggested calls:
+Use a disposable path:
 
 ```text
 scene.create
@@ -121,30 +122,78 @@ node.set_property
 scene.save
 ```
 
-Verify the scene and node visibly appear in the Godot editor.
+Verify directly in Godot that the scene and node appear.
 
-## 6. What to report if creation still fails
+## What the addon does automatically
 
-Do **not** send the Runtime API Key.
+When you press Connect, the addon:
+
+1. starts a private loopback MCP server on `127.0.0.1`;
+2. selects a random high port;
+3. generates a random MCP URL path;
+4. generates a tunnel-client profile;
+5. writes only `api_key: env:CONTROL_PLANE_API_KEY` into that profile;
+6. starts the bundled official tunnel-client;
+7. removes the key from the parent Godot environment after child startup;
+8. monitors the tunnel process and cleans up on disconnect.
+
+## Generated profile shape
+
+Conceptually:
+
+```yaml
+config_version: 1
+control_plane:
+  tunnel_id: <tunnel id>
+  api_key: env:CONTROL_PLANE_API_KEY
+health:
+  listen_addr: 127.0.0.1:0
+admin_ui:
+  open_browser: false
+mcp:
+  server_urls:
+    - channel: main
+      url: http://127.0.0.1:<random>/mcp/<random>
+```
+
+The plaintext Runtime API Key must not appear in the profile.
+
+## Local failure states
+
+The panel can surface states such as:
+
+```text
+credentials_required
+runtime_missing
+registry_unavailable
+local_mcp_error
+profile_error
+runtime_error
+```
+
+If the panel reaches `connected` but ChatGPT cannot discover tools, use [FAQ / Troubleshooting](FAQ.md).
+
+## What to include in a bug report
+
+Do not send the Runtime API Key.
 
 Useful information:
 
-- Godot panel state;
-- the panel's last non-secret log message;
-- exact ChatGPT connector error text/screenshot;
-- whether the official `tunnel-client.exe` process is still running;
+- Godot version;
+- plugin version/commit;
+- panel state;
+- last non-secret panel log message;
+- whether ChatGPT connector creation succeeded;
+- discovered tool count;
+- exact non-secret error text;
 - non-secret Godot Output lines beginning with `[GodotMCPChatGPT]`.
 
-If connector creation fails while the tunnel-client stays alive, the next debugging step is to expose/read the official tunnel-client readiness/health details rather than replacing the architecture again.
+## Security checks
 
-## 7. Security behavior to verify
+A healthy setup should satisfy:
 
-The generated profile should contain:
-
-```yaml
-api_key: env:CONTROL_PLANE_API_KEY
-```
-
-It must not contain the plaintext Runtime API Key.
-
-The addon stores the Tunnel ID in Godot EditorSettings but does not store the Runtime API Key.
+- local MCP address is `127.0.0.1`;
+- local port/path are generated per run;
+- profile contains `env:CONTROL_PLANE_API_KEY`, not the key;
+- only Tunnel ID is persisted by the addon;
+- Runtime API Key must be entered again after restarting Godot.

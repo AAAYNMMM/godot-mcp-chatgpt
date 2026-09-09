@@ -1,5 +1,7 @@
 # Development Plan
 
+English | [简体中文](DEVELOPMENT_PLAN.zh-CN.md)
+
 ## 1. Product goal
 
 Build a small Godot 4.x editor addon that lets Web ChatGPT control the Godot editor through OpenAI Secure MCP Tunnel while the user only supplies:
@@ -138,7 +140,7 @@ Acceptance already passed locally:
 - session termination.
 
 ### Phase 5 — Real ChatGPT connector test
-Status: next; requires user-operated OpenAI credentials/UI.
+Status: **complete** on 2026-09-09.
 
 Acceptance flow:
 
@@ -150,10 +152,10 @@ Acceptance flow:
 6. ChatGPT creates/modifies a disposable test scene;
 7. the result appears visibly in Godot.
 
-If connector creation still fails, inspect the official tunnel-client health/logging path before changing MCP/tunnel architecture again.
+Real connector creation succeeded with the production 0.3.0 architecture. Future failures should be debugged against this known-good baseline before changing transport architecture.
 
 ### Phase 6 — Tool expansion
-After real connector success.
+Status: **next** after the successful real connector validation.
 
 Priority order:
 

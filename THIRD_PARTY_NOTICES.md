@@ -1,5 +1,7 @@
 # Third-Party Notices
 
+English | [简体中文](THIRD_PARTY_NOTICES.zh-CN.md)
+
 This project uses or was designed with reference to the following open-source projects.
 
 ## OpenAI Secure MCP Tunnel client

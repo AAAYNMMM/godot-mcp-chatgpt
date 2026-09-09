@@ -1,5 +1,7 @@
 # Development Progress / Handoff
 
+English | [简体中文](PROGRESS.zh-CN.md)
+
 Last updated: 2026-09-09
 
 Repository: `AAAYNMMM/godot-mcp-chatgpt`
@@ -196,26 +198,67 @@ PRODUCTION_PLUGIN_SMOKE=PASS
 - Notifications sent through the official tunnel path preserve the local MCP HTTP acknowledgement rather than the old direct-wire test assumptions.
 - The bundled 0.0.10 tunnel-client predates some newer tunnel client headers. The development control-plane stub must remain backward compatible rather than requiring only the newest wire headers.
 
+## Real ChatGPT connector validation
+
+**Status: SUCCESS — 2026-09-09.**
+
+The user completed the real production setup with their own OpenAI Tunnel ID / Runtime API Key and reported that the ChatGPT connector was **created successfully**.
+
+This validates the architecture beyond local simulation:
+
+```text
+Godot 4.7.2
+ -> bundled official OpenAI tunnel-client
+ -> OpenAI Secure MCP Tunnel
+ -> ChatGPT connector creation
+ -> success
+```
+
+This is now the known-good baseline. Do not revert to the old direct GDScript tunnel implementation when debugging future issues.
+
+The next product task is no longer connector creation. It is to exercise real tool calls from ChatGPT, then expand the high-value Godot tool surface and release packaging.
 ## Current blocker
 
 No automated/local blocker remains for the 0.3.0 architecture.
 
-The next meaningful test requires the user's real OpenAI Tunnel ID / Runtime API Key and ChatGPT connector UI.
+No connector-creation blocker remains. Real ChatGPT connector creation succeeded on 2026-09-09.
 
 ## Exact next task
 
-After the 0.3.0 commit is pushed:
+1. exercise the real connector with `godot.get_status`;
+2. execute a disposable visible scene/node write through the real ChatGPT connector;
+3. record any real-world tool ergonomics issues;
+4. begin Phase 6 tool expansion, starting with property inspection and scene open/close;
+5. prepare a clean Windows addon release package and first public-facing release notes.
 
-1. reopen the Godot development project;
-2. user enters the real Runtime API Key again (it is intentionally not persisted);
-3. confirm `Status: connected` / official tunnel-client running;
-4. create the ChatGPT connector with the same Tunnel ID;
-5. verify connector creation succeeds;
-6. from ChatGPT call `godot.get_status`;
-7. then create a disposable visible scene/node through the real connector.
+## Bilingual documentation refresh
 
-If connector creation still fails, inspect the official tunnel-client health/readiness/log output before changing architecture again.
+Completed after the real connector validation on 2026-09-09.
 
+User-facing documentation was reorganized around first-time adoption rather than internal development history. The repository now provides paired English / Simplified Chinese documentation for:
+
+```text
+README
+Quick Start
+Practical Examples
+Tool Reference
+FAQ / Troubleshooting
+Architecture
+Secure Tunnel setup
+Development Plan
+Development Progress / Handoff
+Contributing
+Security
+Changelog
+```
+
+Documentation policy for future work:
+
+- keep user-facing docs English + Simplified Chinese when practical;
+- use paired `NAME.md` / `NAME.zh-CN.md` files;
+- keep the README focused on value, setup, real validation and clear limitations;
+- do not add images, screenshots, badges or GIFs unless the repository policy is explicitly changed;
+- document real tests as real tests, and do not turn simulated success into stronger claims.
 ## Repository/workspace notes
 
 - Work only in `AAAYNMMM/godot-mcp-chatgpt` for this project.
