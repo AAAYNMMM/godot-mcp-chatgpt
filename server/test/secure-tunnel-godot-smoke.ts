@@ -58,7 +58,7 @@ async function toolRaw(name: string, args: Record<string, unknown> = {}): Promis
   }
   const result = await rpc("tools/call", { name: publicName, arguments: publicArgs });
   const text = result?.content?.[0]?.type === "text" ? result.content[0].text : "";
-  return { isError: Boolean(result?.isError), body: text ? JSON.parse(text) : null, text, publicName };
+  return { isError: Boolean(result?.isError), body: text ? JSON.parse(text) : null, text, publicName, content: result?.content ?? [] };
 }
 
 async function tool(name: string, args: Record<string, unknown> = {}): Promise<any> {
@@ -154,16 +154,16 @@ const expectedDirect = [
   "node.create", "node.find", "node.get_properties", "node.set_property",
   "script.read", "script.write", "script.validate", "script.attach",
   "resource.inspect", "classdb.search", "classdb.inspect",
-  "editor.inspect", "editor.run_project", "editor.run_custom_scene",
+  "editor.inspect", "editor.take_screenshot", "editor.run_project", "editor.run_custom_scene",
   "runtime.status", "runtime.get_tree", "runtime.inspect", "runtime.get_property",
-  "runtime.set_property", "runtime.call_method", "diagnostics.run_capture", "batch.execute",
+  "runtime.set_property", "runtime.call_method", "diagnostics.run_capture", "batch.execute", "logs.read",
 ];
 const expectedManage = [
   "project.manage", "input_map.manage", "scene.manage", "node.manage", "script.manage",
-  "resource.manage", "classdb.manage", "editor.manage", "debugger.manage", "runtime.manage",
+  "resource.manage", "classdb.manage", "editor.manage", "debugger.manage", "runtime.manage", "logs.manage",
 ];
 for (const required of [...expectedDirect, ...expectedManage]) assert.ok(names.has(required), "missing compact public tool " + required);
-assert.equal(toolNames.length, 39, "unexpected compact public tool count");
+assert.equal(toolNames.length, 42, "unexpected compact public tool count");
 assert.ok(toolNames.length <= 50, "compact public tool surface exceeds release gate");
 let derivedAtomicCount = 3;
 for (const manageName of expectedManage) {
@@ -173,7 +173,7 @@ for (const manageName of expectedManage) {
   assert.ok(Array.isArray(ops) && ops.length > 0, manageName + " missing op enum");
   derivedAtomicCount += ops.length;
 }
-assert.equal(derivedAtomicCount, 119, "compact surface does not cover all v0.4 atomic commands");
+assert.equal(derivedAtomicCount, 139, "compact surface does not cover all registered atomic commands");
 console.log("COMPACT_TOOL_SURFACE_GATE=PASS public=" + toolNames.length + " atomic=" + derivedAtomicCount);
 
 const invalidManagedParams = await toolRaw("project.get_info", { unexpected: true });
@@ -325,7 +325,7 @@ assert.equal(renamedNode.name, "PlayerCopy");
 await tool("node.move_child", { node_path: "PlayerCopy", index: 0 });
 await tool("node.delete", { node_path: "PlayerCopy" });
 
-const scriptContent = "extends Node3D\n\nsignal smoke_signal\nvar secure_tunnel_smoke: int = 77\n\nfunc _ready() -> void:\n\tprint(\"CAPTURE_STDOUT_OK\")\n\nfunc _on_smoke() -> void:\n\tpass\n";
+const scriptContent = "extends Node3D\n\nsignal smoke_signal\nvar secure_tunnel_smoke: int = 77\nvar key_events: int = 0\nvar mouse_events: int = 0\nvar joy_events: int = 0\n\nfunc _ready() -> void:\n\tprint(\"CAPTURE_STDOUT_OK\")\n\nfunc _input(event: InputEvent) -> void:\n\tif event is InputEventKey:\n\t\tkey_events += 1\n\telif event is InputEventMouseButton or event is InputEventMouseMotion:\n\t\tmouse_events += 1\n\telif event is InputEventJoypadButton or event is InputEventJoypadMotion:\n\t\tjoy_events += 1\n\nfunc _on_smoke() -> void:\n\tpass\n";
 await tool("script.write", { path: "res://.mcp-smoke/secure-player.gd", content: scriptContent });
 const read = await tool("script.read", { path: "res://.mcp-smoke/secure-player.gd" });
 assert.equal(read.content, scriptContent);
@@ -386,6 +386,14 @@ assert.equal(classCan.can_instantiate, true);
 const textSearch = await tool("project.search_text", { query: "secure_tunnel_smoke", root: "res://.mcp-smoke", extensions: ["gd"], limit: 20 });
 assert.ok(textSearch.matches.some((item: any) => item.path === "res://.mcp-smoke/secure-player.gd"));
 
+const editorPerf = await tool("editor.get_performance");
+assert.equal(typeof editorPerf.monitors.fps, "number");
+const editorLogs = await tool("logs.read", { source: "editor", limit: 20 });
+assert.ok(Array.isArray(editorLogs.entries));
+
+await tool("node.create", { parent_path: ".", type: "Label", name: "PhaseBLabel" });
+await tool("node.set_property", { node_path: "PhaseBLabel", property: "text", value: "PHASE_B_UI" });
+await tool("input_map.add_action", { action: "mcp_phase_b_action", deadzone: 0.2 });
 const editorRun = await tool("editor.run_current_scene");
 assert.equal(editorRun.playing, true);
 const editorPlaying = await tool("editor.get_playing_scene");
@@ -395,6 +403,44 @@ const debuggerSessions = await tool("debugger.get_sessions");
 assert.ok(debuggerSessions.sessions.some((session: any) => session.active));
 assert.equal(runtimeStatus.current_scene, "res://.mcp-smoke/secure-generated.tscn");
 assert.ok(runtimeStatus.node_count >= 2);
+const debugStatus = await toolEventually("runtime.get_debug_status");
+assert.equal(typeof debugStatus.process_ticks, "number");
+const uiElements = await tool("runtime.get_ui_elements", { limit: 50 });
+assert.ok(uiElements.elements.some((item: any) => item.name === "PhaseBLabel" && item.text === "PHASE_B_UI"));
+await tool("runtime.input_key", { keycode: 65, pressed: true });
+await tool("runtime.input_key", { keycode: 65, pressed: false });
+await tool("runtime.input_mouse", { kind: "button", button: 1, pressed: true, x: 20, y: 30 });
+await tool("runtime.input_mouse", { kind: "button", button: 1, pressed: false, x: 20, y: 30 });
+await tool("runtime.input_mouse", { kind: "motion", x: 25, y: 35, dx: 5, dy: 5 });
+await tool("runtime.input_gamepad", { kind: "button", device: 0, button: 0, pressed: true });
+await tool("runtime.input_gamepad", { kind: "button", device: 0, button: 0, pressed: false });
+const keyEventCount = await tool("runtime.get_property", { node_path: "Player", property: "key_events" });
+const mouseEventCount = await tool("runtime.get_property", { node_path: "Player", property: "mouse_events" });
+const joyEventCount = await tool("runtime.get_property", { node_path: "Player", property: "joy_events" });
+assert.ok(keyEventCount.value >= 2, "keyboard injection did not reach _input");
+assert.ok(mouseEventCount.value >= 3, "mouse injection did not reach _input");
+assert.ok(joyEventCount.value >= 2, "gamepad injection did not reach _input");
+const evalResult = await tool("runtime.evaluate", { node_path: "Player", expression: "a * 2 + b", variables: { a: 20, b: 2 } });
+assert.equal(evalResult.value, 42);
+const actionPressed = await tool("runtime.input_action", { action: "mcp_phase_b_action", pressed: true, strength: 0.75 });
+assert.equal(actionPressed.pressed, true);
+const inputState = await tool("runtime.get_input_state", { actions: ["mcp_phase_b_action"] });
+assert.equal(inputState.actions.mcp_phase_b_action.pressed, true);
+await tool("runtime.input_action", { action: "mcp_phase_b_action", pressed: false });
+const sequence = await tool("runtime.input_sequence", { steps: [
+  { at_frame: 0, event: { type: "action", action: "mcp_phase_b_action", pressed: true } },
+  { at_frame: 2, event: { type: "action", action: "mcp_phase_b_action", pressed: false } },
+], release_actions: true, timeout_ms: 10000 });
+assert.equal(sequence.completed, true);
+assert.equal(sequence.steps, 2);
+const screenshotRaw = await toolRaw("editor.take_screenshot", { source: "game", max_resolution: 512, timeout_ms: 10000 });
+assert.equal(screenshotRaw.isError, false);
+assert.ok(screenshotRaw.content.some((item: any) => item.type === "image" && item.mimeType === "image/png" && typeof item.data === "string" && item.data.length > 100));
+const gameLogs = await tool("logs.read", { source: "game", limit: 100 });
+assert.ok(Array.isArray(gameLogs.entries));
+assert.ok(gameLogs.entries.some((entry: any) => String(entry.text ?? "").includes("CAPTURE_STDOUT_OK")), "running-game log capture missing CAPTURE_STDOUT_OK");
+const nativeStatus = await tool("debugger.get_status");
+assert.equal(nativeStatus.active, true);
 const runtimeTree = await tool("runtime.get_tree", { max_depth: 4 });
 assert.equal(runtimeTree.root.name, "SecureRoot");
 assert.equal(runtimeTree.root.children[0]?.name, "Player");
@@ -403,7 +449,7 @@ assert.deepEqual(runtimePosition.value, { __godot_type: "Vector3", x: 4, y: 5, z
 const runtimeChanged = await tool("runtime.set_property", { node_path: "Player", property: "position", value: { __godot_type: "Vector3", x: 7, y: 8, z: 9 } });
 assert.deepEqual(runtimeChanged.value, { __godot_type: "Vector3", x: 7, y: 8, z: 9 });
 const runtimeCall = await tool("runtime.call_method", { node_path: ".", method: "get_child_count", arguments: [] });
-assert.equal(runtimeCall.result, 1);
+assert.equal(runtimeCall.result, 2);
 const runtimePerf = await tool("runtime.get_performance");
 assert.equal(typeof runtimePerf.fps, "number");
 const paused = await tool("runtime.pause");
@@ -484,6 +530,7 @@ assert.equal(closedScene.closed, true);
 const reopenedAfterClose = await tool("scene.open", { path: "res://.mcp-smoke/secure-generated.tscn" });
 assert.equal(reopenedAfterClose.opened, true);
 
+await tool("input_map.remove_action", { action: "mcp_phase_b_action" });
 const removedAction = await tool("input_map.remove_action", { action: "mcp_smoke_action" });
 assert.equal(removedAction.removed, true);
 const removedActionCheck = await toolRaw("input_map.get_action", { action: "mcp_smoke_action" });

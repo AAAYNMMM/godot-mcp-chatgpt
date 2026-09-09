@@ -85,6 +85,22 @@ func request(command: String, arguments: Dictionary = {}, timeout_ms: int = 4000
         return {"ok": false, "error": error_value}
     return _error("RUNTIME_ERROR", str(error_value))
 
+func native_control(action: String, session_id: int = -1) -> Dictionary:
+    if _debugger == null:
+        return _error("DEBUGGER_UNAVAILABLE", "Runtime debugger bridge is unavailable")
+    var result: Dictionary = _debugger.native_control(action, session_id)
+    if bool(result.get("ok", false)):
+        return {"ok": true, "result": result}
+    return _error(str(result.get("error", "RUNTIME_NOT_RUNNING")), "Native debugger control failed: " + action)
+
+func native_status(session_id: int = -1) -> Dictionary:
+    if _debugger == null:
+        return _error("DEBUGGER_UNAVAILABLE", "Runtime debugger bridge is unavailable")
+    var result: Dictionary = _debugger.session_status(session_id)
+    if bool(result.get("ok", false)):
+        return {"ok": true, "result": result}
+    return _error(str(result.get("error", "RUNTIME_NOT_RUNNING")), "Native debugger session is unavailable")
+
 func session_summaries() -> Array:
     return [] if _debugger == null else _debugger.session_summaries()
 

@@ -11,6 +11,8 @@ const ClassDBCommands := preload("res://addons/godot_mcp_chatgpt/commands/classd
 const EditorCommands := preload("res://addons/godot_mcp_chatgpt/commands/editor_commands.gd")
 const RuntimeDebuggerManager := preload("res://addons/godot_mcp_chatgpt/debug/runtime_debugger_manager.gd")
 const RuntimeDebuggerCommands := preload("res://addons/godot_mcp_chatgpt/commands/runtime_debugger_commands.gd")
+const ObservationCommands := preload("res://addons/godot_mcp_chatgpt/commands/observation_commands.gd")
+const LogCapture := preload("res://addons/godot_mcp_chatgpt/debug/log_capture.gd")
 const DiagnosticsCommands := preload("res://addons/godot_mcp_chatgpt/commands/diagnostics_commands.gd")
 const BatchCommands := preload("res://addons/godot_mcp_chatgpt/commands/batch_commands.gd")
 const ConnectionDock := preload("res://addons/godot_mcp_chatgpt/ui/connection_dock.gd")
@@ -20,8 +22,11 @@ var _client: Node
 var _dock: Control
 var _bottom_button: Button
 var _runtime_manager: Node
+var _editor_logger: Logger
 
 func _enter_tree() -> void:
+	_editor_logger = LogCapture.new()
+	OS.add_logger(_editor_logger)
 	print("[GodotMCPChatGPT] Editor plugin loaded.")
 	_registry = CommandRegistry.new()
 	BuiltinCommands.register(_registry, self)
@@ -38,6 +43,7 @@ func _enter_tree() -> void:
 	if not bool(runtime_setup.get("ok", false)):
 		push_warning("[GodotMCPChatGPT] Runtime debugger setup: %s" % str(runtime_setup))
 	RuntimeDebuggerCommands.register(_registry, self, _runtime_manager)
+	ObservationCommands.register(_registry, self, _runtime_manager, _editor_logger)
 	DiagnosticsCommands.register(_registry, self)
 	BatchCommands.register(_registry)
 
@@ -64,6 +70,9 @@ func _disable_plugin() -> void:
 			push_warning("[GodotMCPChatGPT] Runtime autoload cleanup: %s" % str(cleanup))
 
 func _exit_tree() -> void:
+	if _editor_logger != null:
+		OS.remove_logger(_editor_logger)
+		_editor_logger = null
 	if _runtime_manager != null:
 		_runtime_manager.shutdown()
 		_runtime_manager.queue_free()

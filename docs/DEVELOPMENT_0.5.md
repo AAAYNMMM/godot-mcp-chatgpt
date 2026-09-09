@@ -478,7 +478,7 @@ Before release, evaluate whether an **optional, disabled-by-default legacy regis
 
 ### Phase A — Compact-surface foundation
 
-Status: **implemented / official-tunnel validation passed; real Web ChatGPT validation pending**.
+Status: **implemented / official-tunnel validation passed; final integrated Web ChatGPT validation deferred**.
 
 Implemented:
 
@@ -507,17 +507,42 @@ Remaining Phase A gate: a **fresh Web ChatGPT conversation must re-discover the 
 
 ### Phase B — Observe, play, debug, diagnose
 
-Status: **planned**.
+Status: **targeted validation passed**.
 
-- MCP image content;
-- screenshots;
-- run liveness;
-- UI element discovery;
-- keyboard/mouse/gamepad/action input;
-- deterministic input sequence;
-- native debugger step/status;
-- live editor/game logs;
-- editor monitor/reload/quit/game-eval bounded design.
+Implemented and validated:
+
+- MCP `image` content serialization;
+- editor 3D/2D viewport capture, cinematic Camera3D capture, and running-game framebuffer capture;
+- bounded screenshot resolution and PNG response size;
+- structured project-run/runtime liveness;
+- runtime `Control` discovery;
+- keyboard, mouse, gamepad and InputAction injection;
+- game-process frame-timed `input_sequence` with step/frame caps and held-action cleanup;
+- runtime input-state inspection;
+- native debugger suspend/resume/next-frame/status;
+- editor/game log ring buffers with cursor, run identity and clear;
+- editor performance monitors;
+- bounded plugin refresh and confirm-gated editor quit;
+- bounded `runtime.evaluate` using Godot `Expression` against a selected live node, without OS shell/process access.
+
+The implementation stays inside the existing GDScript + EditorDebugger/EngineDebugger architecture and adds no Python/FastMCP/WebSocket transport.
+
+Validation actually run:
+
+```text
+Godot 4.7.2 addon load/parse: PASS
+npm run build: PASS
+CATALOGUE_SCHEMA_GATE=PASS tools=42
+COMPACT_TOOL_SURFACE_GATE=PASS public=42 atomic=139
+PHASE_B_RUNTIME_INPUT=PASS key/mouse/gamepad/action/sequence
+PHASE_B_MCP_IMAGE=PASS game screenshot image/png
+PHASE_B_RUNTIME_UI=PASS
+PHASE_B_LOGS=PASS editor/game
+PHASE_B_RUNTIME_EVAL=PASS
+PRODUCTION_PLUGIN_SMOKE=PASS
+```
+
+Real Web ChatGPT validation is intentionally deferred to Phase F per the requested workflow.
 
 ### Phase C — Script/test/transaction workflow
 
@@ -625,7 +650,7 @@ Rules for implementation:
 
 ## 9. Current status
 
-Status: **Phase A implemented / official-tunnel validation passed; real Web ChatGPT validation pending**.
+Status: **Phases A–B targeted validation passed; final integrated Web ChatGPT validation deferred**.
 
 Locked decisions:
 
@@ -653,4 +678,4 @@ PLANNING_DOC_GATES=PASS
 
 ## 10. Exact next implementation task
 
-**Run the Phase A real Web ChatGPT compact-surface regression in a fresh conversation: verify 39 discovered public tools, call representative direct tools, call long-tail operations through `*.manage`, verify Batch still reaches internal atomic commands, and confirm no schema/selection regressions. Only after that passes may Phase B begin.**
+**Proceed to Phase C: script patch/write diagnostics, GDScript test runner, InputMap ensure helpers, UndoRedo/transactional batch, and autoload mutation. Real Web ChatGPT testing remains deferred to Phase F.**

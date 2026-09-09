@@ -80,6 +80,33 @@ func toggle_profiler(profiler: StringName, enabled: bool, data: Array = [], pref
     session.toggle_profiler(profiler, enabled, data)
     return {"ok": true, "session_id": chosen_id}
 
+func native_control(action: String, preferred_session_id: int = -1) -> Dictionary:
+    var chosen_id := _choose_session(preferred_session_id)
+    if chosen_id < 0:
+        return {"ok": false, "error": "RUNTIME_NOT_RUNNING"}
+    var session := get_session(chosen_id)
+    if session == null or not session.is_active():
+        return {"ok": false, "error": "RUNTIME_SESSION_INACTIVE"}
+    match action:
+        "suspend":
+            session.send_message("scene:suspend_changed", [true])
+        "resume":
+            session.send_message("scene:suspend_changed", [false])
+        "next_frame":
+            session.send_message("scene:next_frame", [])
+        _:
+            return {"ok": false, "error": "UNSUPPORTED_DEBUG_ACTION"}
+    return {"ok": true, "session_id": chosen_id, "action": action, "breaked": session.is_breaked(), "debuggable": session.is_debuggable()}
+
+func session_status(preferred_session_id: int = -1) -> Dictionary:
+    var chosen_id := _choose_session(preferred_session_id)
+    if chosen_id < 0:
+        return {"ok": false, "error": "RUNTIME_NOT_RUNNING"}
+    var session := get_session(chosen_id)
+    if session == null:
+        return {"ok": false, "error": "RUNTIME_SESSION_INACTIVE"}
+    return {"ok": true, "session_id": chosen_id, "active": session.is_active(), "debuggable": session.is_debuggable(), "breaked": session.is_breaked()}
+
 func _choose_session(preferred_session_id: int) -> int:
     if preferred_session_id >= 0:
         var preferred := get_session(preferred_session_id)

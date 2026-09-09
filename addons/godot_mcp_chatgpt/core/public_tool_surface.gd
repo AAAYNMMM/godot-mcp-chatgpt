@@ -21,6 +21,7 @@ const DIRECT_TOOLS: Array[String] = [
 	"classdb.search",
 	"classdb.inspect",
 	"editor.inspect",
+	"editor.take_screenshot",
 	"editor.run_project",
 	"editor.run_custom_scene",
 	"runtime.status",
@@ -31,6 +32,7 @@ const DIRECT_TOOLS: Array[String] = [
 	"runtime.call_method",
 	"diagnostics.run_capture",
 	"batch.execute",
+	"logs.read",
 ]
 
 const MANAGED_DOMAINS: Array[String] = [
@@ -44,6 +46,7 @@ const MANAGED_DOMAINS: Array[String] = [
 	"editor",
 	"debugger",
 	"runtime",
+	"logs",
 ]
 
 var _registry: RefCounted

@@ -207,12 +207,26 @@ func _dispatch_jsonrpc(rpc: Dictionary) -> Dictionary:
 			var args_value = params.get("arguments", {})
 			var args: Dictionary = args_value if args_value is Dictionary else {}
 			var result: Dictionary = await _public_surface.call_tool(name, args) if _public_surface != null else {"ok": false, "error": {"code": "PUBLIC_SURFACE_UNAVAILABLE", "message": "Public MCP tool surface is unavailable"}}
-			var tool_result := {"content": [{"type": "text", "text": JSON.stringify(result.get("result") if bool(result.get("ok", false)) else result.get("error"))}]}
-			if not bool(result.get("ok", false)):
-				tool_result["isError"] = true
-			return _rpc_result(rpc_id, tool_result)
+			return _rpc_result(rpc_id, _format_tool_result(result))
 		_:
 			return _rpc_error(rpc_id, -32601, "method not found: %s" % JSON.stringify(method))
+
+func _format_tool_result(result: Dictionary) -> Dictionary:
+	if not bool(result.get("ok", false)):
+		return {"content": [{"type": "text", "text": JSON.stringify(result.get("error"))}], "isError": true}
+	var value = result.get("result")
+	if value is Dictionary and value.has("__mcp_image"):
+		var metadata: Dictionary = value.duplicate(true)
+		var image_value = metadata.get("__mcp_image", {})
+		metadata.erase("__mcp_image")
+		var content: Array = [{"type": "text", "text": JSON.stringify(metadata)}]
+		if image_value is Dictionary:
+			var image: Dictionary = image_value
+			var data := str(image.get("data", ""))
+			if not data.is_empty():
+				content.append({"type": "image", "data": data, "mimeType": str(image.get("mime_type", "image/png"))})
+		return {"content": content}
+	return {"content": [{"type": "text", "text": JSON.stringify(value)}]}
 
 func _mcp_tool_catalogue() -> Array[Dictionary]:
 	var output: Array[Dictionary] = []

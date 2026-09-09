@@ -128,7 +128,7 @@ README_STRUCTURE_CHECK=PASS
 本任务没有修改任何插件/Runtime 源码。
 ## 当前开发 — v0.5.0 能力迁移
 
-状态：**Phase A 已实现 / Official Tunnel 验证通过；等待真实 Web ChatGPT 验证**。
+状态：**Phase A–B targeted validation passed；最终真实 Web ChatGPT 集成验证延后**。
 
 下一里程碑已经锁定，完整范围见 [v0.5.0 能力迁移计划](DEVELOPMENT_0.5.zh-CN.md)。
 
@@ -175,7 +175,7 @@ DOC_ONLY_SCOPE=PASS
 
 ### Phase A 实现 — Compact Public Tool Surface
 
-状态：**已实现 / Official Tunnel 验证通过；等待真实 Web ChatGPT 验证**。
+状态：**已实现 / Official Tunnel 验证通过；最终真实 Web ChatGPT 集成验证延后**。
 
 已实现：
 
@@ -197,9 +197,28 @@ COMPACT_TOOL_SURFACE_GATE=PASS public=39 atomic=119
 PRODUCTION_PLUGIN_SMOKE=PASS
 ```
 
+### Phase B — Observe / Play / Debug / Diagnose
+
+状态：**targeted validation passed**。
+
+- Public Surface：42；Internal Atomic：139；
+- MCP Image + Game Screenshot：PASS；
+- Runtime UI：PASS；
+- Keyboard / Mouse / Gamepad / InputAction / Input Sequence：PASS；
+- Native Debugger Control / Status：已实现并通过状态回归；
+- Editor/Game Logs：PASS；
+- Runtime Evaluate：PASS；
+- Editor Performance / Refresh / confirm-gated Quit：已实现。
+
+```text
+CATALOGUE_SCHEMA_GATE=PASS tools=42
+COMPACT_TOOL_SURFACE_GATE=PASS public=42 atomic=139
+PRODUCTION_PLUGIN_SMOKE=PASS
+```
+
 ### 精确下一项实现任务
 
-**打开新的 Web ChatGPT 对话并执行 Compact Surface 真实 Connector 回归。由于当前对话的 Tool Catalogue 是修改前发现的，Phase B 必须等待新对话真实验证结果。**
+**开始 Phase C。真实 Web ChatGPT Connector 测试统一留到 Phase F。**
 
 ## 文档职责
 

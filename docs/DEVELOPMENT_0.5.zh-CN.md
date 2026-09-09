@@ -479,7 +479,7 @@ Release 前评估是否低成本提供一个**默认关闭的 Legacy Registratio
 
 ### Phase A — Compact Surface 基础
 
-状态：**已实现 / Official Tunnel 验证通过；等待真实 Web ChatGPT 验证**。
+状态：**已实现 / Official Tunnel 验证通过；最终真实 Web ChatGPT 集成验证延后**。
 
 已实现：
 
@@ -508,17 +508,42 @@ Phase A 剩余门禁：必须在**新的 Web ChatGPT 对话**里重新发现 39 
 
 ### Phase B — Observe / Play / Debug / Diagnose
 
-状态：**planned**。
+状态：**targeted validation passed**。
 
-- MCP image content；
-- Screenshot；
-- Run Liveness；
-- UI Element Discovery；
-- Keyboard / Mouse / Gamepad / Action Input；
-- Deterministic Input Sequence；
-- Native Debugger Step / Status；
-- Editor / Game Live Logs；
-- Editor Monitor / Reload / Quit / Game Eval 有边界设计。
+已实现并验证：
+
+- MCP `image` Content 序列化；
+- Editor 3D / 2D Viewport Screenshot、Cinematic Camera3D Screenshot、运行中 Game Screenshot；
+- Screenshot Resolution / PNG Byte 上限；
+- Project Run / Runtime Liveness 状态；
+- Runtime UI `Control` 枚举；
+- Keyboard / Mouse / Gamepad / InputAction 注入；
+- Game-process 内 Frame-timed `input_sequence`，带 Step/Frame 上限与 Held Action 清理；
+- Runtime Input State；
+- Native Debugger Suspend / Resume / Next Frame / Status；
+- Editor / Game Log Ring Buffer、Cursor、Run ID、Clear；
+- Editor Performance Monitor；
+- 有边界 Plugin Refresh 和 confirm-gated Editor Quit；
+- 受限 `runtime.evaluate`：使用 Godot `Expression` 在指定 Runtime Node 上求值，不暴露 OS Shell / 外部进程。
+
+实现保持现有 GDScript + EditorDebugger/EngineDebugger 架构，没有引入 Python/FastMCP/WebSocket。
+
+实际验证：
+
+```text
+Godot 4.7.2 addon load/parse: PASS
+npm run build: PASS
+CATALOGUE_SCHEMA_GATE=PASS tools=42
+COMPACT_TOOL_SURFACE_GATE=PASS public=42 atomic=139
+PHASE_B_RUNTIME_INPUT=PASS key/mouse/gamepad/action/sequence
+PHASE_B_MCP_IMAGE=PASS game screenshot image/png
+PHASE_B_RUNTIME_UI=PASS
+PHASE_B_LOGS=PASS editor/game
+PHASE_B_RUNTIME_EVAL=PASS
+PRODUCTION_PLUGIN_SMOKE=PASS
+```
+
+真实 Web ChatGPT 验证按要求统一延后到 Phase F。
 
 ### Phase C — Script / Test / Transaction
 
@@ -626,7 +651,7 @@ Godot AI 是独立的 MIT 开源项目，本项目在 v0.5 迁移中将它作为
 
 ## 9. 当前状态
 
-状态：**Phase A 已实现 / Official Tunnel 验证通过；等待真实 Web ChatGPT 验证**。
+状态：**Phase A–B targeted validation passed；最终真实 Web ChatGPT 集成验证延后**。
 
 已经锁定：
 
@@ -654,4 +679,4 @@ PLANNING_DOC_GATES=PASS
 
 ## 10. 精确下一项实现任务
 
-**在新的 Web ChatGPT 对话中执行 Phase A Compact Surface 真实回归：确认发现 39 个 Public Tools，真实调用代表性 Direct Tools、通过 `*.manage` 调用 Long-tail Operations，并确认 Batch 仍可访问 Internal Atomic Commands；确认无 Schema/Tool Selection 回归后，才开始 Phase B。**
+**开始 Phase C：Script Patch / Write Diagnostics / GDScript Test Runner / InputMap Ensure / UndoRedo + Transactional Batch / Autoload Mutation。真实 Web ChatGPT 测试继续延后到 Phase F。**

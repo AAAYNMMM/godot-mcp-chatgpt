@@ -128,7 +128,7 @@ README_STRUCTURE_CHECK=PASS
 No plugin/runtime source file was changed by this task.
 ## Active development — v0.5.0 capability migration
 
-Status: **Phase A implemented / official-tunnel validation passed; real Web ChatGPT validation pending**.
+Status: **Phases A–B targeted validation passed; final integrated Web ChatGPT validation deferred**.
 
 The next milestone is now locked. See [v0.5.0 Capability Migration Plan](DEVELOPMENT_0.5.md).
 
@@ -175,7 +175,7 @@ DOC_ONLY_SCOPE=PASS
 
 ### Phase A implementation — compact public tool surface
 
-Status: **implemented / official-tunnel validation passed; real Web ChatGPT validation pending**.
+Status: **implemented / official-tunnel validation passed; final integrated Web ChatGPT validation deferred**.
 
 Implemented:
 
@@ -197,9 +197,28 @@ COMPACT_TOOL_SURFACE_GATE=PASS public=39 atomic=119
 PRODUCTION_PLUGIN_SMOKE=PASS
 ```
 
+### Phase B implementation — observe, play, debug, diagnose
+
+Status: **targeted validation passed**.
+
+- Public surface: 42; internal atomic commands: 139.
+- MCP image + running-game screenshot: PASS.
+- Runtime UI discovery: PASS.
+- Keyboard/mouse/gamepad/InputAction/input-sequence: PASS.
+- Native debugger controls/status implemented with targeted state regression.
+- Editor/game logs: PASS.
+- Runtime bounded evaluate: PASS.
+- Editor performance/refresh/confirm-gated quit implemented.
+
+```text
+CATALOGUE_SCHEMA_GATE=PASS tools=42
+COMPACT_TOOL_SURFACE_GATE=PASS public=42 atomic=139
+PRODUCTION_PLUGIN_SMOKE=PASS
+```
+
 ### Exact next implementation task
 
-**Open a fresh Web ChatGPT conversation and run the real compact-surface Connector regression. Phase B is blocked on that result because the current conversation's tool catalogue was discovered before this change.**
+**Proceed to Phase C. Real Web ChatGPT Connector testing remains deferred until Phase F.**
 
 ## Documentation ownership
 
