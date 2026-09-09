@@ -237,6 +237,17 @@ Latest smoke result:
 
 `server/` now contains only a local Secure Tunnel control-plane simulator and tests. It is not production runtime code.
 
+
+## Validated implementation baseline
+
+Validated implementation commit:
+
+```text
+628dceee2a19bcc3768c86c7d09cc6147816755d
+```
+
+This commit passed Godot 4.7.2 script compilation, Secure Tunnel contract tests, and a real Godot GUI Secure Tunnel protocol smoke test before commit.
+
 ## Next exact task — requires user operation
 
 Perform the first real OpenAI control-plane test.
