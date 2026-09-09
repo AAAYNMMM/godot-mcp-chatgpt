@@ -8,6 +8,8 @@ Branch: `main`
 
 Current release candidate: `0.3.0`
 
+0.3.0 implementation commit: `2a70cd1ed084df0d2ee5fff7c596c5ff5a3e93d8`
+
 ## Current architecture — DO NOT MISS THIS
 
 The production connection path is now:
