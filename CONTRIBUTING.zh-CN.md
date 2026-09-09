@@ -118,8 +118,8 @@ NAME.zh-CN.md
 每完成一个逻辑独立任务后：
 
 1. 先执行对应的目标验证；
-2. 更新当前 `docs/DEVELOPMENT_<version>.md` 追踪文档；
-3. 更新 `docs/PROGRESS.md`，记录真实结果和精确下一项任务；
+2. 如果存在 Active Version，更新对应 `docs/DEVELOPMENT_<version>.md` 追踪文档；
+3. 更新 `docs/PROGRESS.md`，记录真实结果和当前下一优先方向；
 4. 同步简体中文版本；
 5. 然后才能进入下一项任务。
 

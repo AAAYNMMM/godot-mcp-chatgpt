@@ -118,8 +118,8 @@ For repository development work, documentation is part of the definition of done
 After every logically complete task:
 
 1. run the relevant targeted validation;
-2. update the active `docs/DEVELOPMENT_<version>.md` tracker;
-3. update `docs/PROGRESS.md` with the actual result and exact next task;
+2. update the active `docs/DEVELOPMENT_<version>.md` tracker when an active version exists;
+3. update `docs/PROGRESS.md` with the actual result and current next priority;
 4. synchronize the Simplified Chinese counterpart;
 5. only then move to the next task.
 

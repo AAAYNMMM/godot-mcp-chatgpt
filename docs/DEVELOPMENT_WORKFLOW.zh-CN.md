@@ -150,3 +150,14 @@ Development Plan、当前版本追踪和 Progress 必须维护英文 + 简体中
 2. `docs/DEVELOPMENT_PLAN.md`
 3. 当前 `docs/DEVELOPMENT_<version>.md`
 4. `docs/PROGRESS.md`
+## 11. Release 收口与历史归档
+
+版本发布后：
+
+- Active Version Tracker 转为已关闭 Release Record；
+- 删除该版本过时的 `in progress`、Blocker、Next Task；
+- `PROGRESS.md` 只保留简洁当前状态；
+- 长篇开发流水迁入 `PROGRESS_ARCHIVE_<range>.md`；
+- 未来候选功能统一写进 `DEVELOPMENT_PLAN.md`。
+
+普通用户不应该为了理解当前 Release 去读历史 WIP 流水。

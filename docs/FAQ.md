@@ -4,7 +4,7 @@
 
 ## Do I need CWapi?
 
-No. CWapi was useful as a known-good reference during development, but `godot-mcp-chatgpt` 0.4.0 bundles the official OpenAI `tunnel-client` and hosts its own local Godot MCP server.
+No. `godot-mcp-chatgpt` is self-contained for its runtime path: it bundles the official OpenAI `tunnel-client` and hosts its own local Godot MCP server.
 
 ## Do I need Codex, Cursor or Claude Desktop?
 

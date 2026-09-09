@@ -2,7 +2,7 @@
 
 English | [简体中文](CHANGELOG.zh-CN.md)
 
-This project is still early. The changelog records meaningful user-facing milestones rather than every internal experiment.
+This changelog records released user-facing milestones and compatibility-impacting changes.
 
 ## 0.4.0 — Full Godot editor/runtime MCP surface
 

@@ -13,6 +13,33 @@
 - `batch.execute` 有顺序、有上限，但**不是事务**；前面成功的操作不会因为后面失败而自动回滚。
 - `diagnostics.run_capture` 只能启动当前 Godot executable + 当前项目，不是通用 Shell/任意进程执行工具。
 
+## 运行目标与常见错误
+
+调用 Tool 前先确认它操作的是哪一层：
+
+| 目标 | 常见 Tool | 前提 | 是否写回项目 |
+| --- | --- | --- | --- |
+| Editor Project | `project.*`、`scene.*`、`node.*`、`script.*`、`resource.*` | Godot Editor/插件已加载 | 需要保存/持久化的操作通常会写回 |
+| Editor 控制 | `editor.*` | Godot Editor/插件已加载 | 取决于操作 |
+| Runtime | `runtime.*`、`debugger.*` | 有活动 Debugger/Runtime Session | 不会，除非另外调用 Editor Tool 持久化 |
+| Diagnostics | `diagnostics.run_capture` | 当前 Godot executable/project | Runner 本身不修改项目 |
+| Batch | `batch.execute` | 取决于内部 Tool | 取决于内部 Tool |
+
+常见错误：
+
+| Code | 含义 / 下一步 |
+| --- | --- |
+| `INVALID_PATH` | 路径越过 `res://` 或验证失败；改用项目内 `res://` 路径。 |
+| `NODE_NOT_FOUND` | Editor/Runtime 节点路径找不到；先读取 SceneTree。 |
+| `PROPERTY_NOT_FOUND` | 对象/类没有该属性；先 Inspect 或查 ClassDB。 |
+| `METHOD_NOT_FOUND` | 对象/类没有该方法；先查 Methods/ClassDB。 |
+| `RUNTIME_NOT_RUNNING` | 先启动 Scene/Project，并等待 Debugger Session。 |
+| `RUNTIME_REQUEST_TIMEOUT` | Runtime 请求超时；检查 Session/运行状态。 |
+| `ROOT_DELETE_DENIED` | 不允许删除当前编辑 Scene Root。 |
+| `BATCH_RECURSION_DENIED` | `batch.execute` 不允许递归调用自己。 |
+| `BATCH_TOO_LARGE` | 请求超过 Batch 上限；拆成更小批次。 |
+
+修改型工作流建议先 Inspect，再明确保存。Runtime 状态和 Editor 保存状态是两套不同状态。
 ## Godot Variant 编码
 
 JSON 本身没有 Vector3 等 Godot 类型，因此常用类型用带标签对象传递。例如：

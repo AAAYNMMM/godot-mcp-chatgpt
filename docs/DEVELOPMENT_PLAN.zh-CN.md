@@ -2,178 +2,212 @@
 
 [English](DEVELOPMENT_PLAN.md) | 简体中文
 
+本文严格区分**已经发布的里程碑**与**未来候选工作**。已经发布的行为写进 README / Tool Reference / CHANGELOG；未发布想法必须明确标记为 Planned/Candidate，不能写得像已经交付。
+
 ## 1. 产品目标
 
-做一个小而实用的 Godot 4.x 编辑器插件，让 Web ChatGPT 通过 OpenAI Secure MCP Tunnel 控制真实 Godot 编辑器，而用户只需要提供：
+让 Web ChatGPT 真正形成 Godot 开发闭环：
 
-1. Tunnel ID
-2. Runtime API Key
+```text
+在 ChatGPT 描述需求
+→ 读取真实 Godot 项目
+→ 查询当前 Godot API
+→ 修改
+→ 保存
+→ 运行
+→ 读取 Runtime / Diagnostics
+→ 修复
+```
 
-普通用户不应该需要 CWapi、Codex、Node.js、本地 MCP Client 或手动配置端口。
+产品保持项目级、低摩擦、危险操作边界清楚，并且不要求桌面 AI 客户端。
 
-## 2. 已锁定架构
-
-从 2026-09-09 / 0.3.0 起：
+## 2. 当前生产架构
 
 ```text
 Web ChatGPT
- -> OpenAI Secure MCP Tunnel
- -> 插件内置官方 tunnel-client
- -> Godot loopback Streamable HTTP MCP
- -> Godot CommandRegistry
- -> Godot Editor API
+  ↓
+OpenAI Secure MCP Tunnel
+  ↓
+内置官方 tunnel-client
+  ↓
+Godot loopback Streamable HTTP MCP
+  ↓
+CommandRegistry
+  ↓
+Godot Editor API / Editor Debugger
 ```
 
-除非未来有新的明确证据和架构讨论，否则不要恢复旧的 GDScript `/poll` + `/response` 实现。
+锁定原则：
 
-普通用户路径也不要重新引入：
+- 使用官方 OpenAI Tunnel Runtime；
+- 本地 MCP 只监听 loopback；
+- 普通 Godot 操作保持进程内调用；
+- 文件/Resource 修改限制在 `res://`；
+- 不经过独立安全评审，不增加任意 Shell；
+- 不为了 Tool 数量好看而继续堆工具。
 
-- stdio MCP；
-- Node MCP bridge；
-- localhost WebSocket；
-- 自建公网 Relay；
-- `.mcp.json` 本地客户端配置。
+## 3. 已发布里程碑
 
-## 3. 为什么改架构
+### Phase 0 — 仓库连续性
 
-旧版 GDScript Tunnel Client 能过本地 simulator，却不能通过真实 ChatGPT 连接器创建。CWapi 的可用实现证明：官方 tunnel-client + localhost Streamable HTTP MCP 是更可靠的路线。
+状态：**完成**。
 
-0.3.0 已经用真实 ChatGPT 连接器创建成功验证这项决定。
+- 建立仓库结构和中英双语文档；
+- 明确源码/构建/测试边界。
 
-## 4. 当前组件
+### Phase 1 — Godot Editor 控制骨架
 
-### Godot EditorPlugin
+状态：**完成**。
 
-- 底部 `MCP ChatGPT` 面板；
-- Tunnel ID + Runtime API Key；
-- Connect / Disconnect；
-- 状态和简短日志。
+- EditorPlugin；
+- Bottom Panel；
+- Command Registry；
+- 初始 Scene/Node/Script/Editor 操作。
 
-### Tunnel runner
+### Phase 2 — Transport 探索
 
-- 启动内置官方 tunnel-client；
-- 生成 profile；
-- 用 `CONTROL_PLANE_API_KEY` 临时传 key；
-- Tunnel ID 保存到 EditorSettings，Runtime API Key 保存到 Windows Credential Manager；
-- 监控并停止子进程。
+状态：**完成 / 已被替代**。
 
-### Loopback MCP Server
+- 早期直连实验明确了需求；
+- 生产不再使用自定义直连 Tunnel 实现。
 
-- 只绑定 `127.0.0.1`；
-- 随机端口 + 随机路径；
-- Streamable HTTP JSON/SSE；
-- `server/discover` / `initialize` / `ping` / `tools/list` / `tools/call`；
-- notification ACK；
-- HTTP DELETE session termination。
+### Phase 3 — GDScript 直连 Tunnel 原型
 
-### 当前 Godot 工具
+状态：**完成 / 已被替代**。
 
-0.4.0 当前暴露 **119 个工具**，覆盖 Project/InputMap、Scene/Node、Script/Resource、ClassDB、Editor、Debugger/Runtime、Diagnostics 和 Batch。
-
-完整索引见：[工具参考](TOOL_REFERENCE.zh-CN.md)。
-## 5. 里程碑
-
-## 5. 里程碑
-
-### Phase 0 — 仓库与连续开发
-状态：完成。
-
-### Phase 1 — Godot 编辑器控制骨架
-状态：完成。
-
-### Phase 2 — 自建 Relay/WSS 探索
-状态：完成但已废弃。
-
-### Phase 3 — GDScript 直连 Secure Tunnel
-状态：完成但已废弃。
+- 作为本地 Proof 有价值；
+- 真实 Connector 不兼容后不再作为生产架构。
 
 ### Phase 4 — 官方 tunnel-client 架构
-状态：完成并本地验证。
 
-已通过：
+状态：**v0.3.0 完成**。
 
-- 与 CWapi 验证相同的官方 tunnel-client runtime；
-- 真实 Godot 4.7.2 GUI；
-- Go MCP SDK 1.7；
-- `server/discover`；
-- initialization；
-- 13 工具发现；
-- scene/node/script 修改与保存回读；
-- 通知；
-- session termination。
+- 官方 OpenAI `tunnel-client`；
+- Godot 内 loopback Streamable HTTP MCP；
+- 真实 ChatGPT Connector 创建验证通过。
 
-### Phase 5 — 真实 ChatGPT 连接器
-状态：**完成（2026-09-09）**。
+### Phase 5 — 真实 ChatGPT Connector 基线
 
-真实用户 Tunnel ID / Runtime API Key 已成功创建 ChatGPT Tunnel 连接器。
+状态：**完成**。
 
-### Phase 6 — 工具扩展 / 0.4.0 完全体开发
-状态：**进行中**。
+- 真实 Connector discovery/call 验证；
+- Transport 从 Proof 进入生产基线。
 
-当前详细追踪：[`docs/DEVELOPMENT_0.4.zh-CN.md`](DEVELOPMENT_0.4.zh-CN.md)。
+### Phase 6 — 0.4.0 完整 Godot MCP Surface
 
-完成范围：
+状态：**v0.4.0 完成**。
 
-1. 119-tool 生产 registry；
-2. Project 搜索/设置、InputMap；
-3. Scene/Node 丰富读取与编辑；
-4. Signal / Group / Metadata；
-5. Script 自省/验证、Resource；
-6. ClassDB 实时 API 自省；
-7. Editor 控制 + Debugger/Runtime Bridge；
-8. 有边界 captured diagnostics；
-9. 有边界、非事务 Batch；
-10. Windows Credential Manager 保存 + 重启自动连接；
-11. 真实 ChatGPT Connector 全能力回归：`REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS`。
-### Phase 7 — 发布加固
-状态：**进行中**。
+- 119 tools；
+- Project/InputMap/Scene/Node/Script/Resource/ClassDB/Editor；
+- Runtime Debugger；
+- Diagnostics；
+- Batch；
+- Credential Manager 生命周期；
+- 真实 ChatGPT 全能力回归。
 
-0.4.0 已完成：
+详见 [v0.4.0 发布记录](DEVELOPMENT_0.4.zh-CN.md)。
 
-- 干净项目安装验证；
-- Windows x64 项目级一键安装器；
-- addon ZIP + SHA-256 Release 产物；
-- Runtime API Key 受保护持久化与 Forget UX；
-- 真实 Connector、安装器、仓库和文档门禁。
+### Phase 7 — Release 加固
 
-后续事项：
+状态：**v0.4.0 Windows Release 已完成**。
 
-- Godot 面板更清晰的 tunnel health/readiness；
-- Windows 安装器代码签名/信誉策略；
-- 更多 Godot 4.x 兼容测试；
-- 如需要，再做 macOS/Linux tunnel-client 打包；
-- 未来 runtime 更新时继续做第三方二进制来源/许可证审计；
-- 官方 tunnel-client 后续版本的更新策略。
+- Windows x64 项目级安装器；
+- addon ZIP + SHA-256；
+- 干净安装与升级回归；
+- 中文/空格路径回归；
+- Runtime Autoload 持久化加固；
+- Release 资产重新下载并校验哈希；
+- 中英文公开文档发布整理。
 
-## 6. 性能原则
+## 4. 下一里程碑候选方向
 
-- 普通 Godot 工具调用不走 Shell/CLI；
-- loopback MCP hop 是官方 tunnel-client 所需边界，可以接受；
-- 编辑器 mutation 默认串行；
-- Tool Schema 保持紧凑；
-- 真正能减少 round-trip 时再增加 batch tool；
-- 不为了“数量好看”一次性迁几百个低价值工具。
+当前还没有锁死 0.5.0 Scope。下一步应按“真实自动开发闭环价值”排序。
 
-## 7. 安全原则
+### A. 眼睛 + Playtest 控制
 
-- 不记录/回显 Runtime API Key；
-- Runtime API Key 只保存到 Windows Credential Manager，不写入项目/Git/tunnel profile；
-- 使用受限 key；
-- MCP 只监听 loopback；
-- MCP URL 使用随机路径；
-- 文件操作保持项目内；
-- destructive annotation 必须准确；
-- 场景覆盖必须显式 `overwrite: true`。
+优先候选：
 
-## 8. 连续开发规则
+- Screenshot / Frame Capture；
+- 确定性输入注入；
+- Input Sequence；
+- Frame Step；
+- 更完整 Runtime Log；
+- 自动 Playtest / Test Result 工作流。
 
-**每完成一个逻辑独立开发任务后，都必须先更新 `docs/PROGRESS.md` / `docs/PROGRESS.zh-CN.md`，再开始下一项任务。** 只有“实现完成 + 适用验证完成 + 进度文档更新”都完成后，任务才算完成。
+目标：
 
-详细规则见 [`docs/DEVELOPMENT_WORKFLOW.zh-CN.md`](DEVELOPMENT_WORKFLOW.zh-CN.md)。每次更新至少记录：
+```text
+ChatGPT 修改游戏
+→ 运行
+→ 看画面
+→ 发送玩家输入
+→ 确定性推进
+→ 读取状态/日志
+→ 自动修复
+```
 
-- 完成内容；
-- 实际跑过的测试；
-- 当前阻塞；
-- 下一步。
+### B. Tunnel 运维 UX
 
-新窗口在改架构前，必须先读 ARCHITECTURE、本计划、当前版本追踪文档和 PROGRESS。
+- 明确 Health / Readiness；
+- Tunnel Client 版本/更新可见；
+- 脱敏诊断报告；
+- 更清楚的外部进程/连接状态。
+
+### C. 兼容性
+
+- 更多 Godot 4.x 回归矩阵；
+- 更多 Windows 环境；
+- 只有在建立可靠 Runtime 分发路线后再考虑 macOS/Linux。
+
+### D. 分发成熟度
+
+- Windows 代码签名/信誉策略；
+- 可复现 CI；
+- 能稳定自动化的 Release Gate。
+
+## 5. 性能原则
+
+- 普通 Editor 操作不走 Shell/CLI；
+- Schema 保持紧凑清晰；
+- 只有确实减少 Round Trip 时才使用 Batch；
+- 没有明确需求时不增加高频 Polling；
+- Runtime/Diagnostics 输出保持有上限。
+
+## 6. 安全原则
+
+- 项目文件/Resource 写入限制在 `res://`；
+- Destructive 操作必须有明确行为和错误；
+- Local MCP 只监听 loopback；
+- Credential 不进入项目/Git；
+- 任意 Shell/Process Execution 默认不在范围内；
+- Batch 有上限且非事务；
+- Runtime 修改与持久化 Editor 修改严格区分。
+
+详见 [安全](../SECURITY.zh-CN.md)。
+
+## 7. Release 纪律
+
+一个 Milestone 只有在以下全部满足后才算完成：
+
+1. 实现存在；
+2. 目标验证真实执行；
+3. 失败已经修复或记录为 blocker；
+4. Current Progress 更新；
+5. Active Release Tracker 更新；
+6. 对应中英公开文档同步；
+7. Release 产物从精确 Commit 重建；
+8. 发布后的资产重新验证。
+
+遵循 [开发工作流](DEVELOPMENT_WORKFLOW.zh-CN.md) 和 [发布流程](RELEASING.zh-CN.md)。
+
+## 8. 文档规则
+
+不要把历史 WIP 状态和当前产品状态混在一起。
+
+- `README` — 已发布用户入口；
+- `TOOL_REFERENCE` — 已发布 Tool 行为；
+- `CHANGELOG` — 已发布变化；
+- `PROGRESS` — 精简当前状态；
+- `DEVELOPMENT_<version>` — 发布后转为关闭版本记录；
+- `PROGRESS_ARCHIVE_*` — 历史实现流水；
+- `DEVELOPMENT_PLAN` — 已发布里程碑 + 明确标注的未来候选。

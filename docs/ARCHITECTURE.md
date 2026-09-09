@@ -29,11 +29,11 @@ ChatGPT / supported OpenAI MCP product
         Godot Editor
 ```
 
-The key design decision is that **Godot does not implement the OpenAI tunnel wire protocol**. The official OpenAI `tunnel-client` is the tunnel implementation. This mirrors the working CWapi connection pattern that was inspected during development.
+The key design decision is that **Godot does not implement the OpenAI tunnel wire protocol**. The official OpenAI `tunnel-client` owns the tunnel transport; the addon focuses on the local MCP server and Godot integration.
 
 ## Why this architecture
 
-An earlier build implemented OpenAI control-plane polling and response posting directly in GDScript. It could pass a local simulator but ChatGPT connector creation failed in production. Inspection of CWapi showed the important difference: CWapi launches the official OpenAI tunnel client and exposes a local Streamable HTTP MCP server to it.
+A direct custom tunnel implementation was evaluated during early development, but it did not satisfy the real ChatGPT Connector path. Production therefore delegates tunnel compatibility to the official OpenAI runtime and keeps the Godot side on the standard local MCP boundary.
 
 Version 0.3.0 therefore replaced the custom tunnel implementation with the same pattern.
 
@@ -59,7 +59,7 @@ Benefits:
 7. removes the key from the Godot process environment immediately after child creation;
 8. watches the child process and tears down the local MCP server on disconnect/exit.
 
-The generated profile shape intentionally matches the CWapi pattern:
+The generated profile uses the official tunnel-client profile model:
 
 ```yaml
 config_version: 1

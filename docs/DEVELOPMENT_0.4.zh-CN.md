@@ -1,319 +1,208 @@
-# 0.4.0 完全体开发追踪
+# v0.4.0 发布记录
 
 [English](DEVELOPMENT_0.4.md) | 简体中文
 
-目标版本：**0.4.0**
+状态：**完成 / 已发布**
+发布日期：**2026-09-10**
+Release Tag：**`v0.4.0`**
+Release 源码 Commit：**`f12d268b5bca087ae8cef744f9cb7ab8877848e8`**
 
-分支：`main` 持久开发工作区
+本文是 v0.4.0 的**已关闭技术记录**，不再作为 WIP Tracker。
 
-本轮开发期间的公开已验证基线：**0.3.0**
+## 1. 版本目标
 
-本文档状态：同时追踪已提交基线，以及明确标注的未提交工作区开发状态。
-
-## 1. 目标
-
-0.4.0 是能力全面扩展版本。目标不是勉强可用的 Demo 工具集，而是让 Godot MCP 能够较完整地自行发现、理解、修改、运行、检查和调试真实 Godot 项目，尽量不再需要用户手工转述日常项目上下文。
-
-完整闭环目标：
+把早期 Tunnel 验证原型收口成一个可独立安装、可由 Web ChatGPT 直接使用的 Godot MCP 产品：
 
 ```text
-读取项目
- -> 发现文件/场景/脚本/资源
- -> 查询 Godot 4.7.2 真实 API
- -> 修改项目/编辑器状态
- -> 保存
- -> 运行
- -> 获取诊断/运行时状态
- -> 修复
- -> 再验证
+Web ChatGPT
+  ↓
+OpenAI Secure MCP Tunnel
+  ↓
+内置官方 tunnel-client
+  ↓
+Godot loopback Streamable HTTP MCP
+  ↓
+Godot Editor / Runtime 工具层
 ```
 
-## 2. 不可退回的架构
+## 2. 架构决定
 
-0.4.0 保持 0.3.0 已真实验证的连接架构：
+v0.4.0 延续 0.3.0 已确定的生产架构：
+
+- 不在 GDScript 中重新实现 OpenAI Tunnel wire protocol；
+- 内置并启动官方 OpenAI `tunnel-client`；
+- MCP Server 直接运行在 Godot 内部，仅监听 loopback；
+- Godot Editor/Runtime 操作留在插件内；
+- 给 ChatGPT 暴露直接的 MCP Tool Surface。
+
+这套架构作为当前 Release 基线。
+
+## 3. 已交付能力
+
+v0.4.0 共 **119 个工具**：
+
+| Family | 数量 |
+| --- | ---: |
+| godot | 1 |
+| project | 13 |
+| input_map | 6 |
+| scene | 12 |
+| node | 23 |
+| script | 10 |
+| resource | 8 |
+| classdb | 9 |
+| editor | 20 |
+| debugger | 4 |
+| runtime | 11 |
+| diagnostics | 1 |
+| batch | 1 |
+| **合计** | **119** |
+
+完整索引见 [工具参考](TOOL_REFERENCE.zh-CN.md)。
+
+## 4. Credential 生命周期
+
+Runtime API Key：
+
+- 首次成功连接后保存到 Windows Credential Manager；
+- 不写入 `project.godot`、EditorSettings、生成的 Tunnel Profile 或 Git；
+- 重启 Godot 后可自动重连；
+- 可以通过 **Forget Saved Credentials** 删除。
+
+Tunnel ID 和 Key 使用本插件自己的 Namespace，不复用 CWapi 数据。
+
+## 5. Runtime Debugger
+
+v0.4.0 增加 Editor → Runtime Bridge：
 
 ```text
-ChatGPT
- -> OpenAI Secure MCP Tunnel
- -> 官方内置 tunnel-client
- -> Godot loopback Streamable HTTP MCP
- -> command registry
- -> Godot Editor / Runtime APIs
+MCP Tool
+  ↓
+EditorPlugin
+  ↓
+EditorDebuggerPlugin / Session
+  ↓
+EngineDebugger Message Channel
+  ↓
+runtime_bridge.gd
+  ↓
+运行中 SceneTree
 ```
 
-禁止重新引入已经删除的自定义 OpenAI Tunnel wire client。
+Release 已支持：
 
-## 3. API Key 持久化
+- Runtime Tree / Status；
+- 节点检查/查找；
+- 属性读写；
+- 方法调用；
+- Group；
+- Performance；
+- Pause / Resume；
+- Debugger Session / Breakpoint / Profiler。
 
-决策：复用 CWapi 的**存储类型和系统机制**，但不复用它的 Credential Target。
+Runtime 修改只影响运行中实例；除非另有 Editor Tool 修改并保存项目，否则不会自动写回 Editor Scene。
 
-已只读检查 CWapi：它通过 `CredWriteW`、`CredReadW`、`CredDeleteW` 使用 Windows Credential Manager 的 Generic Credential。
+## 6. Diagnostics 与 Batch
 
-0.4.0 使用相同机制，但独立 Target：
+`diagnostics.run_capture`：
+
+- 只允许启动当前 Godot executable + 当前项目；
+- stdout / stderr 分开捕获；
+- 返回 exit code、timeout、duration 和有上限输出；
+- 不是通用 Shell MCP。
+
+`batch.execute`：
+
+- 顺序执行现有 MCP Tool；
+- 最多 50 项；
+- 支持 `stop_on_error`；
+- 拒绝递归 Batch；
+- 非事务，没有 rollback 保证。
+
+## 7. 安装器与 Release 产物
+
+v0.4.0 包含：
 
 ```text
-godot-mcp-chatgpt/0.4/OpenAI/Tunnel/APIKey
+godot-mcp-chatgpt-v0.4.0-windows-x64-installer.exe
+godot-mcp-chatgpt-v0.4.0-addon.zip
+SHA256SUMS.txt
 ```
 
-不能使用 CWapi 的 `CWapi/2.0/...` Target，避免两个产品互相覆盖凭据。
+安装器行为：
 
-目标行为：
+- 用户选择任意目标 `project.godot`；
+- 没有用户/项目硬编码路径；
+- 只安装到所选项目；
+- 默认自动启用插件；
+- 支持干净升级替换；
+- 保留其他 EditorPlugin；
+- 使用 Staging / Backup / Rollback；
+- 成功后清理临时安装数据。
+
+安装器验证过程中还修复了 Runtime Autoload 持久化：添加/移除后显式执行 `ProjectSettings.save()`。
+
+## 8. 安全边界
+
+Release 关键边界：
+
+- 文件/Resource 只允许 `res://`；
+- 拒绝路径穿越；
+- 不允许删除当前编辑 Scene Root；
+- 覆盖 Scene 需要显式允许；
+- 本地 MCP 仅 loopback；
+- Diagnostics 有边界；
+- Batch 有边界且非事务；
+- Windows Credential Manager 保存 Key；
+- 不提供任意 Shell MCP。
+
+详见 [安全](../SECURITY.zh-CN.md)。
+
+## 9. 验证记录
+
+实际通过：
 
 ```text
-第一次：
-Tunnel ID + Runtime API Key
- -> 保存 Tunnel ID
- -> API Key 写入 Windows Credential Manager
- -> 启动 tunnel-client
-
-以后重启 Godot：
-保存的 Tunnel ID + Credential Manager API Key
- -> 自动重连
-```
-
-Tunnel profile 仍然只能包含：
-
-```yaml
-api_key: env:CONTROL_PLANE_API_KEY
-```
-
-### 凭据状态
-
-| 项目 | 状态 | 证据 / 剩余门禁 |
-| --- | --- | --- |
-| Windows credential helper | targeted validation passed | 隔离 write/present/read/delete round trip 通过 |
-| Godot credential-store wrapper | targeted validation passed | Godot 4.7.2 脚本加载通过 |
-| UI 保存/忘记凭据流程 | implemented / validation pending | 仍需完整生产 UI smoke |
-| Godot 重启后自动连接 | implemented / validation pending | 尚未执行跨进程重启测试 |
-| Secret/profile 泄漏回归 | planned | 最终 secret scan + profile 检查 |
-
-## 4. 能力矩阵
-
-以下状态描述当前持久工作区，不代表公开 0.3.0 release。
-
-| 范围 | 状态 | 内容 |
-| --- | --- | --- |
-| 公共 Variant/Object 编解码 | targeted validation passed | Variant 编解码、属性/方法/Signal 描述、输出限制 |
-| Project 发现/搜索 | targeted validation passed | inspect/list/find/search |
-| ProjectSettings | targeted validation passed | get/set/list |
-| InputMap | targeted validation passed | list/get/add/remove/events |
-| 项目文件操作 | targeted validation passed | `res://` 内 mkdir/move/delete |
-| Scene 生命周期 | targeted validation passed | current/open/list/close/reload/save/instantiate/inspect |
-| Node 自省 | targeted validation passed | inspect/properties/methods/find |
-| Node 修改 | targeted validation passed | rename/reparent/duplicate/move/call |
-| Groups | targeted validation passed | read/add/remove |
-| Signals | targeted validation passed | 连接读取/connect/disconnect |
-| Metadata | targeted validation passed | read/set/remove |
-| Script 自省 | targeted validation passed | info/validate/open-state/reload/save/detach |
-| Resource 自省/修改 | targeted validation passed | inspect/get/set/create/save/duplicate/dependencies/call |
-| ClassDB 自省 | targeted validation passed | search/inspect/properties/methods/signals/enums/constants/inheritance |
-| Editor 状态/控制 | targeted validation passed | inspect、selection、filesystem、script state、play 控制、save-all |
-| 捕获运行诊断 | targeted validation passed | stdout/stderr 分离捕获、exit code、timeout、duration、截断状态 |
-| Editor Debugger 集成 | targeted validation passed | debugger session、断点/profiler 控制、Godot debugger message |
-| Runtime bridge | targeted validation passed | live tree/inspect/find/property/method/group/performance/pause-resume |
-| Batch | targeted validation passed | 最多 50 项、顺序执行、逐项结果、stop-on-error、递归拒绝 |
-| 聚合 Inspect | targeted validation passed | project/scene/node/editor/runtime 聚合读取均已具备 |
-| 生产 command 注册 | in progress | Editor 模块已为 WIP 行为验证接入；其余 0.4 模块尚未全部暴露 |
-| 完整 MCP schema/catalogue 验证 | integration passed | 119 tools 名称/schema/required/annotations 全量门禁通过 |
-| 完整生产 Tunnel 回归 | integration passed | bundled official tunnel-client production smoke 通过 |
-
-## 5. 当前工作区模块
-
-0.4.0 当前开发包含：
-
-```text
-addons/godot_mcp_chatgpt/core/command_utils.gd
-addons/godot_mcp_chatgpt/commands/project_commands.gd
-addons/godot_mcp_chatgpt/commands/scene_node_commands.gd
-addons/godot_mcp_chatgpt/commands/script_resource_commands.gd
-addons/godot_mcp_chatgpt/commands/classdb_commands.gd
-addons/godot_mcp_chatgpt/commands/editor_commands.gd
-addons/godot_mcp_chatgpt/commands/runtime_debugger_commands.gd
-addons/godot_mcp_chatgpt/debug/editor_debugger_bridge.gd
-addons/godot_mcp_chatgpt/debug/runtime_debugger_manager.gd
-addons/godot_mcp_chatgpt/runtime/runtime_bridge.gd
-addons/godot_mcp_chatgpt/web/credential_store.gd
-tools/credential-helper/
-addons/godot_mcp_chatgpt/bin/windows/godot-mcp-credential.exe
-```
-
-在生产注册和发布门禁通过之前，这些**不属于公开 release 的正式工具契约**。
-
-## 6. Tool Family 目标
-
-0.4.0 追求功能族完整，而不是单纯追求工具数量：
-
-```text
-godot.*
-project.*
-input_map.*
-scene.*
-node.*
-script.*
-resource.*
-classdb.*
-editor.*
-debugger.*
-runtime.*
-batch.*
-```
-
-一个功能族只有在正常读取、修改（适用时）、发现、验证/错误处理和安全边界都覆盖后，才算完整。
-
-## 7. Runtime / Debug 设计
-
-运行时控制优先使用 Godot 自己的 Debugger 通道：
-
-```text
-Editor MCP
- -> EditorDebuggerPlugin / EditorDebuggerSession
- -> EngineDebugger message channel
- -> runtime bridge
- -> running SceneTree
-```
-
-不能为了 Runtime 控制再暴露第二个公网监听端口。
-
-Godot 4.7.2 没有简单公开 API 可以直接抓取 Output Dock 全部文本，因此诊断功能必须真实实现，例如捕获运行进程或 Debugger Message，不能虚假宣称读取了无法通过支持 API 获取的 UI Output。
-
-## 8. 安全要求
-
-- 文件写操作继续限制在 `res://`；
-- 不提供任意 shell MCP tool；
-- method-call 工具必须结构化报错并有边界；
-- batch 必须限制数量/数据量；
-- 递归 inspect 必须限制深度/条目数；
-- destructive annotation 必须准确；
-- 覆盖已有 Scene 继续要求显式确认参数；
-- Credential 不能写日志、不能通过 MCP 返回；
-- Runtime API Key 不能进入项目文件或 Git。
-
-## 9. 验证门禁
-
-0.4.0 在以下门禁通过之前，不能升级公开 Tool Reference。
-
-### 模块门禁
-
-- [x] Credential helper 隔离 round trip
-- [x] Credential GDScript 编译
-- [x] Project 命令模块编译
-- [x] Scene/Node 命令模块编译
-- [x] Script/Resource 命令模块编译
-- [x] ClassDB 命令模块编译
-- [x] Editor 命令模块编译 + 真实 EditorPlugin 行为 smoke
-- [x] Runtime/Debugger 模块编译 + 真实 runtime bridge smoke
-- [x] Batch 模块编译 + production smoke
-
-### 集成门禁
-
-- [x] 所有 0.4.0 模块注册进生产插件（119 tools）
-- [x] Godot 4.7.2 全插件脚本编译
-- [x] 工具名唯一性验证
-- [x] 全 MCP input schema 验证
-- [x] tool annotation 验证
-- [x] loopback / official tunnel MCP `tools/list` + 代表性 `tools/call`
-- [x] 真实 Godot GUI editor 读写 smoke
-- [x] Credential 保存 -> 重启 Godot -> 自动重连
-- [x] Forget Credential -> 重启 -> 要求重新输入
-- [x] 捕获运行诊断 smoke
-- [x] Runtime Debugger Bridge smoke
-- [x] official tunnel-client 集成回归
-- [x] 真实 ChatGPT connector discovery/call 回归
-
-### 仓库/发布门禁
-
-- [x] 删除 WIP `plugin.cfg` 意外 UTF-8 BOM，并扫描所有文本
-- [x] Secret scan
-- [x] `git diff --check`
-- [x] 测试产物 / 生成文件卫生检查
-- [x] 文档相对链接检查
-- [x] 更新英文 + 中文 Tool Reference
-- [x] 更新 README 能力摘要
-- [x] 更新 CHANGELOG
-- [x] 凭据/runtime surface 有实质变化时更新 SECURITY
-- [x] 0.4.0 基线已提交并推送；安装器 follow-up commit 待完成
-
-### 凭据跨重启生命周期
-
-状态：**集成验证通过**。
-
-- [x] 首次保存 -> Windows Credential Manager
-- [x] 重启 Godot -> 无需重新输入 API Key 自动连接
-- [x] Forget -> Key 与 Tunnel ID 一并删除
-- [x] Forget 后重启 -> 重新要求凭据
-- [x] 使用隔离测试 target，未触碰生产凭据 target
-
-### Runtime autoload 生命周期
-
-状态：**集成验证通过**。
-
-- [x] 插件启用 -> runtime autoload 存在
-- [x] 插件禁用 -> runtime autoload 被移除
-- [x] 插件重新启用 -> runtime autoload 恢复
-- [x] Godot 4.7.2 `uid://` autoload 引用可正确解析到 runtime bridge
-- [x] 最终禁用后无 runtime autoload 残留
-
-### 真实 ChatGPT Connector 回归
-
-状态：**真实连接器验证通过**。
-
-- [x] 真实 ChatGPT Connector 发现 119 tools
-- [x] 编辑器读写完整闭环
-- [x] Runtime Debugger live tree/property/method/pause/resume
-- [x] Diagnostics stdout/stderr/exit code
-- [x] Batch 顺序/stop-on-error/递归拒绝
-- [x] Security boundaries
-- [x] `REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS`
-
-已解决 follow-up：Resource 非法路径已统一返回 `INVALID_PATH`，`node.create.parent_path` schema 已明确 `.` 表示编辑场景根节点。无法复现的 scene activation / transient network error 继续观察。
-
-### 一键安装器 / Release 打包
-
-状态：**完成；GitHub Release 已发布**。
-
-- [x] `tools/installer/` 下 Windows x64 单文件安装器源码
-- [x] 完整 addon 内嵌进安装器；无用户/机器硬编码路径
-- [x] GUI 选择目标 `project.godot`
-- [x] 默认自动启用 EditorPlugin
-- [x] `--project`、`--silent`、`--result`、`--no-enable` 自动化参数
-- [x] 中文 + 空格项目路径干净安装
-- [x] 升级替换、stale 文件清理、其他插件保留
-- [x] 非法项目拒绝
-- [x] `--no-enable` 行为
-- [x] 安装结果通过真实 Godot 4.7.2 加载；Runtime autoload 磁盘持久化生命周期已重新验证
-- [x] 使用 `ProjectSettings.save()` 修复 Runtime autoload 持久化
-- [x] 从最终 commit 重建产物
-- [x] 对最终 commit 产物重新跑 installer smoke
-- [x] 发布 GitHub Release `v0.4.0` + 线上资产哈希复核
-### 安装器最终提交前门禁
-
-状态：**release 验证通过**。
-
-```text
+Godot 4.7.2 addon load/compile
+npm build
+npm test
+CATALOGUE_SCHEMA_GATE=PASS tools=119
 PRODUCTION_PLUGIN_SMOKE=PASS
+REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS
 RUNTIME_AUTOLOAD_LIFECYCLE_NODE_SMOKE=PASS
-INSTALLER_SMOKE=PASS version=0.4.0
-INSTALLER_PRECOMMIT_GATES=PASS
-```
-
-### GitHub Release 发布
-
-状态：**完成**。
-
-```text
-source commit=f12d268b5bca087ae8cef744f9cb7ab8877848e8
-tag=v0.4.0
-BUILD_COMMIT_CHECK=PASS f12d268b5bca
+INSTALLER_CLEAN_INSTALL=PASS
+INSTALLER_UPGRADE=PASS
+INSTALLER_NO_ENABLE=PASS
+INSTALLER_INVALID_PROJECT=PASS
+INSTALLER_GODOT_4_7_2_LOAD=PASS
 INSTALLER_SMOKE=PASS version=0.4.0
 ADDON_ZIP_EXACT_CHECK=PASS files=46
 SHA256SUMS_VERIFY=PASS
 RELEASE_REMOTE_ASSET_VERIFY=PASS
+BOM_CHECK=PASS
+SECRET_CHECK=PASS real=0
+LINK_CHECK=PASS
+NO_IMAGE_MARKUP=PASS
 ```
 
-## 10. 当前 blocker
+## 10. 已解决 Follow-up
 
-当前没有已知 0.4.0 release blocker。`v0.4.0` 已发布并完成线上复核。
+- 非法 Resource 源路径返回 `INVALID_PATH`；
+- `node.create.parent_path` 明确 `.` 表示当前编辑场景根节点；
+- Runtime Autoload 添加/删除会立即持久化；
+- 一键安装器支持中文和空格项目路径；
+- 安装器升级会清理旧 addon stale 文件，但不会删除其他插件。
 
-## 11. 精确下一项任务
+## 11. 当前非阻塞限制
 
-等待用户指定下一项开发任务。
+- 目前只打包/验证 Windows x64；
+- Godot 4.7.2 是明确验证基线；
+- 安装器没有代码签名；
+- 0.4.0 不包含 Screenshot / Input / Frame Step Playtest；
+- 真实回归中一次 Scene Activation 旧状态观察和一次 MCP 网络失败都无法复现。
+
+## 12. 关闭状态
+
+v0.4.0 **没有未解决 Release Blocker**。
+
+后续工作统一进入 [开发计划](DEVELOPMENT_PLAN.zh-CN.md)，不再继续堆到这份已关闭版本记录中。

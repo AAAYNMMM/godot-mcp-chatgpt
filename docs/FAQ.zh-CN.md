@@ -4,7 +4,7 @@
 
 ## 需要 CWapi 吗？
 
-不需要。开发过程中 CWapi 作为“已经验证可用的连接方式”提供了参考，但 `godot-mcp-chatgpt` 0.4.0 已经内置官方 OpenAI `tunnel-client`，并自己提供 Godot 本地 MCP Server。
+不需要。`godot-mcp-chatgpt` 的运行链路是自包含的：插件内置官方 OpenAI `tunnel-client`，并自己提供 Godot 本地 MCP Server。
 
 ## 需要 Codex、Cursor 或 Claude Desktop 吗？
 

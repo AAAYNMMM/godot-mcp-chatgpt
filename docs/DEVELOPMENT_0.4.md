@@ -1,319 +1,208 @@
-# 0.4.0 Full-Capability Development Tracker
+# v0.4.0 Release Record
 
 English | [简体中文](DEVELOPMENT_0.4.zh-CN.md)
 
-Target version: **0.4.0**
+Status: **complete / released**
+Release date: **2026-09-10**
+Release tag: **`v0.4.0`**
+Release source commit: **`f12d268b5bca087ae8cef744f9cb7ab8877848e8`**
 
-Branch: `main` durable development workspace
+This is a **closed technical record** for v0.4.0. It is not an active WIP tracker.
 
-Public validated baseline while this work is in progress: **0.3.0**
+## 1. Release goal
 
-Status of this document: tracks both committed baseline and explicitly marked uncommitted working-tree work.
-
-## 1. Goal
-
-0.4.0 is the capability-expansion release. The goal is not a minimal demo surface. The target is a broadly useful Godot editor/runtime MCP that can independently discover, understand, modify, run, inspect and debug a real Godot project without requiring the user to manually relay routine project context.
-
-The full loop should become:
+Turn the earlier tunnel proof-of-concept into a self-contained, user-installable Godot MCP product for Web ChatGPT:
 
 ```text
-inspect project
- -> discover files/scenes/scripts/resources
- -> inspect Godot 4.7.2 APIs
- -> modify project/editor state
- -> save
- -> run
- -> collect diagnostics/runtime state
- -> repair
- -> validate again
+Web ChatGPT
+  ↓
+OpenAI Secure MCP Tunnel
+  ↓
+official bundled tunnel-client
+  ↓
+Godot loopback Streamable HTTP MCP
+  ↓
+Godot editor/runtime tool surface
 ```
 
-## 2. Non-negotiable architecture
+## 2. Architecture decision
 
-0.4.0 keeps the known-good 0.3.0 transport:
+v0.4.0 keeps the production transport decision established in 0.3.0:
+
+- do not reimplement the OpenAI tunnel wire protocol in GDScript;
+- bundle and launch the official OpenAI `tunnel-client`;
+- host the MCP server inside Godot on loopback;
+- keep Godot editor/runtime operations in the plugin;
+- expose a direct MCP tool surface to ChatGPT.
+
+This architecture is considered the release baseline.
+
+## 3. Shipped capability
+
+v0.4.0 exposes **119 tools**:
+
+| Family | Count |
+| --- | ---: |
+| godot | 1 |
+| project | 13 |
+| input_map | 6 |
+| scene | 12 |
+| node | 23 |
+| script | 10 |
+| resource | 8 |
+| classdb | 9 |
+| editor | 20 |
+| debugger | 4 |
+| runtime | 11 |
+| diagnostics | 1 |
+| batch | 1 |
+| **Total** | **119** |
+
+The full index is in [Tool Reference](TOOL_REFERENCE.md).
+
+## 4. Credential lifecycle
+
+The Runtime API Key:
+
+- is stored in Windows Credential Manager after successful connection;
+- is not stored in `project.godot`, EditorSettings, the generated tunnel profile, or Git;
+- can be reused for automatic reconnect;
+- can be removed with **Forget Saved Credentials**.
+
+Tunnel ID and key use the plugin's own credential/settings namespace and do not reuse CWapi data.
+
+## 5. Runtime debugger
+
+v0.4.0 adds an editor-to-runtime bridge:
 
 ```text
-ChatGPT
- -> OpenAI Secure MCP Tunnel
- -> official bundled tunnel-client
- -> Godot loopback Streamable HTTP MCP
- -> command registry
- -> Godot Editor / Runtime APIs
+MCP tool
+  ↓
+EditorPlugin
+  ↓
+EditorDebuggerPlugin / session
+  ↓
+EngineDebugger message channel
+  ↓
+runtime_bridge.gd
+  ↓
+live SceneTree
 ```
 
-Do not reintroduce the removed custom OpenAI tunnel wire client.
+Supported release behavior includes:
 
-## 3. Credential persistence
+- runtime tree/status;
+- node inspection/find;
+- property read/write;
+- method calls;
+- groups;
+- performance values;
+- pause/resume;
+- debugger sessions/breakpoints/profiler controls.
 
-Decision: match CWapi's storage class, not its credential namespace.
+Runtime mutations remain runtime-only unless an editor-side tool separately changes/saves the project.
 
-CWapi was inspected read-only and uses Windows Credential Manager with Generic Credentials through `CredWriteW`, `CredReadW` and `CredDeleteW`.
+## 6. Diagnostics and Batch
 
-0.4.0 uses the same mechanism with its own target:
+`diagnostics.run_capture`:
+
+- launches only the current Godot executable/current project;
+- captures stdout/stderr separately;
+- returns exit code, timeout state, duration, and bounded output;
+- is not a general shell MCP tool.
+
+`batch.execute`:
+
+- executes registered MCP tools sequentially;
+- is bounded to 50 operations;
+- supports `stop_on_error`;
+- rejects recursive Batch;
+- is non-atomic and has no rollback guarantee.
+
+## 7. Installer and release artifacts
+
+v0.4.0 includes:
 
 ```text
-godot-mcp-chatgpt/0.4/OpenAI/Tunnel/APIKey
+godot-mcp-chatgpt-v0.4.0-windows-x64-installer.exe
+godot-mcp-chatgpt-v0.4.0-addon.zip
+SHA256SUMS.txt
 ```
 
-The project must never reuse CWapi's `CWapi/2.0/...` target, because the two products must not overwrite each other's secrets.
+Installer behavior:
 
-Expected behavior:
+- user selects any target `project.godot`;
+- no user/project path is hard-coded;
+- installs only into the selected project;
+- enables the plugin by default;
+- supports clean upgrade replacement;
+- preserves unrelated editor plugins;
+- uses staging/backup/rollback behavior;
+- cleans temporary install data.
+
+During installer validation, Runtime autoload persistence was hardened with `ProjectSettings.save()` after add/remove.
+
+## 8. Security boundaries
+
+Release boundaries include:
+
+- `res://`-only file/resource mutation;
+- traversal rejection;
+- edited-scene root delete denial;
+- explicit scene overwrite;
+- loopback-only local MCP;
+- bounded Diagnostics;
+- bounded non-atomic Batch;
+- protected Windows credential storage;
+- no arbitrary shell MCP surface.
+
+See [Security](../SECURITY.md).
+
+## 9. Validation record
+
+Actually passed:
 
 ```text
-first connection:
-Tunnel ID + Runtime API Key
- -> save Tunnel ID
- -> save Runtime API Key in Windows Credential Manager
- -> start tunnel-client
-
-next Godot startup:
-saved Tunnel ID + Credential Manager API Key
- -> automatic reconnect
-```
-
-The generated tunnel profile must still contain only:
-
-```yaml
-api_key: env:CONTROL_PLANE_API_KEY
-```
-
-### Credential status
-
-| Item | Status | Evidence / remaining gate |
-| --- | --- | --- |
-| Windows credential helper | targeted validation passed | isolated write/present/read/delete round trip passed |
-| Godot credential-store wrapper | targeted validation passed | Godot 4.7.2 script load passed |
-| UI save/forget flow | implemented / validation pending | production UI integration still needs full smoke |
-| automatic reconnect after Godot restart | implemented / validation pending | cross-process restart test not yet run |
-| secret/profile leak regression | planned | final secret scan + profile inspection required |
-
-## 4. Capability matrix
-
-These statuses describe the current durable working tree, not the public 0.3.0 release.
-
-| Area | Status | Scope |
-| --- | --- | --- |
-| Shared Variant/object codec | targeted validation passed | Godot Variant encoding/decoding, property/method/signal summaries, limits |
-| Project discovery/search | targeted validation passed | inspect/list/find/search |
-| ProjectSettings | targeted validation passed | get/set/list |
-| InputMap | targeted validation passed | list/get/add/remove/events |
-| Project file operations | targeted validation passed | mkdir/move/delete inside `res://` |
-| Scene lifecycle | targeted validation passed | current/open/list/close/reload/save/instantiate/inspect |
-| Node introspection | targeted validation passed | inspect/properties/methods/find |
-| Node mutation | targeted validation passed | rename/reparent/duplicate/move/call |
-| Groups | targeted validation passed | read/add/remove |
-| Signals | targeted validation passed | inspect connections/connect/disconnect |
-| Metadata | targeted validation passed | read/set/remove |
-| Script introspection | targeted validation passed | info/validation/open-state/reload/save/detach |
-| Resource introspection/mutation | targeted validation passed | inspect/get/set/create/save/duplicate/dependencies/call |
-| ClassDB self-inspection | targeted validation passed | search/inspect/properties/methods/signals/enums/constants/inheritance |
-| Editor state/control | targeted validation passed | inspect/selection/filesystem/script state/play controls/save-all |
-| Captured run diagnostics | targeted validation passed | separate stdout/stderr, exit code, timeout, duration, truncation state |
-| Editor debugger integration | targeted validation passed | debugger sessions, breakpoints/profiler controls, Godot debugger messaging |
-| Runtime bridge | targeted validation passed | live tree/inspect/find/property/method/group/performance/pause-resume |
-| Batch operations | targeted validation passed | max 50 items, ordered execution, per-item results, stop-on-error, recursion denial |
-| High-level aggregate inspection | targeted validation passed | project/scene/node/editor/runtime aggregate inspection now exists |
-| Production command registration | in progress | Editor module is registered for WIP validation; remaining 0.4 modules are not yet exposed |
-| Full MCP schema/catalogue validation | integration passed | all 119 names/schemas/required fields/annotations passed gates |
-| Full production tunnel regression | integration passed | bundled official tunnel-client production smoke passed |
-
-## 5. Working-tree modules
-
-Current 0.4.0 work includes:
-
-```text
-addons/godot_mcp_chatgpt/core/command_utils.gd
-addons/godot_mcp_chatgpt/commands/project_commands.gd
-addons/godot_mcp_chatgpt/commands/scene_node_commands.gd
-addons/godot_mcp_chatgpt/commands/script_resource_commands.gd
-addons/godot_mcp_chatgpt/commands/classdb_commands.gd
-addons/godot_mcp_chatgpt/commands/editor_commands.gd
-addons/godot_mcp_chatgpt/commands/runtime_debugger_commands.gd
-addons/godot_mcp_chatgpt/debug/editor_debugger_bridge.gd
-addons/godot_mcp_chatgpt/debug/runtime_debugger_manager.gd
-addons/godot_mcp_chatgpt/runtime/runtime_bridge.gd
-addons/godot_mcp_chatgpt/web/credential_store.gd
-tools/credential-helper/
-addons/godot_mcp_chatgpt/bin/windows/godot-mcp-credential.exe
-```
-
-These are **not yet the public release contract** until the production registration and release gates pass.
-
-## 6. Tool-family target
-
-0.4.0 aims to cover these families rather than an arbitrary numeric tool count:
-
-```text
-godot.*
-project.*
-input_map.*
-scene.*
-node.*
-script.*
-resource.*
-classdb.*
-editor.*
-debugger.*
-runtime.*
-batch.*
-```
-
-A family is considered complete only when normal read, mutation (where applicable), discovery, validation/error behavior and safety boundaries are covered.
-
-## 7. Runtime/debug design
-
-The runtime path should use Godot's own debugger transport where possible:
-
-```text
-Editor MCP
- -> EditorDebuggerPlugin / EditorDebuggerSession
- -> EngineDebugger message channel
- -> runtime bridge
- -> running SceneTree
-```
-
-Do not expose a second public network listener for runtime control.
-
-For console diagnostics, Godot 4.7.2 does not expose a simple public API for scraping the Output dock. Use a truthful implementation such as a captured run process / debugger messages rather than claiming to read UI output that is not available through a supported API.
-
-## 8. Safety requirements
-
-- filesystem mutation remains scoped to `res://`;
-- no arbitrary shell MCP tool;
-- method-call tools must return structured errors and remain bounded;
-- batch execution must have count/size limits;
-- recursive inspection must have depth/item limits;
-- destructive tools must have accurate MCP annotations;
-- existing-scene overwrite remains explicit;
-- credential values must never be logged or returned by MCP;
-- Runtime API Key must not be stored in project files or Git.
-
-## 9. Validation gates
-
-0.4.0 cannot be promoted to the public Tool Reference until all applicable gates pass.
-
-### Module gates
-
-- [x] Credential helper isolated round trip
-- [x] Credential GDScript compilation
-- [x] Project command module compilation
-- [x] Scene/Node command module compilation
-- [x] Script/Resource command module compilation
-- [x] ClassDB command module compilation
-- [x] Editor command module compilation + real EditorPlugin behavior smoke
-- [x] Runtime/debugger module compilation + real runtime bridge smoke
-- [x] Batch module compilation + production smoke
-
-### Integration gates
-
-- [x] Register all 0.4.0 modules in production plugin (119 tools)
-- [x] Full addon script compilation under Godot 4.7.2
-- [x] Validate unique tool names
-- [x] Validate all MCP input schemas
-- [x] Validate tool annotations
-- [x] Loopback / official tunnel MCP `tools/list` + representative `tools/call`
-- [x] Real Godot GUI editor read/write smoke
-- [x] Credential save -> Godot restart -> automatic reconnect
-- [x] Credential forget -> restart -> credential required
-- [x] Captured-run diagnostics smoke
-- [x] Runtime debugger bridge smoke
-- [x] Official tunnel-client integration regression
-- [x] Real ChatGPT connector discovery/call regression
-
-### Repository/release gates
-
-- [x] Remove UTF-8 BOM from WIP `plugin.cfg` and scan all text files
-- [x] Secret scan
-- [x] `git diff --check`
-- [x] Test-artifact / generated-file hygiene
-- [x] Documentation relative-link check
-- [x] Update English + Chinese Tool Reference
-- [x] Update README capability summary
-- [x] Update CHANGELOG
-- [x] Update SECURITY if credential/runtime surface changed materially
-- [x] 0.4.0 baseline committed and pushed; installer follow-up commit pending
-
-### Credential restart lifecycle
-
-Status: **integration passed**.
-
-- [x] first save -> Credential Manager
-- [x] Godot restart -> automatic reconnect without re-entering API Key
-- [x] forget credentials -> key + Tunnel ID removed
-- [x] restart after forget -> credentials required
-- [x] isolated test target used; production credential target untouched
-
-### Runtime autoload lifecycle
-
-Status: **integration passed**.
-
-- [x] plugin enable -> runtime autoload present
-- [x] plugin disable -> runtime autoload removed
-- [x] plugin re-enable -> runtime autoload restored
-- [x] Godot 4.7.2 `uid://` autoload references resolve to the runtime bridge
-- [x] final disable leaves no runtime autoload residue
-
-### Real ChatGPT Connector regression
-
-Status: **real connector validation passed**.
-
-- [x] real ChatGPT Connector discovered 119 tools
-- [x] full editor read/write loop
-- [x] Runtime Debugger live tree/property/method/pause/resume
-- [x] Diagnostics stdout/stderr/exit code
-- [x] Batch ordering/stop-on-error/recursion denial
-- [x] Security boundaries
-- [x] `REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS`
-
-Resolved follow-ups: invalid Resource paths now return `INVALID_PATH`, and `node.create.parent_path` schema explicitly documents `.` as the edited-scene root. Continue observing the non-reproducible scene activation and transient network events.
-
-### One-click installer / Release packaging
-
-Status: **complete; GitHub Release published**.
-
-- [x] Windows x64 single-file installer source under `tools/installer/`
-- [x] complete addon embedded into installer; no user/machine path is hard-coded
-- [x] GUI project selection via `project.godot`
-- [x] default automatic editor-plugin enablement
-- [x] `--project`, `--silent`, `--result`, `--no-enable` automation switches
-- [x] clean install with Unicode + spaces in project path
-- [x] upgrade replacement with stale-file removal and unrelated-plugin preservation
-- [x] invalid project rejection
-- [x] `--no-enable` behavior
-- [x] installed addon loaded by real Godot 4.7.2; persisted Runtime autoload lifecycle revalidated
-- [x] Runtime autoload persistence fixed with `ProjectSettings.save()`
-- [x] final commit-based artifact rebuild
-- [x] final installer smoke from commit-based artifact
-- [x] GitHub Release `v0.4.0` publish + remote asset hash verification
-### Installer final pre-commit gates
-
-Status: **release validation passed**.
-
-```text
+Godot 4.7.2 addon load/compile
+npm build
+npm test
+CATALOGUE_SCHEMA_GATE=PASS tools=119
 PRODUCTION_PLUGIN_SMOKE=PASS
+REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS
 RUNTIME_AUTOLOAD_LIFECYCLE_NODE_SMOKE=PASS
-INSTALLER_SMOKE=PASS version=0.4.0
-INSTALLER_PRECOMMIT_GATES=PASS
-```
-
-### GitHub Release publication
-
-Status: **complete**.
-
-```text
-source commit=f12d268b5bca087ae8cef744f9cb7ab8877848e8
-tag=v0.4.0
-BUILD_COMMIT_CHECK=PASS f12d268b5bca
+INSTALLER_CLEAN_INSTALL=PASS
+INSTALLER_UPGRADE=PASS
+INSTALLER_NO_ENABLE=PASS
+INSTALLER_INVALID_PROJECT=PASS
+INSTALLER_GODOT_4_7_2_LOAD=PASS
 INSTALLER_SMOKE=PASS version=0.4.0
 ADDON_ZIP_EXACT_CHECK=PASS files=46
 SHA256SUMS_VERIFY=PASS
 RELEASE_REMOTE_ASSET_VERIFY=PASS
+BOM_CHECK=PASS
+SECRET_CHECK=PASS real=0
+LINK_CHECK=PASS
+NO_IMAGE_MARKUP=PASS
 ```
 
-## 10. Current blocker
+## 10. Resolved release follow-ups
 
-No known 0.4.0 release blocker remains. Release `v0.4.0` is published and remotely verified.
+- invalid Resource source paths return `INVALID_PATH`;
+- `node.create.parent_path` explicitly documents `.` as the edited-scene root;
+- Runtime autoload add/remove persists immediately;
+- the one-click installer handles spaces and Unicode project paths;
+- installer upgrade removes stale addon files without deleting unrelated plugins.
 
-## 11. Exact next task
+## 11. Known non-blocking limitations
 
-Wait for the user to choose the next development task.
+- Windows x64 only packaged/verified;
+- Godot 4.7.2 is the verified baseline;
+- installer is unsigned;
+- screenshot/input/frame-step playtest tooling is not part of 0.4.0;
+- one transient scene-activation observation and one transient MCP network failure from the real regression were not reproducible.
+
+## 12. Closure
+
+There is **no open v0.4.0 release blocker**.
+
+Future work belongs in [Development Plan](DEVELOPMENT_PLAN.md), not in this closed release record.

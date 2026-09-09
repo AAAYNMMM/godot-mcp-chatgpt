@@ -31,13 +31,13 @@ ChatGPT / 支持 OpenAI MCP 的产品
 
 关键决定：**Godot 不自己实现 OpenAI Tunnel wire protocol。** Tunnel 兼容性由官方 OpenAI `tunnel-client` 负责。
 
-这套模式参考了开发过程中已经验证能正常创建 ChatGPT 连接器的 CWapi 连接方式，但本插件运行时不依赖 CWapi。
+关键设计是：**Godot 不实现 OpenAI Tunnel wire protocol**。Tunnel Transport 由官方 OpenAI `tunnel-client` 负责，本插件专注本地 MCP Server 和 Godot 集成。
 
 ## 为什么最终选择这个架构
 
 早期版本曾经用 GDScript 自己实现 control-plane `/poll` 和 `/response`。本地协议仿真可以通过，Godot 也能显示 connected，但真实 ChatGPT 创建连接器仍然失败。
 
-之后只读检查了 CWapi 的实际实现，发现它并不自己重写 OpenAI Tunnel 协议，而是：
+早期曾验证过自定义直连 Tunnel 实现，但真实 ChatGPT Connector 路径不满足生产要求。因此生产架构改为：
 
 ```text
 官方 tunnel-client

@@ -14,8 +14,8 @@ Use the documents for different levels of truth:
 | `docs/TOOL_REFERENCE.md` | Public tool contract | Tools available on the validated release/main baseline only |
 | `CHANGELOG.md` | Release history | Shipped changes only |
 | `docs/DEVELOPMENT_PLAN.md` | Long-term roadmap | Milestones, architecture rules and planned phases |
-| `docs/DEVELOPMENT_<version>.md` | Active version tracker | Working-tree implementation status, validation status and blockers |
-| `docs/PROGRESS.md` | Handoff / chronological truth | What was actually completed, what was actually tested, current blocker and exact next task |
+| `docs/DEVELOPMENT_<version>.md` | Version record | Active tracker while developing; closed technical record after release |
+| `docs/PROGRESS.md` | Current status / handoff | Current release, actual validation, current limitations, and current priorities |
 
 Do not copy unvalidated work-in-progress claims into README, Tool Reference or Changelog.
 
@@ -29,7 +29,7 @@ A task may be marked complete only when all applicable items are true:
 2. the relevant targeted validation was actually run;
 3. failures found by that validation were resolved or explicitly recorded as blockers;
 4. `docs/PROGRESS.md` was updated with the result;
-5. the active version tracker was updated;
+5. the active version tracker was updated when an active version exists;
 6. the Simplified Chinese counterpart was synchronized for development documents that have a paired translation.
 
 If validation has not run yet, use `implemented / validation pending`, not `complete`.
@@ -152,3 +152,14 @@ A new development window should read, in order:
 4. `docs/PROGRESS.md`
 
 before changing architecture or tool contracts.
+## 11. Release closure and history
+
+After a version is published:
+
+- change its active version tracker into a closed release record;
+- remove stale `in progress`, blocker, and next-task language for that version;
+- keep `PROGRESS.md` concise and current;
+- move long chronological implementation history to `PROGRESS_ARCHIVE_<range>.md`;
+- keep future candidate work in `DEVELOPMENT_PLAN.md`.
+
+Public users should not need to read historical WIP logs to understand the current release.

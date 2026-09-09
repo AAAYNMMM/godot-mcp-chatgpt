@@ -13,6 +13,33 @@ Version **0.4.0** exposes **119 MCP tools**. This document is a human-readable i
 - `batch.execute` is ordered and bounded, but **non-atomic**: successful earlier operations are not rolled back if a later operation fails.
 - `diagnostics.run_capture` only launches the current Godot executable against the current project; it is not a general shell/process tool.
 
+## Operational model and common failures
+
+Before using a tool, identify which state it targets:
+
+| Target | Typical tools | Requirement | Persists to project? |
+| --- | --- | --- | --- |
+| Editor project | `project.*`, `scene.*`, `node.*`, `script.*`, `resource.*` | Godot editor/plugin loaded | Usually yes when the tool saves/persists |
+| Editor control | `editor.*` | Godot editor/plugin loaded | Depends on operation |
+| Runtime | `runtime.*`, `debugger.*` | Active debugger/runtime session | No, unless a separate editor tool persists a change |
+| Diagnostics | `diagnostics.run_capture` | Current Godot executable/project | No project mutation by the runner itself |
+| Batch | `batch.execute` | Same requirements as nested tools | Depends on nested tools |
+
+Common error codes:
+
+| Code | Meaning / next action |
+| --- | --- |
+| `INVALID_PATH` | Path escaped `res://` or failed path validation. Use a project-relative `res://` path. |
+| `NODE_NOT_FOUND` | Edited-scene/runtime node path did not resolve. Inspect the tree first. |
+| `PROPERTY_NOT_FOUND` | Property is unavailable on that object/class. Inspect properties or ClassDB. |
+| `METHOD_NOT_FOUND` | Method is unavailable. Inspect methods/ClassDB before calling. |
+| `RUNTIME_NOT_RUNNING` | Start a scene/project and wait for an active debugger session. |
+| `RUNTIME_REQUEST_TIMEOUT` | Runtime request did not complete in the timeout; inspect session/runtime state. |
+| `ROOT_DELETE_DENIED` | The edited scene root cannot be deleted. |
+| `BATCH_RECURSION_DENIED` | `batch.execute` cannot invoke itself recursively. |
+| `BATCH_TOO_LARGE` | Split the request into smaller batches. |
+
+For mutating workflows, inspect first and save deliberately. For runtime workflows, remember that runtime state and saved editor state are separate.
 ## Godot value encoding
 
 Common non-JSON Godot values use tagged objects. Example `Vector3`:
