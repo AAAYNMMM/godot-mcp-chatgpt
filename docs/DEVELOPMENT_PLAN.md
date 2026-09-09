@@ -119,51 +119,53 @@ Status: **complete for the v0.4.0 Windows release**.
 - Release assets re-downloaded and hash-verified;
 - public bilingual documentation release pass.
 
-## 4. Candidate next milestone
+## 4. Active next milestone — v0.5.0 capability migration
 
-No 0.5.0 scope is locked yet. Candidate work should be prioritized by impact on the real autonomous development loop.
+Status: **scope locked / implementation pending**.
 
-### A. Eyes and playtest controls
+v0.5.0 is no longer an open-ended candidate milestone. Its required scope is defined in [v0.5.0 Capability Migration Plan](DEVELOPMENT_0.5.md).
 
-Priority candidate:
+The milestone has two mandatory outcomes:
 
-- screenshot / frame capture;
-- deterministic input injection;
-- input sequences;
-- frame-step control;
-- richer runtime logs;
-- automated playtest/test-result workflows.
+1. migrate the audited Godot-side capabilities that are missing from v0.4.0, while retaining our existing equivalent/better implementations;
+2. compress the default public MCP catalogue from 119 flat tools to a compact **<=50-tool** domain surface while preserving atomic internal commands.
 
-Goal:
+Explicitly excluded from the migration:
 
-```text
-ChatGPT edits game
-→ runs it
-→ sees output
-→ sends player input
-→ advances deterministically
-→ reads state/logs
-→ fixes issues
-```
+- MCP Resources such as `godot://...`;
+- MCP client auto-configuration;
+- Python/FastMCP server;
+- Godot AI WebSocket bridge.
 
-### B. Tunnel operations UX
+Required capability families include:
 
-- explicit health/readiness state;
-- tunnel-client version/update visibility;
-- sanitized diagnostics report;
-- clearer external-process/status handling.
+- screenshot/image responses and game liveness;
+- deterministic keyboard/mouse/gamepad/action input and frame-timed sequences;
+- native debugger step/suspend/status;
+- live editor/game logs and richer diagnostics;
+- script patch + per-write diagnostics;
+- GDScript test runner/results;
+- UndoRedo-backed editor mutations and rollback-capable Batch where truly reversible;
+- editor monitor/reload/quit and a separately security-reviewed bounded game-eval contract;
+- idempotent InputMap helpers and Autoload add/remove;
+- Animation, Material/Shader, Audio, Particles, Camera, Theme and UI helpers;
+- Curve/Environment/PhysicsShape/Gradient/Noise resource helpers;
+- TileMap/TileSet, GridMap and CSG;
+- third-party custom tool registration/invocation through the GDScript CommandRegistry.
 
-### C. Compatibility
+Implementation remains **GDScript-first** for Godot capabilities. Existing Go helpers remain responsible for Windows Credential Manager, the installer, and bounded child-process capture.
 
-- additional Godot 4.x regression matrix;
-- Windows versions beyond the current test machine;
-- macOS/Linux packaging only if a supported runtime distribution path is established.
+The first implementation task is the compact public-surface foundation; new capability families are not added until the existing v0.4 capabilities pass a real ChatGPT regression through the compact catalogue.
 
-### D. Distribution maturity
+## 4.1 Follow-up work after the migration milestone
 
-- code signing/reputation strategy;
-- reproducible CI validation;
-- automated release gates where they can be made reliable.
+Work not required to complete the capability migration remains separately prioritized:
+
+- clearer tunnel health/readiness/version diagnostics in the editor;
+- additional Godot 4.x compatibility validation;
+- Windows code-signing/reputation strategy;
+- CI/repository automation where reliable;
+- macOS/Linux packaging only when a supported runtime distribution path exists.
 
 ## 5. Performance rules
 

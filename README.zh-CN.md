@@ -237,24 +237,22 @@ RELEASE_REMOTE_ASSET_VERIFY=PASS
 | [发布流程](docs/RELEASING.zh-CN.md) | 可复现 Release checklist |
 | [当前进度](docs/PROGRESS.zh-CN.md) | 当前仓库/版本状态 |
 | [0.4.0 发布记录](docs/DEVELOPMENT_0.4.zh-CN.md) | v0.4.0 已关闭技术记录 |
+| [0.5.0 能力迁移计划](docs/DEVELOPMENT_0.5.zh-CN.md) | 当前能力迁移与 Compact Tool Surface 开发计划 |
 
 英文文档可通过各中文文档顶部链接切换。
 
 ## 路线图
 
-下一阶段更应该增加“能力深度”和工程成熟度，而不是单纯把 119 个工具继续堆高。
+下一里程碑已经锁定为 **v0.5.0 Capability Migration**，有两个目标：
 
-候选优先方向：
+1. 迁移能力审计中 v0.4.0 仍缺失的 Godot-side 能力；
+2. 把默认 Public MCP Surface 从 119 个扁平 Tool 压缩为 **<=50 个** Compact Domain Tools，同时保留内部 Atomic Commands。
 
-- Screenshot / 视觉检查；
-- 输入注入和确定性的自动 Playtest；
-- Frame step、Runtime log、测试工作流；
-- Godot 面板更清楚的 Tunnel health/readiness；
-- 更多 Godot 4.x 兼容验证；
-- Windows 代码签名/信誉策略；
-- 在采用对应 runtime 分发方案后考虑 macOS/Linux。
+迁移范围包括 Screenshot/Image、确定性 Input/Playtest、Native Frame Step、Live Logs、Script Patch/Write Diagnostics、GDScript Tests、UndoRedo/Rollback、高层 Animation/Material/Audio/Particle/Camera/Theme/UI、Resource Helpers、TileMap/TileSet、GridMap、CSG、Autoload Mutation 和第三方 Custom Tool Registration。
 
-详细见：[开发计划](docs/DEVELOPMENT_PLAN.zh-CN.md)。
+明确**不迁移** `godot://...` MCP Resources、MCP Client Auto-config、Python/FastMCP Server、Godot AI WebSocket Bridge。我们已经等价或更强的 v0.4 能力也不会重复实现。
+
+详细见：[v0.5.0 能力迁移计划](docs/DEVELOPMENT_0.5.zh-CN.md) 和 [开发计划](docs/DEVELOPMENT_PLAN.zh-CN.md)。
 
 ## 参与贡献
 
@@ -274,3 +272,9 @@ RELEASE_REMOTE_ASSET_VERIFY=PASS
 项目源码遵循 [LICENSE](LICENSE)。
 
 内置官方 OpenAI `tunnel-client` 保留其上游 License 和 NOTICE，详见 [第三方声明](THIRD_PARTY_NOTICES.zh-CN.md)。
+
+## 致谢与相关项目
+
+[Godot AI](https://github.com/hi-godot/godot-ai) 是一个成熟的 MIT Godot MCP 开源项目。v0.5 能力迁移计划会把它当前的能力面和 Compact Domain / Rollup Tool Surface 设计作为重要参考。
+
+`godot-mcp-chatgpt` 仍然保持独立实现，专注 Web ChatGPT，并且**不依赖** Godot AI、Python/FastMCP、它的 MCP Client 配置层、`godot://` Resources 或 WebSocket Bridge。如果后续迁移过程中实质 Port / Derive Godot AI 源码，会按 MIT 要求把对应 Attribution 写入 [第三方声明](THIRD_PARTY_NOTICES.zh-CN.md)。

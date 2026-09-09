@@ -66,3 +66,20 @@ https://github.com/NPGameDev/godot-mcp-server
 ```
 
 如果未来直接复制了大量第三方源码，而不是仅参考公开协议/行为，必须同时保留对应版权和许可证声明。
+## Godot AI
+
+项目：`hi-godot/godot-ai`
+
+许可证：MIT
+
+Godot AI 当前的 Godot-side 能力面、GDScript Handler 设计，以及把 100+ 扁平 MCP Tool 压缩为 Compact Domain / Rollup Surface 的思路，是 v0.5.0 能力迁移计划的重要参考。
+
+当前本项目**不依赖** Godot AI，也不会迁移其 Python/FastMCP Server、WebSocket Bridge、MCP Client Auto-config 或 `godot://...` Resources。
+
+如果后续迁移实质复制或派生 Godot AI 源码，对应文件/模块必须保留适用的 MIT Copyright / License Notice，并在本文同步记录。
+
+上游仓库：
+
+```text
+https://github.com/hi-godot/godot-ai
+```

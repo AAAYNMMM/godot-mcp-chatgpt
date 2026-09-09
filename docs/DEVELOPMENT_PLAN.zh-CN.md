@@ -119,51 +119,53 @@ Godot Editor API / Editor Debugger
 - Release 资产重新下载并校验哈希；
 - 中英文公开文档发布整理。
 
-## 4. 下一里程碑候选方向
+## 4. 当前下一里程碑 — v0.5.0 能力迁移
 
-当前还没有锁死 0.5.0 Scope。下一步应按“真实自动开发闭环价值”排序。
+状态：**范围已锁定 / 尚未开始实现**。
 
-### A. 眼睛 + Playtest 控制
+v0.5.0 不再是开放式候选里程碑。完整必做范围见 [v0.5.0 能力迁移计划](DEVELOPMENT_0.5.zh-CN.md)。
 
-优先候选：
+本里程碑有两个强制结果：
 
-- Screenshot / Frame Capture；
-- 确定性输入注入；
-- Input Sequence；
-- Frame Step；
-- 更完整 Runtime Log；
-- 自动 Playtest / Test Result 工作流。
+1. 迁移能力审计中 v0.4.0 缺失的 Godot-side 能力，同时保留我们已经等价或更强的实现；
+2. 把默认 Public MCP Catalogue 从 119 个扁平 Tool 压缩为 **<=50 个**的紧凑 Domain Surface，同时保留内部 Atomic Commands。
 
-目标：
+明确不迁移：
 
-```text
-ChatGPT 修改游戏
-→ 运行
-→ 看画面
-→ 发送玩家输入
-→ 确定性推进
-→ 读取状态/日志
-→ 自动修复
-```
+- `godot://...` MCP Resources；
+- MCP Client 自动配置；
+- Python / FastMCP Server；
+- Godot AI WebSocket Bridge。
 
-### B. Tunnel 运维 UX
+必做能力 Family 包括：
 
-- 明确 Health / Readiness；
-- Tunnel Client 版本/更新可见；
-- 脱敏诊断报告；
-- 更清楚的外部进程/连接状态。
+- Screenshot / Image Response / Game Liveness；
+- 确定性的 Keyboard / Mouse / Gamepad / Action Input 与按帧 Input Sequence；
+- Native Debugger Step / Suspend / Status；
+- Live Editor / Game Logs 与更完整 Diagnostics；
+- Script Patch + Per-write Diagnostics；
+- GDScript Test Runner / Results；
+- 能可靠恢复的 Editor Mutation 使用 UndoRedo，并为支持范围内 Batch 增加 Rollback；
+- Editor Monitor / Reload / Quit，以及单独 Security Review 后的有边界 Game Eval；
+- InputMap 幂等 Helper 和 Autoload Add / Remove；
+- Animation、Material / Shader、Audio、Particles、Camera、Theme、UI；
+- Curve / Environment / PhysicsShape / Gradient / Noise Resource Helper；
+- TileMap / TileSet、GridMap、CSG；
+- 通过 GDScript CommandRegistry 提供第三方 Custom Tool Register / Invoke。
 
-### C. 兼容性
+Godot 能力继续坚持 **GDScript-first**。现有 Go Helper 继续只负责 Windows Credential Manager、Installer 和有边界 Child-process Capture。
 
-- 更多 Godot 4.x 回归矩阵；
-- 更多 Windows 环境；
-- 只有在建立可靠 Runtime 分发路线后再考虑 macOS/Linux。
+第一项实现任务是 Compact Public Surface 基础；现有 v0.4 能力必须先通过新的 Compact Catalogue 真实 ChatGPT 回归，然后才能继续迁移新能力 Family。
 
-### D. 分发成熟度
+## 4.1 本轮迁移完成后的后续事项
 
-- Windows 代码签名/信誉策略；
-- 可复现 CI；
-- 能稳定自动化的 Release Gate。
+以下不是完成本轮 Capability Migration 的必要条件，单独继续排期：
+
+- Editor 内更清晰的 Tunnel Health / Readiness / Version Diagnostics；
+- 更多 Godot 4.x Compatibility Validation；
+- Windows Code Signing / Reputation Strategy；
+- 可靠范围内的 CI / Repository Automation；
+- 只有建立支持的 Runtime 分发路径后再做 macOS / Linux Packaging。
 
 ## 5. 性能原则
 

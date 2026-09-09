@@ -235,24 +235,22 @@ Current release state and known limitations are tracked in [Progress](docs/PROGR
 | [Releasing](docs/RELEASING.md) | Repeatable release checklist |
 | [Progress](docs/PROGRESS.md) | Current repository/release status |
 | [0.4.0 Release Record](docs/DEVELOPMENT_0.4.md) | Closed technical record for v0.4.0 |
+| [0.5.0 Capability Migration Plan](docs/DEVELOPMENT_0.5.md) | Active plan for capability migration and compact tool surface |
 
 Simplified Chinese documents are linked from their English counterparts.
 
 ## Roadmap
 
-The next work should improve capability depth and project maturity rather than increase the tool count for its own sake.
+The next milestone is now locked as **v0.5.0 Capability Migration**. It has two goals:
 
-Current candidate priorities:
+1. migrate the audited Godot-side capabilities that are still missing from v0.4.0;
+2. compress the default public MCP surface from 119 flat tools to a compact **<=50-tool** domain surface while retaining internal atomic commands.
 
-- screenshot / visual inspection workflows;
-- input injection and deterministic playtest helpers;
-- frame-step and runtime log/test workflows;
-- clearer tunnel health/readiness diagnostics in the editor;
-- more Godot 4.x compatibility validation;
-- Windows code-signing/reputation strategy;
-- macOS/Linux packaging if supported runtime distribution is adopted.
+The migration includes screenshot/image responses, deterministic input/playtest, native frame stepping, live logs, script patch/write diagnostics, GDScript tests, UndoRedo/rollback semantics, high-level Animation/Material/Audio/Particle/Camera/Theme/UI authoring, Resource helpers, TileMap/TileSet, GridMap, CSG, Autoload mutation, and third-party custom tool registration.
 
-See [Development Plan](docs/DEVELOPMENT_PLAN.md).
+The migration explicitly does **not** include `godot://...` MCP Resources, MCP client auto-configuration, a Python/FastMCP server, or Godot AI's WebSocket bridge. Existing equivalent or stronger v0.4 capabilities are retained instead of duplicated.
+
+See [v0.5.0 Capability Migration Plan](docs/DEVELOPMENT_0.5.md) and [Development Plan](docs/DEVELOPMENT_PLAN.md).
 
 ## Contributing
 
@@ -272,3 +270,9 @@ See [Contributing](CONTRIBUTING.md).
 Project source is licensed under the terms in [LICENSE](LICENSE).
 
 The bundled official OpenAI `tunnel-client` retains its upstream license and NOTICE. See [Third-Party Notices](THIRD_PARTY_NOTICES.md).
+
+## Acknowledgements and related work
+
+[Godot AI](https://github.com/hi-godot/godot-ai) is a mature MIT-licensed Godot MCP project. Its current capability surface and compact domain/rollup tool design are used as an important reference for the v0.5 migration plan.
+
+`godot-mcp-chatgpt` remains an independent implementation focused on Web ChatGPT and does **not** depend on Godot AI, Python/FastMCP, its MCP client configuration layer, its `godot://` Resources, or its WebSocket bridge. Where future migration work ports or derives substantial Godot AI source code, the applicable MIT attribution will be recorded in [Third-Party Notices](THIRD_PARTY_NOTICES.md).

@@ -16,6 +16,8 @@ This document is the **current-state source of truth**. Detailed historical deve
 | Production MCP tools | **119** |
 | Connector path | Web ChatGPT + OpenAI Secure MCP Tunnel |
 | Release state | Published and validated |
+| Active development target | **v0.5.0 capability migration** |
+| v0.5 public-tool target | **<=50 default public MCP tools** |
 
 Release page: <https://github.com/AAAYNMMM/godot-mcp-chatgpt/releases/tag/v0.4.0>
 
@@ -124,18 +126,56 @@ README_STRUCTURE_CHECK=PASS
 ```
 
 No plugin/runtime source file was changed by this task.
-## Next priorities
+## Active development — v0.5.0 capability migration
 
-No single next feature is committed yet. Candidate priorities are:
+Status: **planning complete / implementation not started**.
 
-1. screenshot / visual inspection;
-2. deterministic input injection and playtest helpers;
-3. frame stepping, runtime logs, and test workflows;
-4. tunnel health/readiness diagnostics;
-5. broader Godot 4.x compatibility validation;
-6. CI / repository automation and Windows signing strategy.
+The next milestone is now locked. See [v0.5.0 Capability Migration Plan](DEVELOPMENT_0.5.md).
 
-Do not increase the tool count only for the sake of a larger number.
+Scope rules:
+
+- migrate all audited Godot-side capabilities missing from v0.4.0;
+- do not duplicate capabilities we already provide equivalently or more generally;
+- explicitly do **not** migrate MCP Resources (`godot://...`), MCP client auto-config, Python/FastMCP server, or the Godot AI WebSocket bridge;
+- implement new Godot capabilities GDScript-first inside the existing Editor/Runtime architecture;
+- compress the default public MCP tool surface from 119 flat tools to a **<=50-tool** compact domain surface while keeping internal atomic commands.
+
+Required migration families include screenshots/image responses, deterministic input/playtest, native frame stepping, live logs, script patch/write diagnostics, GDScript tests, UndoRedo/rollback semantics, Animation/Material/Audio/Particle/Camera/Theme/UI authoring, Resource helpers, TileMap/TileSet, GridMap, CSG, Autoload mutation, and custom third-party tool registration.
+
+### Latest completed planning task — migration scope lock
+
+Status: **complete / documentation validation passed**.
+
+Completed:
+
+- audited the current Godot AI public tool/domain capability surface;
+- separated equivalent/better v0.4 capabilities from real gaps;
+- locked the four explicit exclusions;
+- locked GDScript-first / Go-only-for-OS-helper language boundaries;
+- defined the compact public-surface architecture and <=50 release target;
+- created the bilingual v0.5 active tracker;
+- updated the roadmap and README to acknowledge Godot AI as a capability/design reference.
+
+### Planning-document validation
+
+```text
+DOC_LINK_CHECK=PASS files=36
+DOC_NO_IMAGE=PASS
+DOC_BOM_CHECK=PASS
+DOC_UTF8_CHECK=PASS
+DOC_LOCAL_PATH_CHECK=PASS
+MIGRATION_SCOPE_GATE=PASS
+EXCLUSION_GATE=PASS count=4
+COMPACT_TOOL_PLAN_GATE=PASS target<=50
+UPSTREAM_COMPRESSION_REFERENCE=PASS 46=19+27
+README_GODOT_AI_ACK=PASS
+DIFF_CHECK=PASS
+DOC_ONLY_SCOPE=PASS
+```
+
+### Exact next implementation task
+
+**Phase A: separate the public MCP catalogue from the internal atomic CommandRegistry, add the domain-manage dispatcher, map all v0.4 capabilities onto the <=50-tool compact surface, and run a real ChatGPT regression before adding new capability families.**
 
 ## Documentation ownership
 
@@ -145,6 +185,7 @@ Do not increase the tool count only for the sake of a larger number.
 - Security: [Security](../SECURITY.md)
 - Architecture: [Architecture](ARCHITECTURE.md)
 - Roadmap: [Development Plan](DEVELOPMENT_PLAN.md)
+- Active v0.5 tracker: [Development 0.5](DEVELOPMENT_0.5.md)
 - Release process: [Releasing](RELEASING.md)
 - Closed 0.4 technical record: [Development 0.4](DEVELOPMENT_0.4.md)
 - Historical implementation log: [0.3–0.4 archive](PROGRESS_ARCHIVE_0.3-0.4.md)

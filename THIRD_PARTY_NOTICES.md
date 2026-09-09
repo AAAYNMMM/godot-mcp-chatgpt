@@ -65,4 +65,22 @@ Upstream repository:
 https://github.com/NPGameDev/godot-mcp-server
 ```
 
+## Godot AI
+
+Project: `hi-godot/godot-ai`
+
+License: MIT
+
+Godot AI's current Godot-side capability surface, GDScript handler patterns, and compact domain/rollup MCP tool-surface design are important references for the v0.5.0 capability migration plan.
+
+This project does **not** currently depend on Godot AI and will not migrate its Python/FastMCP server, WebSocket bridge, MCP client auto-configuration, or `godot://...` Resources.
+
+If future migration work copies or derives substantial Godot AI source, the applicable MIT copyright/license notice must be preserved for the affected files/modules and recorded here as that code lands.
+
+Upstream repository:
+
+```text
+https://github.com/hi-godot/godot-ai
+```
+
 If future development copies substantial upstream source instead of independently implementing behavior/protocol contracts, preserve the relevant copyright and license notices alongside the copied material.

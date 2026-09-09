@@ -16,6 +16,8 @@
 | 生产 MCP 工具 | **119** |
 | Connector 路线 | Web ChatGPT + OpenAI Secure MCP Tunnel |
 | Release 状态 | 已发布并验证 |
+| 当前开发目标 | **v0.5.0 能力迁移** |
+| v0.5 Public Tool 目标 | **默认 <=50 个 MCP Tools** |
 
 Release：<https://github.com/AAAYNMMM/godot-mcp-chatgpt/releases/tag/v0.4.0>
 
@@ -124,18 +126,56 @@ README_STRUCTURE_CHECK=PASS
 ```
 
 本任务没有修改任何插件/Runtime 源码。
-## 后续优先方向
+## 当前开发 — v0.5.0 能力迁移
 
-当前没有锁死某一个下一功能。候选方向：
+状态：**规划完成 / 尚未开始实现**。
 
-1. Screenshot / 视觉检查；
-2. 确定性输入注入与 Playtest；
-3. Frame Step、Runtime Log、测试工作流；
-4. Tunnel Health/Readiness 诊断；
-5. 更多 Godot 4.x 兼容验证；
-6. CI / 仓库自动化和 Windows 代码签名策略。
+下一里程碑已经锁定，完整范围见 [v0.5.0 能力迁移计划](DEVELOPMENT_0.5.zh-CN.md)。
 
-不要为了数字继续无意义增加 Tool 数量。
+Scope 规则：
+
+- 迁移能力审计中 v0.4.0 真正缺失的全部 Godot-side 能力；
+- 我们已经等价或更通用的能力不重复实现；
+- 明确**不迁移** MCP Resources（`godot://...`）、MCP Client Auto-config、Python/FastMCP Server、Godot AI WebSocket Bridge；
+- 新 Godot 能力继续 GDScript-first，保持现有 Editor / Runtime 架构；
+- 把默认 Public MCP Tool Surface 从 119 个扁平 Tool 压缩为 **<=50 个** Compact Domain Tools，同时保留 Internal Atomic Commands。
+
+必做迁移 Family 包括 Screenshot/Image、确定性 Input/Playtest、Native Frame Step、Live Logs、Script Patch/Write Diagnostics、GDScript Tests、UndoRedo/Rollback、Animation/Material/Audio/Particle/Camera/Theme/UI、Resource Helpers、TileMap/TileSet、GridMap、CSG、Autoload Mutation 和第三方 Custom Tool Registration。
+
+### 最近完成的规划任务 — 迁移范围锁定
+
+状态：**完成 / 文档验证通过**。
+
+已完成：
+
+- 审计 Godot AI 当前 Public Tool / Domain 能力面；
+- 区分我们 v0.4 已等价/更强能力与真实缺口；
+- 锁定四个明确排除项；
+- 锁定 GDScript-first、Go 只做 OS Helper 的语言边界；
+- 定义 Compact Public Surface 架构和 <=50 Release 目标；
+- 新建中英文 v0.5 Active Tracker；
+- 更新 Roadmap，并在 README 明确致谢 Godot AI 能力/Tool-Surface 设计参考。
+
+### 本轮规划文档验证
+
+```text
+DOC_LINK_CHECK=PASS files=36
+DOC_NO_IMAGE=PASS
+DOC_BOM_CHECK=PASS
+DOC_UTF8_CHECK=PASS
+DOC_LOCAL_PATH_CHECK=PASS
+MIGRATION_SCOPE_GATE=PASS
+EXCLUSION_GATE=PASS count=4
+COMPACT_TOOL_PLAN_GATE=PASS target<=50
+UPSTREAM_COMPRESSION_REFERENCE=PASS 46=19+27
+README_GODOT_AI_ACK=PASS
+DIFF_CHECK=PASS
+DOC_ONLY_SCOPE=PASS
+```
+
+### 精确下一项实现任务
+
+**Phase A：分离 Public MCP Catalogue 与 Internal Atomic CommandRegistry，实现 Domain Manage Dispatcher，把现有 v0.4 能力映射到 <=50 个 Tool 的 Compact Surface，并在迁移新能力 Family 前跑一次真实 ChatGPT 回归。**
 
 ## 文档职责
 
