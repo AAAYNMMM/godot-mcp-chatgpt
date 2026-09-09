@@ -1,7 +1,7 @@
 @tool
 extends EditorPlugin
 
-const SecureTunnelClient := preload("res://addons/godot_mcp_chatgpt/web/secure_tunnel_client.gd")
+const TunnelClientRunner := preload("res://addons/godot_mcp_chatgpt/web/tunnel_client_runner.gd")
 const CommandRegistry := preload("res://addons/godot_mcp_chatgpt/core/command_registry.gd")
 const BuiltinCommands := preload("res://addons/godot_mcp_chatgpt/core/builtin_commands.gd")
 const ConnectionDock := preload("res://addons/godot_mcp_chatgpt/ui/connection_dock.gd")
@@ -16,7 +16,7 @@ func _enter_tree() -> void:
 	_registry = CommandRegistry.new()
 	BuiltinCommands.register(_registry, self)
 
-	_client = SecureTunnelClient.new()
+	_client = TunnelClientRunner.new()
 	_client.name = "WebMCPClient"
 	_client.set_registry(_registry)
 	_client.set_editor_settings(get_editor_interface().get_editor_settings())

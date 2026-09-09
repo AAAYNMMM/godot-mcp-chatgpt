@@ -1,106 +1,83 @@
-# Development Progress
+# Development Progress / Handoff
 
-## Project
+Last updated: 2026-09-09
 
-- Repository: `AAAYNMMM/godot-mcp-chatgpt`
-- Branch: `main`
-- Visibility: public
-- Target: Godot 4.7.2 Standard x64 / GDScript
-- Production dependency: Godot editor only
-- Runtime architecture: direct OpenAI Secure MCP Tunnel protocol
+Repository: `AAAYNMMM/godot-mcp-chatgpt`
 
-## Current state — 2026-09-09
+Branch: `main`
 
-The project is at **Phase 4: real OpenAI control-plane / ChatGPT test**.
+Current release candidate: `0.3.0`
 
-All work that can be completed without the user's real OpenAI Tunnel ID and Runtime API Key has been exercised locally.
+## Current architecture — DO NOT MISS THIS
 
-## Completed architecture pivot
-
-Earlier in development a custom remote MCP Relay was implemented:
+The production connection path is now:
 
 ```text
-ChatGPT -> Streamable HTTP relay -> WSS -> Godot
-```
-
-That implementation successfully controlled a real Godot editor, but it is no longer the production architecture.
-
-After reviewing the public `openai/tunnel-client` project and wire protocol, the final path became:
-
-```text
-ChatGPT
+Web ChatGPT
   -> OpenAI Secure MCP Tunnel
-  -> secure_tunnel_client.gd
-  -> CommandRegistry
-  -> Godot Editor
+  -> official bundled OpenAI tunnel-client.exe
+  -> Godot loopback Streamable HTTP MCP
+  -> Godot CommandRegistry
+  -> Godot Editor API
 ```
 
-The custom relay runtime was removed. Do not bring it back by default.
+This replaced the earlier direct GDScript `/poll` + `/response` implementation.
 
-## Production addon implemented
+Reason: the earlier direct implementation reached `Status: connected` but ChatGPT connector creation failed. The user's working CWapi installation was inspected and showed that CWapi does **not** implement the tunnel wire protocol itself. CWapi launches the official `tunnel-client` and points it at a localhost Streamable HTTP MCP server. Version 0.3.0 adopts the same proven pattern.
 
-Key files:
+Do not restore the old direct tunnel client without explicitly revisiting this decision.
+
+## Current user experience
+
+Godot bottom panel: **MCP ChatGPT**
+
+User enters only:
 
 ```text
-addons/godot_mcp_chatgpt/plugin.cfg
-addons/godot_mcp_chatgpt/plugin.gd
-addons/godot_mcp_chatgpt/ui/connection_dock.gd
-addons/godot_mcp_chatgpt/web/secure_tunnel_client.gd
-addons/godot_mcp_chatgpt/core/command_registry.gd
-addons/godot_mcp_chatgpt/core/builtin_commands.gd
+Tunnel ID
+Runtime API Key
 ```
 
-The dock accepts only:
+Then presses **Connect**.
 
-- OpenAI Tunnel ID
-- Runtime API Key
+The addon automatically:
 
-The production client defaults to:
+1. starts a loopback MCP server on `127.0.0.1` using a random high port;
+2. generates a random MCP path token;
+3. writes a tunnel-client profile;
+4. references the key as `env:CONTROL_PLANE_API_KEY` in that profile;
+5. starts the bundled official tunnel-client;
+6. clears the key from the parent Godot process environment after child creation.
+
+Only Tunnel ID is persisted in Godot EditorSettings.
+
+## Bundled official runtime
+
+Windows executable:
 
 ```text
-https://api.openai.com
+addons/godot_mcp_chatgpt/bin/windows/tunnel-client.exe
 ```
 
-A local control-plane override exists only through:
+Runtime identity:
 
 ```text
-GODOT_MCP_CHATGPT_CONTROL_PLANE_URL
+0.0.10+105e17a79a36e4e5c897fd698ed2b8dbf935b144
 ```
 
-for automated protocol testing.
+SHA-256:
 
-## Secure Tunnel protocol behavior implemented
+```text
+D893D8127EEE35070D265C1BE29BFE008F8D9FCB476E7FEBF56C8FDC6C0615C8
+```
 
-- bearer auth on every request;
-- `X-Tunnel-Client-Name`;
-- `X-Tunnel-Client-Version`;
-- `X-Tunnel-Client-Wire-Protocol-Version: 2026-08-25`;
-- per-process `X-Tunnel-Client-Instance-Id`;
-- `X-Tunnel-MCP-Server-Info` main channel with `proc_affinity: true`;
-- tunnel metadata check;
-- long polling `/poll`;
-- posting `/response`;
-- `X-Tunnel-Shard-Token` correlation;
-- sequential command processing;
-- bounded exponential retry with jitter;
-- 401/403 -> authentication failure state;
-- 404 tunnel-not-found handling;
-- `response_timeout` parsing and expired-command drop;
-- session termination ACK;
-- notification ACK.
+This is the same tunnel-client binary currently used by the user's functioning CWapi installation during validation.
 
-## MCP behavior implemented in-process
+Apache-2.0 LICENSE and NOTICE are included under `addons/godot_mcp_chatgpt/bin/`.
 
-- `initialize`;
-- `ping`;
-- `tools/list`;
-- `tools/call`;
-- JSON-RPC method-not-found / invalid-request handling;
-- no-ID notification handling.
+## Current Godot tools
 
-## Current tools
-
-13 tools are exposed and have been exercised through the tunnel protocol:
+13 tools are implemented:
 
 ```text
 godot.get_status
@@ -118,198 +95,128 @@ editor.run_project
 editor.stop
 ```
 
-Notable safety behavior:
-
-- `scene.create` requires explicit `overwrite: true` when target exists;
-- script/file paths are constrained to `res://` and reject `..` traversal;
-- scene root deletion is denied;
-- destructive annotations are emitted to MCP.
-
-## Bugs found by real Godot testing
-
-### Plugin silently not instantiating
-
-Root cause: `plugin.cfg` had a UTF-8 BOM from an early PowerShell write. Godot scanned/loaded scripts but did not instantiate the EditorPlugin correctly.
-
-Fix: addon/config files are UTF-8 without BOM.
-
-### False-positive script validation
-
-`godot --editor --quit` did not force compile every plugin dependency. A dedicated `.local-test/check_scripts.gd` loader now forces all addon scripts to compile under Godot 4.7.2.
-
-This caught and fixed:
-
-- invalid two-argument `EditorSettings.get_setting()` usage;
-- a strict type inference issue in the dock.
-
-### Godot scanning Node dependencies
-
-Root cause: repository development project saw `server/node_modules` as project resources.
-
-Fix: `server/.gdignore`. Upstream audit clones are also hidden from Godot scanning locally.
-
-### Recreating an already-open scene
-
-Root cause: writing a scene file then calling `open_scene_from_path()` on the same already-open path did not refresh the in-memory editor tab. Repeated smoke tests produced duplicate/generated node names.
-
-Fix:
-
-- default deny overwrite;
-- explicit `overwrite: true`;
-- close the open target scene tab on Godot 4.5+;
-- reopen the freshly written scene deferred by one editor frame.
-
-Repeated real-Godot smoke runs then passed.
-
-## Automated validation completed
-
-### Godot script compilation
-
-Godot 4.7.2 successfully loads:
+## Important implementation files
 
 ```text
-plugin.gd
-command_registry.gd
-builtin_commands.gd
-connection_dock.gd
-secure_tunnel_client.gd
+addons/godot_mcp_chatgpt/plugin.gd
+addons/godot_mcp_chatgpt/ui/connection_dock.gd
+addons/godot_mcp_chatgpt/web/tunnel_client_runner.gd
+addons/godot_mcp_chatgpt/web/local_mcp_server.gd
+addons/godot_mcp_chatgpt/core/command_registry.gd
+addons/godot_mcp_chatgpt/core/builtin_commands.gd
 ```
 
-with no parse/compile errors.
-
-### Test-harness build/unit test
+Development-only control-plane simulator:
 
 ```text
-cd server
-npm run build
-npm test
+server/
 ```
 
-Passes contract checks for:
+The old production `secure_tunnel_client.gd` direct-wire client was removed for 0.3.0.
 
-- authorization;
-- required tunnel client headers;
-- server-info declaration;
-- command queueing;
-- request/shard correlation;
-- response delivery.
+## Tests already passed during 0.3.0 work
 
-### Real Godot GUI + Secure Tunnel protocol smoke
+### 1. Godot 4.7.2 script compilation
 
-A real Godot 4.7.2 GUI editor connected to the local OpenAI Tunnel protocol simulator and successfully executed:
-
-1. tunnel metadata validation;
-2. long poll;
-3. MCP initialize;
-4. initialized notification ACK;
-5. tools/list;
-6. godot.get_status;
-7. scene.create;
-8. node.create;
-9. node.set_property Vector3;
-10. script.write;
-11. script.read;
-12. script.attach;
-13. scene.save;
-14. scene.get_tree readback;
-15. tunnel session termination;
-16. `response_timeout: 0s` drop with no late response.
-
-Latest smoke result:
-
-```json
-{
-  "ok": true,
-  "transport": "openai-secure-mcp-tunnel-protocol",
-  "godot": "4.7.2-stable (official)",
-  "tools": 13,
-  "scene": "res://.mcp-smoke/secure-generated.tscn",
-  "player": {
-    "__godot_type": "Vector3",
-    "x": 4,
-    "y": 5,
-    "z": 6
-  }
-}
-```
-
-## Development-only test harness
-
-`server/` now contains only a local Secure Tunnel control-plane simulator and tests. It is not production runtime code.
-
-
-## Validated implementation baseline
-
-Validated implementation commit:
+All addon scripts loaded successfully under:
 
 ```text
-628dceee2a19bcc3768c86c7d09cc6147816755d
+C:\Users\11830\AppData\Local\Programs\Godot\4.7.2\godot.exe
 ```
 
-This commit passed Godot 4.7.2 script compilation, Secure Tunnel contract tests, and a real Godot GUI Secure Tunnel protocol smoke test before commit.
+### 2. Godot local MCP direct test
 
-## UI visibility fix — 0.2.2
-
-The connection UI now uses Godot's bottom panel API instead of the right dock. A visible **MCP ChatGPT** button appears alongside Output/Debugger, and the development fixture opens it automatically.
-
-## Next exact task — requires user operation
-
-Perform the first real OpenAI control-plane test.
-
-The user must supply/use their own real credentials through the UI; do not request that they paste the Runtime API Key into chat.
-
-Steps:
-
-1. Create/select a tunnel at OpenAI Platform Tunnels management.
-2. Create a restricted Runtime API Key with Tunnels Read + Use.
-3. Open the test Godot project/plugin.
-4. Paste Tunnel ID + Runtime API Key into the Godot dock locally and press Connect.
-5. Confirm dock becomes `connected`.
-6. Open ChatGPT connector settings.
-7. Choose `Connection: Tunnel` and select/paste the same tunnel ID.
-8. Let ChatGPT discover the tools.
-9. First call `godot.get_status`.
-10. Then create a disposable scene and node to verify a visible write action.
-
-See `docs/SECURE_TUNNEL.md`.
-
-## After real test passes
-
-- remove any protocol incompatibility found against the live service;
-- expand high-value Godot tools;
-- evaluate optional OS-keychain integration without ever falling back to plaintext API-key persistence;
-- package an installable addon release;
-- add compatibility tests for additional Godot 4.x versions.
-
-## MCPcoding continuation
-
-Repository:
+The loopback server handled:
 
 ```text
-https://github.com/AAAYNMMM/godot-mcp-chatgpt
+server/discover
+initialize
+tools/list
+tools/call
 ```
 
-Branch:
+### 3. Go MCP SDK 1.7 compatibility
+
+A real `github.com/modelcontextprotocol/go-sdk v1.7.0` client connected to the Godot loopback MCP and successfully listed/called a tool.
+
+Result:
 
 ```text
-main
+GO_SDK_SMOKE_OK
 ```
 
-Do not work in DragonSouls for this project.
+### 4. Official tunnel-client bridge test
 
-Temporary upstream audit clones live in `.upstream/` and are gitignored.
+A local control-plane stub routed requests through the same official `tunnel-client.exe` used by CWapi into Godot MCP.
 
-## ChatGPT connector compatibility — 0.2.3
+Result:
 
-Implemented MCP `server/discover` for protocol `2026-07-28` because current ChatGPT tunnel connector flows may probe it before normal tool use.
+```text
+OFFICIAL_TUNNEL_BRIDGE=PASS
+```
 
-Validated response fields include:
+The returned result confirmed Godot `4.7.2-stable (official)`.
 
-- `supportedVersions`;
-- `capabilities`;
-- `resultType`;
-- `ttlMs`;
-- `cacheScope`;
-- `io.modelcontextprotocol/serverInfo` metadata.
+### 5. Production plugin smoke
 
-A real Godot 4.7.2 GUI smoke now runs `server/discover` before legacy `initialize`, then `tools/list` and `tools/call`, and passes end to end.
+A real Godot 4.7.2 GUI editor loaded the production addon with the bundled official tunnel-client. The simulated OpenAI control plane then executed:
+
+```text
+server/discover
+initialize
+notifications/initialized
+tools/list
+godot.get_status
+scene.create
+node.create
+node.set_property
+script.write
+script.read
+script.attach
+scene.save
+scene.get_tree
+session termination
+```
+
+Result:
+
+```text
+PRODUCTION_PLUGIN_SMOKE=PASS
+```
+
+13 tools were discovered. The test created a disposable scene and verified `Player.position == Vector3(4, 5, 6)`.
+
+## Compatibility details discovered
+
+- Official tunnel-client performs an OAuth `WWW-Authenticate` probe against the local MCP URL. An empty POST during startup is therefore not necessarily an MCP JSON request.
+- Official Go MCP SDK 1.7 probes `server/discover` before legacy initialize.
+- Local Streamable HTTP session termination arrives as HTTP `DELETE` and must return success; the stateless Godot MCP returns 204.
+- Notifications sent through the official tunnel path preserve the local MCP HTTP acknowledgement rather than the old direct-wire test assumptions.
+- The bundled 0.0.10 tunnel-client predates some newer tunnel client headers. The development control-plane stub must remain backward compatible rather than requiring only the newest wire headers.
+
+## Current blocker
+
+No automated/local blocker remains for the 0.3.0 architecture.
+
+The next meaningful test requires the user's real OpenAI Tunnel ID / Runtime API Key and ChatGPT connector UI.
+
+## Exact next task
+
+After the 0.3.0 commit is pushed:
+
+1. reopen the Godot development project;
+2. user enters the real Runtime API Key again (it is intentionally not persisted);
+3. confirm `Status: connected` / official tunnel-client running;
+4. create the ChatGPT connector with the same Tunnel ID;
+5. verify connector creation succeeds;
+6. from ChatGPT call `godot.get_status`;
+7. then create a disposable visible scene/node through the real connector.
+
+If connector creation still fails, inspect the official tunnel-client health/readiness/log output before changing architecture again.
+
+## Repository/workspace notes
+
+- Work only in `AAAYNMMM/godot-mcp-chatgpt` for this project.
+- Do not modify CWapi; it was inspected read-only to understand the known-good tunnel integration pattern.
+- The user's global GitHub CLI authentication is under their Windows user profile and can be reused if MCPcoding does not inherit it automatically.
+- Godot development target is currently Windows + Godot 4.7.2 Standard + GDScript.

@@ -2,69 +2,78 @@
 
 ## 1. Product goal
 
-Build a small Godot 4.x editor addon that lets Web ChatGPT control the Godot editor through OpenAI Secure MCP Tunnel with only two user-provided values:
+Build a small Godot 4.x editor addon that lets Web ChatGPT control the Godot editor through OpenAI Secure MCP Tunnel while the user only supplies:
 
 1. Tunnel ID
 2. Runtime API Key
 
-Production runtime must be Godot-only.
+The addon should feel like a native Godot integration. Users should not need CWapi, Codex, Node.js, a local MCP client, or manual port configuration.
 
 ## 2. Locked architecture decision
 
-As of 2026-09-09:
+As of 2026-09-09 / version 0.3.0:
 
 ```text
 Web ChatGPT
   -> OpenAI Secure MCP Tunnel
-  -> direct HTTPS tunnel protocol in Godot
-  -> in-process MCP request handling
+  -> official bundled tunnel-client
+  -> loopback Streamable HTTP MCP hosted by Godot
   -> Godot command registry
   -> Godot Editor API
 ```
 
-Do **not** reintroduce:
+Do **not** reintroduce the previous direct GDScript implementation of OpenAI control-plane `/poll` and `/response` unless this decision is explicitly revisited with new evidence.
+
+Also do not add as the normal user path:
 
 - stdio MCP;
-- local MCP server;
-- Node bridge;
+- Node MCP bridge;
 - localhost WebSocket bridge;
 - custom public relay;
-- `.mcp.json` client configuration as the normal connection path.
+- `.mcp.json` local-client setup.
 
-The repository's Node code is test infrastructure only.
+## 3. Why the architecture changed
 
-## 3. Protocol contract
-
-Reference implementation/documentation:
-
-- `openai/tunnel-client`
-- canonical wire protocol: `docs/protocol.md` in that project
-- wire contract version currently implemented: `2026-08-25`
-
-Required control-plane calls:
+The direct GDScript tunnel client passed a local protocol simulator but ChatGPT connector creation still failed. CWapi was inspected because its tunnel connector creates successfully. CWapi's real architecture is:
 
 ```text
-GET /v1/tunnels/{id}
-GET /v1/tunnels/{id}/poll
-POST /v1/tunnels/{id}/response
+official tunnel-client
+  -> localhost Streamable HTTP MCP
 ```
 
-The Godot implementation must preserve opaque request IDs/shard tokens, correlate responses exactly, stop on auth failures, use bounded retries for transient failures, and never log API keys/shard tokens.
+It does not reimplement the OpenAI tunnel protocol. Version 0.3.0 adopts that proven pattern.
 
-## 4. MCP surface
+## 4. Current production components
 
-Initial MCP server behavior implemented directly in Godot:
+### Godot EditorPlugin
 
-- initialize
-- ping
-- tools/list
-- tools/call
-- lifecycle notification ACK
-- session termination ACK
+- bottom `MCP ChatGPT` panel;
+- Tunnel ID + Runtime API Key inputs;
+- Connect / Disconnect;
+- status/log display.
 
-No prompts/resources/roots capability is advertised yet.
+### Tunnel runner
 
-## 5. Current Godot tool milestone
+- starts bundled official OpenAI tunnel-client;
+- creates the tunnel-client profile;
+- injects Runtime API Key through `CONTROL_PLANE_API_KEY` only for child-process startup;
+- persists Tunnel ID only;
+- monitors/stops the tunnel process.
+
+### Loopback MCP server
+
+- binds only to `127.0.0.1`;
+- random high port + random path token;
+- Streamable HTTP JSON/SSE behavior;
+- `server/discover`;
+- `initialize`;
+- `ping`;
+- `tools/list`;
+- `tools/call`;
+- notification ACK;
+- HTTP DELETE session termination.
+
+### Godot command registry
 
 Current 13 tools:
 
@@ -84,122 +93,119 @@ editor.run_project
 editor.stop
 ```
 
-File operations remain inside `res://`.
-
-## 6. Milestones
+## 5. Milestones
 
 ### Phase 0 — Repository continuity
 Status: complete.
 
 - public repository;
 - README;
-- development plan;
-- progress handoff.
+- architecture/development/progress documents.
 
-### Phase 1 — Direct Godot addon skeleton
+### Phase 1 — Godot editor-control skeleton
 Status: complete.
 
 - EditorPlugin;
-- connection dock;
+- connection panel;
 - command registry;
-- initial tools;
-- Godot 4.7.2 script compilation.
+- first useful scene/node/script/editor tools;
+- Godot 4.7.2 compilation.
 
 ### Phase 2 — Transport exploration
-Status: superseded/complete.
+Status: complete/superseded.
 
-A custom Relay + WSS implementation was built and successfully tested against real Godot. It was then removed from the production design after the official OpenAI Secure MCP Tunnel client/protocol became the better fit.
+A custom public relay + WSS path was built and tested, then removed from production design.
 
-Do not restore this architecture unless the official tunnel becomes technically unusable and the decision is explicitly revisited.
+### Phase 3 — Direct GDScript Secure Tunnel client
+Status: complete/superseded.
 
-### Phase 3 — Direct Secure MCP Tunnel client
-Status: complete for local protocol simulation.
+The direct `/poll` + `/response` implementation was useful for learning the contract but failed the real ChatGPT connector creation path. It has been removed from production code.
 
-Implemented:
+### Phase 4 — Official tunnel-client architecture
+Status: implemented and locally validated.
 
-- metadata validation request;
-- bearer authentication;
-- official client headers;
-- 15-second long poll;
-- command batch processing;
-- response correlation;
-- response POST;
-- retry/backoff;
-- auth failure state;
-- MCP initialize/tools/call handling;
-- notification/session termination ACK;
-- response timeout drop behavior;
-- real Godot GUI smoke test.
+Acceptance already passed locally:
 
-### Phase 4 — Real OpenAI control-plane test
-Status: next; requires user-operated credentials/UI.
+- same official `tunnel-client.exe` used by the user's working CWapi installation;
+- real Godot 4.7.2 GUI;
+- Go MCP SDK 1.7 client compatibility;
+- `server/discover`;
+- initialization;
+- 13-tool discovery;
+- tool call execution;
+- scene/node/script mutation and save/readback;
+- notification handling;
+- session termination.
+
+### Phase 5 — Real ChatGPT connector test
+Status: next; requires user-operated OpenAI credentials/UI.
 
 Acceptance flow:
 
-1. user creates/selects an OpenAI tunnel;
-2. user creates a restricted Runtime API Key with Tunnels Read + Use;
-3. user enters both in Godot dock;
-4. Godot status becomes connected;
-5. user configures ChatGPT connector with Connection: Tunnel and same tunnel ID;
-6. ChatGPT discovers tools;
-7. ChatGPT calls `godot.get_status`;
-8. ChatGPT creates/modifies a disposable test scene;
-9. verify resulting scene in the visible Godot editor.
+1. user enters real Tunnel ID + Runtime API Key in Godot;
+2. official tunnel-client remains running;
+3. ChatGPT creates a Tunnel connector using the same Tunnel ID;
+4. ChatGPT discovers all 13 tools;
+5. ChatGPT calls `godot.get_status`;
+6. ChatGPT creates/modifies a disposable test scene;
+7. the result appears visibly in Godot.
 
-### Phase 5 — Tool expansion
-After real tunnel success.
+If connector creation still fails, inspect the official tunnel-client health/logging path before changing MCP/tunnel architecture again.
 
-Priorities:
+### Phase 6 — Tool expansion
+After real connector success.
 
-- node.get_properties / richer property inspection;
-- scene.open / close;
-- resource create/edit;
-- project settings + InputMap;
+Priority order:
+
+- richer node/property inspection;
+- scene open/close;
+- resources;
+- project settings and InputMap;
 - signals;
 - ClassDB lookup;
-- editor/runtime error inspection;
+- editor/runtime errors;
 - playtest diagnostics;
-- batched node/property operations;
-- optional screenshots if supported safely/efficiently.
+- batch node/property operations;
+- optional screenshot workflow if it remains efficient and safe.
 
-### Phase 6 — Release hardening
+### Phase 7 — Release hardening
 
-- OS-grade credential storage or an explicit secure-storage strategy;
-- key clear/rotate UX;
-- connection health diagnostics;
-- protocol compatibility tests against newer tunnel wire versions;
-- addon packaging/release ZIP;
-- clean-project installation test;
-- Godot compatibility matrix;
-- license/notice audit.
+- improve tunnel-client health/readiness reporting in the Godot panel;
+- secure key lifecycle/clear UX;
+- clean-project addon installation test;
+- Windows packaging/release ZIP;
+- additional Godot 4.x compatibility testing;
+- macOS/Linux tunnel-client packaging if desired;
+- third-party binary provenance/license audit;
+- runtime update strategy for future official tunnel-client releases.
 
-## 7. Performance rules
+## 6. Performance rules
 
-- no shell spawn for ordinary Godot operations;
-- no local network hop;
-- process tunnel commands sequentially by default to protect editor state;
+- no shell/CLI hop for ordinary Godot tool execution;
+- the loopback MCP hop is acceptable because it is the boundary required by the official tunnel client;
+- serialize editor mutations by default;
 - keep tool schemas compact;
-- prefer high-value tools over a huge eager catalogue;
-- batch operations later when they materially reduce tunnel round trips.
+- add batch tools where they materially reduce ChatGPT round trips;
+- do not bulk-port hundreds of low-value tools before real usage shows they are needed.
 
-## 8. Security rules
+## 7. Security rules
 
-- never log API keys or shard tokens;
-- runtime key must be restricted to minimum tunnel permissions;
-- no admin key in the Godot addon;
-- outbound control-plane host defaults to `https://api.openai.com`;
-- alternate control-plane URL is development-only through environment variable;
-- filesystem tools remain project-scoped unless explicitly designed otherwise;
-- destructive tool annotations must be honest;
-- existing scenes are not overwritten without explicit `overwrite: true`.
+- never log Runtime API Keys;
+- never write the Runtime API Key into the tunnel profile;
+- use a restricted runtime key, not an admin key;
+- local MCP binds only to loopback;
+- local MCP URL includes a random unguessable path token;
+- filesystem tools remain project-scoped;
+- destructive annotations must be accurate;
+- existing scenes require explicit `overwrite: true` before replacement.
 
-## 9. Continuation rule
+## 8. Continuation rule
 
 Every meaningful development window must update `docs/PROGRESS.md` with:
 
 - completed changes;
 - tests actually run;
-- current blocking issue;
+- current blocker, if any;
 - exact next task.
 
-A new ChatGPT window should read `README.md`, `docs/ARCHITECTURE.md`, and `docs/PROGRESS.md` before changing architecture.
+A new ChatGPT window should read `README.md`, `docs/ARCHITECTURE.md`, and `docs/PROGRESS.md` before making architecture changes.

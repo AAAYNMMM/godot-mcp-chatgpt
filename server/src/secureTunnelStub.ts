@@ -28,8 +28,8 @@ export interface SecureTunnelStubOptions {
 export function createSecureTunnelStub(options: SecureTunnelStubOptions = {}) {
   const host = options.host ?? "127.0.0.1";
   const port = options.port ?? Number(process.env.TUNNEL_STUB_PORT ?? "8790");
-  const tunnelId = options.tunnelId ?? process.env.GODOT_MCP_CHATGPT_TUNNEL_ID ?? "tunnel_test_godot_chatgpt_1234";
-  const apiKey = options.apiKey ?? process.env.GODOT_MCP_CHATGPT_API_KEY ?? "sk-test-godot-mcp-chatgpt-abcdefghijklmnopqrstuvwxyz";
+  const tunnelId = options.tunnelId ?? process.env.GODOT_MCP_CHATGPT_TUNNEL_ID ?? "tunnel_0123456789abcdef0123456789abcdef";
+  const apiKey = options.apiKey ?? process.env.GODOT_MCP_CHATGPT_API_KEY ?? "devkey_123456789012345678901234567890";
   const queue: TunnelCommand[] = [];
   const expectedShard = new Map<string, string>();
   const responses = new Map<string, any>();
@@ -45,19 +45,21 @@ export function createSecureTunnelStub(options: SecureTunnelStubOptions = {}) {
   }
 
   function validClientContract(req: express.Request): boolean {
-    if (req.headers["x-tunnel-client-name"] !== "godot-mcp-chatgpt") return false;
+    // Keep the simulator backward-compatible with released official clients.
+    // Newer wire/instance headers are additive and older tunnel-client builds
+    // (including the one currently bundled by CWapi) legitimately omit them.
+    if (!req.headers["x-tunnel-client-name"]) return false;
     if (!req.headers["x-tunnel-client-version"]) return false;
-    if (req.headers["x-tunnel-client-wire-protocol-version"] !== "2026-08-25") return false;
-    if (!req.headers["x-tunnel-client-instance-id"]) return false;
     const raw = req.headers["x-tunnel-mcp-server-info"];
+    // The official tunnel-client may omit server-info during early startup.
+    // It is additive/optional metadata in the control-plane contract.
+    if (raw === undefined) return true;
     if (typeof raw !== "string") return false;
     try {
       const info = JSON.parse(raw);
-      return info?.version === 1
+      return (info?.version === 1 || info?.version === 2)
         && Array.isArray(info.channels)
-        && info.channels.length === 1
-        && info.channels[0]?.name === "main"
-        && info.channels[0]?.proc_affinity === true;
+        && info.channels.some((channel: any) => channel?.name === "main");
     } catch {
       return false;
     }

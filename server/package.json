@@ -1,9 +1,9 @@
 {
   "name": "godot-mcp-chatgpt-test-harness",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Local protocol test harness for the Godot direct OpenAI Secure MCP Tunnel client",
+  "description": "Development-only control-plane harness for the official tunnel-client to Godot Streamable HTTP MCP path",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "tsx --test test/secureTunnelStub.test.ts",

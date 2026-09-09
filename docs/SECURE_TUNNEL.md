@@ -1,107 +1,92 @@
 # Real OpenAI Secure MCP Tunnel Test
 
-This is the first test that cannot be fully automated without the user's own OpenAI tunnel/runtime credentials and ChatGPT connector UI.
+This is the next test that requires the user's own OpenAI Tunnel ID / Runtime API Key and ChatGPT connector UI.
 
-## What the Godot addon needs
+Version `0.3.0` no longer implements the OpenAI tunnel protocol directly in GDScript. The addon launches the bundled official OpenAI `tunnel-client.exe`, which forwards the tunnel to a private loopback Streamable HTTP MCP server inside Godot.
 
-Only two values:
+## What the user needs
+
+Only:
 
 ```text
 Tunnel ID
 Runtime API Key
 ```
 
-Do not paste the Runtime API Key into a ChatGPT conversation or commit it to Git.
+Do not paste the Runtime API Key into chat or commit it to Git.
 
-## 1. Create or select a tunnel
+## 1. Open the Godot panel
 
-Open:
+Enable **Godot MCP ChatGPT** under Godot plugins if necessary.
 
-```text
-https://platform.openai.com/settings/organization/tunnels
-```
-
-Create or select the tunnel that will be used for this Godot editor instance.
-
-The resulting identifier looks like a tunnel ID and must be the same tunnel selected later in ChatGPT.
-
-## 2. Create a Runtime API Key
-
-Open:
+Open the bottom panel:
 
 ```text
-https://platform.openai.com/settings/organization/api-keys
+MCP ChatGPT
 ```
 
-Create a **Restricted** runtime key for the user/principal that will run Godot.
+It contains Tunnel ID, Runtime API Key, Connect/Disconnect, status, and one short log line.
 
-Minimum tunnel permissions according to the current OpenAI tunnel-client documentation:
+## 2. Enter the real credentials
 
-```text
-Tunnels: Read
-Tunnels: Use
-```
+Enter the same Tunnel ID that will be selected in ChatGPT.
 
-Do not use an Admin API key as the long-lived Godot runtime credential.
-
-## 3. Connect Godot
-
-Enable the addon and open the **Godot MCP ChatGPT** dock.
-
-Enter locally:
-
-```text
-Tunnel ID: <your tunnel id>
-API Key:   <your restricted runtime key>
-```
+Enter a dedicated restricted Runtime API Key with the tunnel permissions required by the current OpenAI setup.
 
 Press **Connect**.
 
-Expected states:
+Expected successful startup states:
 
 ```text
-connecting
+starting
 connected
 ```
 
-Common error states:
+In version 0.3.0, `connected` means the official tunnel-client child process started and remains alive. It does not by itself prove that ChatGPT has already discovered the tools.
+
+Potential local failure states include:
 
 ```text
 credentials_required
-authentication_failed
-tunnel_not_found
-connection_error
-reconnecting
+runtime_missing
+registry_unavailable
+local_mcp_error
+profile_error
+runtime_error
 ```
 
-The API key is masked in the dock and must not be printed to the Godot output log.
+The Runtime API Key is not persisted by the addon.
 
-## 4. Attach ChatGPT to the same tunnel
+## 3. Create the ChatGPT connector
 
-Open:
+In the ChatGPT/workspace UI that supports custom MCP over Secure Tunnel:
 
-```text
-https://chatgpt.com/#settings/Connectors
-```
-
-In a product/workspace that supports Secure MCP Tunnel connectors:
-
-1. create/configure the connector;
+1. create/configure a connector;
 2. choose **Connection: Tunnel**;
 3. select or paste the same Tunnel ID;
-4. scan/discover tools while the Godot editor remains open.
+4. let ChatGPT discover the MCP server/tools while Godot remains open.
 
-The Godot addon itself replaces the normal `tunnel-client run ...` process, so no separate tunnel-client executable should be running for this tunnel during the test.
+The expected production path is:
 
-## 5. First read test
+```text
+ChatGPT
+ -> OpenAI Secure MCP Tunnel
+ -> bundled official tunnel-client.exe
+ -> Godot loopback Streamable HTTP MCP
+ -> Godot editor tools
+```
 
-Ask ChatGPT to call:
+No CWapi process is part of this path.
+
+## 4. First read test
+
+Use the connector to call:
 
 ```text
 godot.get_status
 ```
 
-Expected result includes:
+Expected data includes:
 
 ```text
 godot_version: 4.7.2...
@@ -109,11 +94,13 @@ editor: true
 project_name: ...
 ```
 
-## 6. First visible write test
+ChatGPT should discover 13 tools in the current build.
 
-Use a disposable test path, not an important game scene.
+## 5. First visible write test
 
-Suggested sequence:
+Use a disposable test location, not an important game scene.
+
+Suggested calls:
 
 ```text
 scene.create
@@ -134,21 +121,30 @@ node.set_property
 scene.save
 ```
 
-Verify the scene and node visibly appear in Godot.
+Verify the scene and node visibly appear in the Godot editor.
 
-## 7. What to report back after the test
+## 6. What to report if creation still fails
 
-Do **not** send the API key.
+Do **not** send the Runtime API Key.
 
 Useful information:
 
-- whether Godot dock reached `connected`;
-- whether ChatGPT discovered all 13 tools;
-- exact error text/status if discovery failed;
-- result of `godot.get_status`;
-- whether the disposable scene/node appeared in Godot;
-- relevant Godot log lines that do not contain secrets.
+- Godot panel state;
+- the panel's last non-secret log message;
+- exact ChatGPT connector error text/screenshot;
+- whether the official `tunnel-client.exe` process is still running;
+- non-secret Godot Output lines beginning with `[GodotMCPChatGPT]`.
 
-## Product availability note
+If connector creation fails while the tunnel-client stays alive, the next debugging step is to expose/read the official tunnel-client readiness/health details rather than replacing the architecture again.
 
-Secure MCP Tunnel and full custom MCP capabilities are controlled by OpenAI product/plan/workspace permissions and may change over time. If **Connection: Tunnel** is absent or disabled, verify current product availability and workspace permissions before changing the Godot protocol implementation.
+## 7. Security behavior to verify
+
+The generated profile should contain:
+
+```yaml
+api_key: env:CONTROL_PLANE_API_KEY
+```
+
+It must not contain the plaintext Runtime API Key.
+
+The addon stores the Tunnel ID in Godot EditorSettings but does not store the Runtime API Key.

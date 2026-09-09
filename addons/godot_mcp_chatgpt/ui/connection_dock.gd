@@ -29,7 +29,7 @@ func _build_ui() -> void:
 	add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.text = "OpenAI Secure MCP Tunnel"
+	subtitle.text = "OpenAI Secure MCP Tunnel (official tunnel-client)"
 	subtitle.modulate.a = 0.7
 	add_child(subtitle)
 
@@ -67,7 +67,7 @@ func _build_ui() -> void:
 	add_child(_log_label)
 
 	var hint := Label.new()
-	hint.text = "Only the OpenAI Tunnel ID and Runtime API Key are required. The API Key is kept in memory only and is not saved by the addon."
+	hint.text = "Only Tunnel ID and Runtime API Key are required. The addon runs the official OpenAI tunnel-client; the API Key is not written to the profile."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.modulate.a = 0.6
 	add_child(hint)
@@ -83,7 +83,7 @@ func _on_connect_pressed() -> void:
 	if _client == null:
 		return
 	var state: String = str(_client.get_state())
-	if state in ["connecting", "authenticating", "connected", "reconnecting"]:
+	if state in ["starting", "connected"]:
 		_client.disconnect_from_tunnel()
 		return
 	_client.connect_to_tunnel(_tunnel_edit.text, _api_key_edit.text)
@@ -93,7 +93,7 @@ func _on_state_changed(state: String) -> void:
 		return
 	_status_label.text = "Status: %s" % state
 	if _connect_button != null:
-		_connect_button.text = "Disconnect" if state in ["connecting", "authenticating", "connected", "reconnecting"] else "Connect"
+		_connect_button.text = "Disconnect" if state in ["starting", "connected"] else "Connect"
 
 func _on_log_message(message: String) -> void:
 	if _log_label != null:

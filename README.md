@@ -1,40 +1,45 @@
 # godot-mcp-chatgpt
 
-Direct Web ChatGPT control for the Godot editor through **OpenAI Secure MCP Tunnel**.
+Web ChatGPT control for the Godot editor through **OpenAI Secure MCP Tunnel**.
 
-The normal user experience is intentionally small: install the Godot addon, enable it, then enter an OpenAI **Tunnel ID** and **Runtime API Key** in the Godot dock.
+The user-facing flow is intentionally small: enable the Godot addon, enter an OpenAI **Tunnel ID** and **Runtime API Key**, then press **Connect**.
 
 ## Runtime architecture
 
 ```text
 Web ChatGPT
     |
-    | MCP JSON-RPC
+    | MCP JSON-RPC through OpenAI Secure MCP Tunnel
     v
-OpenAI Secure MCP Tunnel
+OpenAI tunnel service
     |
-    | outbound HTTPS long-poll + response POST
+    v
+official tunnel-client.exe (bundled child process)
+    |
+    | Streamable HTTP MCP on 127.0.0.1
     v
 Godot MCP ChatGPT addon
     |
-    | direct in-process command dispatch
+    | in-process command dispatch
     v
 Godot Editor API
 ```
 
-There is **no local MCP server**, **no stdio transport**, **no Node bridge**, **no localhost WebSocket listener**, and **no project-hosted public relay** in the production path.
+This is intentionally the same connection pattern that is already proven in CWapi: the project does **not** reimplement OpenAI's tunnel wire protocol. The official `tunnel-client` owns the tunnel/control-plane behavior and forwards MCP to a loopback Streamable HTTP server hosted by the Godot addon.
+
+There is no custom public relay, no stdio MCP runtime, no Node bridge in production, and no localhost WebSocket bridge.
 
 ## Current status
 
-Development version: `0.2.3`
+Development version: `0.3.0`
 
-Validated with:
+Current development target:
 
+- Windows x64
 - Godot `4.7.2 Standard x64`
 - GDScript
-- Compatibility Renderer development fixture
-- OpenAI Secure MCP Tunnel wire contract `2026-08-25`
-- real Godot GUI editor process, not only headless parsing
+- Compatibility Renderer fixture
+- bundled OpenAI `tunnel-client` `0.0.10+105e17a79a36e4e5c897fd698ed2b8dbf935b144`
 
 Current tool set (13 tools):
 
@@ -52,65 +57,76 @@ Current tool set (13 tools):
 - `editor.run_project`
 - `editor.stop`
 
-The direct tunnel path has passed a local control-plane simulation that performs MCP `initialize`, `notifications/initialized`, `tools/list`, `tools/call`, scene/node/script mutations, save/readback, session termination, protocol-header validation, correlation validation, and response-deadline handling against a real Godot 4.7.2 editor.
+The production path has passed a real Godot 4.7.2 GUI smoke test using the same official `tunnel-client.exe` used by the user's working CWapi installation. The test covered `server/discover`, MCP initialization, tool discovery, tool calls, scene/node/script mutations, save/readback, and session termination.
 
-## Install for development
+## Install
 
-Copy or place this addon in a Godot project:
+Copy this folder into a Godot project:
 
 ```text
 addons/godot_mcp_chatgpt/
 ```
 
-Then enable **Godot MCP ChatGPT** under **Project > Project Settings > Plugins**.
+Enable **Godot MCP ChatGPT** under **Project > Project Settings > Plugins**.
 
-A bottom panel named **MCP ChatGPT** appears alongside Godot’s Output/Debugger panels. It opens automatically in the development fixture and contains only:
+A bottom panel named **MCP ChatGPT** appears next to Godot's Output/Debugger panels. It contains:
 
 - Tunnel ID
 - Runtime API Key
 - Connect / Disconnect
-- connection status
+- connection status/log message
+
+The Windows development build already contains the required official `tunnel-client.exe`; users do not need CWapi, Node.js, Codex, or another MCP client to run the addon.
 
 ## Real OpenAI Tunnel setup
 
-1. Create or select a tunnel in OpenAI Platform Tunnels management.
-2. Create a **Restricted Runtime API Key** with Tunnels **Read + Use** permissions.
-3. Enter the Tunnel ID and Runtime API Key in the Godot dock and press **Connect**.
-4. In ChatGPT connector settings, choose **Connection: Tunnel** and select/paste the same tunnel ID.
-5. Scan/use the tools from ChatGPT while the Godot editor remains open.
+1. Create or select an OpenAI Secure MCP Tunnel.
+2. Create a restricted Runtime API Key with the required tunnel permissions.
+3. Enter the Tunnel ID and Runtime API Key in the Godot **MCP ChatGPT** panel.
+4. Press **Connect**.
+5. In ChatGPT, create/configure a connector using **Connection: Tunnel** and the same Tunnel ID.
+6. Discover and call the Godot tools while the editor remains open.
 
-See [`docs/SECURE_TUNNEL.md`](docs/SECURE_TUNNEL.md) for the exact test flow and current OpenAI setup links.
-
-> Availability of custom/full MCP and Tunnel connection UI depends on the OpenAI product, plan, workspace permissions, and rollout state.
+See [`docs/SECURE_TUNNEL.md`](docs/SECURE_TUNNEL.md) for the real-test handoff.
 
 ## Security notes
 
-- The Runtime API Key is sent only to the configured OpenAI control-plane host (`https://api.openai.com` by default).
-- The addon does not expose an inbound network listener.
-- Use a dedicated restricted runtime key, not an admin key.
-- The addon stores only the Tunnel ID in Godot `EditorSettings`. The Runtime API Key is kept in memory for the current editor session and is not persisted by the addon.
-- Tool file operations are currently constrained to `res://` and reject `..` traversal.
+- The addon persists only the Tunnel ID in Godot `EditorSettings`.
+- The Runtime API Key is not written into the generated tunnel profile; the profile references `env:CONTROL_PLANE_API_KEY`.
+- The key is injected only for starting the official tunnel-client child process and is then removed from the Godot process environment.
+- The local MCP server binds only to `127.0.0.1`, chooses a random high port, and uses a random per-run URL path.
+- File tools are constrained to `res://` and reject path traversal.
 - `scene.create` refuses to overwrite an existing scene unless `overwrite: true` is explicitly supplied.
+- Use a dedicated restricted runtime key rather than an admin key.
+
+## Bundled third-party runtime
+
+The addon bundles the official OpenAI `tunnel-client` Windows executable under:
+
+```text
+addons/godot_mcp_chatgpt/bin/windows/tunnel-client.exe
+```
+
+The corresponding Apache-2.0 license and NOTICE are kept beside the addon runtime under `addons/godot_mcp_chatgpt/bin/`. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ## Repository layout
 
 ```text
-addons/godot_mcp_chatgpt/   Production Godot addon
+addons/godot_mcp_chatgpt/
   core/                     Godot command registry + tools
-  ui/                       Tunnel control dock
-  web/secure_tunnel_client.gd
-                             Direct OpenAI Secure MCP Tunnel client
+  ui/                       connection panel
+  web/local_mcp_server.gd   loopback Streamable HTTP MCP server
+  web/tunnel_client_runner.gd
+                             official tunnel-client process/profile manager
+  bin/                      bundled tunnel-client + license notices
 
-docs/                       Architecture, plan, progress, setup docs
-server/                     Local protocol test harness ONLY
-                             (ignored by Godot via .gdignore)
+docs/                       architecture, plan, progress, real-test docs
+server/                     development-only control-plane test harness
 ```
 
-`server/` is not required by end users and is not part of the production connection path.
+`server/` is ignored by Godot and is not required by end users.
 
 ## Development checks
-
-TypeScript test-harness checks:
 
 ```text
 cd server
@@ -119,10 +135,6 @@ npm run build
 npm test
 ```
 
-Real Godot tunnel-protocol smoke testing additionally runs a Godot GUI editor against the local Secure Tunnel protocol stub and then executes:
+The production smoke additionally launches a real Godot GUI editor and routes the simulated control plane through the bundled official tunnel-client before calling the real Godot tools.
 
-```text
-npm run test:secure-godot
-```
-
-See [`docs/PROGRESS.md`](docs/PROGRESS.md) before continuing development in another ChatGPT window.
+Before continuing development in another ChatGPT window, read [`docs/PROGRESS.md`](docs/PROGRESS.md).
