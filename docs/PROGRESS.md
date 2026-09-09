@@ -136,7 +136,7 @@ The next window should do the following without asking the user to restate the p
 
 | Phase | State | Notes |
 |---|---|---|
-| 0. Repository + continuity docs | In progress | Initial docs being committed |
+| 0. Repository + continuity docs | Completed | Bootstrap docs committed and pushed |
 | 1. Upstream audit + minimal migration | Not started | Next task |
 | 2. Streamable HTTP MCP | Not started | Preserve local baseline first |
 | 3. Tunnel ID + API key | Not started | Includes relay/reconnect |
@@ -159,6 +159,18 @@ Record:
 
 This is required so a new Web ChatGPT window can resume without relying on chat memory.
 
+## Session log
+
+### 2026-09-09 — repository bootstrap
+
+- Commit: `804b368`
+- Added: `docs/DEVELOPMENT_PLAN.md`, `docs/PROGRESS.md`
+- Updated: `README.md`
+- Validation: `git diff --check` passed (line-ending warning only); files were verified present and readable.
+- Push: `main` pushed successfully to GitHub.
+- Decision changes: none beyond the architecture decisions recorded above.
+- Blockers: none.
+- Best next task: Phase 1 upstream audit and minimal local migration.
 ## Known blockers
 
 None at the architecture/documentation stage.
@@ -166,3 +178,4 @@ None at the architecture/documentation stage.
 ## Best next action
 
 Start the upstream audit and establish a local working baseline before implementing any Internet-facing relay code.
+
