@@ -67,7 +67,7 @@ func _build_ui() -> void:
 	add_child(_log_label)
 
 	var hint := Label.new()
-	hint.text = "Only the OpenAI Tunnel ID and Runtime API Key are required."
+	hint.text = "Only the OpenAI Tunnel ID and Runtime API Key are required. The API Key is kept in memory only and is not saved by the addon."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.modulate.a = 0.6
 	add_child(hint)

@@ -273,7 +273,7 @@ See `docs/SECURE_TUNNEL.md`.
 
 - remove any protocol incompatibility found against the live service;
 - expand high-value Godot tools;
-- improve secret storage;
+- evaluate optional OS-keychain integration without ever falling back to plaintext API-key persistence;
 - package an installable addon release;
 - add compatibility tests for additional Godot 4.x versions.
 

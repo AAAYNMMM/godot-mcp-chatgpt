@@ -26,7 +26,7 @@ There is **no local MCP server**, **no stdio transport**, **no Node bridge**, **
 
 ## Current status
 
-Development version: `0.2.0`
+Development version: `0.2.1`
 
 Validated with:
 
@@ -88,7 +88,7 @@ See [`docs/SECURE_TUNNEL.md`](docs/SECURE_TUNNEL.md) for the exact test flow and
 - The Runtime API Key is sent only to the configured OpenAI control-plane host (`https://api.openai.com` by default).
 - The addon does not expose an inbound network listener.
 - Use a dedicated restricted runtime key, not an admin key.
-- The current development build stores Tunnel ID and API Key in Godot `EditorSettings` so they survive editor restarts. This is convenient but is not OS-keychain-grade secret storage; credential storage hardening remains a release task.
+- The addon stores only the Tunnel ID in Godot `EditorSettings`. The Runtime API Key is kept in memory for the current editor session and is not persisted by the addon.
 - Tool file operations are currently constrained to `res://` and reject `..` traversal.
 - `scene.create` refuses to overwrite an existing scene unless `overwrite: true` is explicitly supplied.
 

@@ -4,7 +4,7 @@ extends Node
 signal state_changed(state: String)
 signal log_message(message: String)
 
-const PLUGIN_VERSION := "0.2.0"
+const PLUGIN_VERSION := "0.2.1"
 const CLIENT_NAME := "godot-mcp-chatgpt"
 const WIRE_PROTOCOL_VERSION := "2026-08-25"
 const DEFAULT_CONTROL_PLANE_URL := "https://api.openai.com"
@@ -60,9 +60,8 @@ func get_saved_tunnel_id() -> String:
 
 
 func get_saved_api_key() -> String:
-	if _editor_settings == null or not _editor_settings.has_setting(EDITOR_API_KEY_SETTING):
-		return ""
-	return str(_editor_settings.get_setting(EDITOR_API_KEY_SETTING))
+	# Runtime API keys are intentionally never persisted by the addon.
+	return ""
 
 
 func connect_to_tunnel(tunnel_id: String, api_key: String) -> void:
@@ -77,7 +76,7 @@ func connect_to_tunnel(tunnel_id: String, api_key: String) -> void:
 		_emit_log("Godot command registry is unavailable.")
 		return
 
-	_save_credentials()
+	_save_tunnel_id()
 	_should_connect = true
 	_generation += 1
 	var generation := _generation
@@ -426,11 +425,13 @@ func _rpc_error(rpc_id, code: int, message: String) -> Dictionary:
 	return {"jsonrpc": "2.0", "id": rpc_id, "error": {"code": code, "message": message}}
 
 
-func _save_credentials() -> void:
+func _save_tunnel_id() -> void:
 	if _editor_settings == null:
 		return
 	_editor_settings.set_setting(EDITOR_TUNNEL_ID_SETTING, _tunnel_id)
-	_editor_settings.set_setting(EDITOR_API_KEY_SETTING, _api_key)
+	# Clean up plaintext keys that may have been written by development builds before 0.2.1.
+	if _editor_settings.has_setting(EDITOR_API_KEY_SETTING):
+		_editor_settings.set_setting(EDITOR_API_KEY_SETTING, null)
 
 
 func _fail_auth(message: String) -> void:
