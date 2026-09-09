@@ -269,7 +269,7 @@ Resolved follow-ups: invalid Resource paths now return `INVALID_PATH`, and `node
 
 ### One-click installer / Release packaging
 
-Status: **integration passed; release publication pending**.
+Status: **complete; GitHub Release published**.
 
 - [x] Windows x64 single-file installer source under `tools/installer/`
 - [x] complete addon embedded into installer; no user/machine path is hard-coded
@@ -282,9 +282,9 @@ Status: **integration passed; release publication pending**.
 - [x] `--no-enable` behavior
 - [x] installed addon loaded by real Godot 4.7.2; persisted Runtime autoload lifecycle revalidated
 - [x] Runtime autoload persistence fixed with `ProjectSettings.save()`
-- [ ] final commit-based artifact rebuild
-- [ ] final installer smoke from commit-based artifact
-- [ ] GitHub Release `v0.4.0` publish
+- [x] final commit-based artifact rebuild
+- [x] final installer smoke from commit-based artifact
+- [x] GitHub Release `v0.4.0` publish + remote asset hash verification
 ### Installer final pre-commit gates
 
 Status: **release validation passed**.
@@ -296,13 +296,24 @@ INSTALLER_SMOKE=PASS version=0.4.0
 INSTALLER_PRECOMMIT_GATES=PASS
 ```
 
+### GitHub Release publication
+
+Status: **complete**.
+
+```text
+source commit=f12d268b5bca087ae8cef744f9cb7ab8877848e8
+tag=v0.4.0
+BUILD_COMMIT_CHECK=PASS f12d268b5bca
+INSTALLER_SMOKE=PASS version=0.4.0
+ADDON_ZIP_EXACT_CHECK=PASS files=46
+SHA256SUMS_VERIFY=PASS
+RELEASE_REMOTE_ASSET_VERIFY=PASS
+```
+
 ## 10. Current blocker
 
-No known installer blocker remains. Publication is pending only the final documentation/hygiene pass, commit-based rebuild, repeat smoke, and GitHub Release upload.
+No known 0.4.0 release blocker remains. Release `v0.4.0` is published and remotely verified.
 
 ## 11. Exact next task
 
-1. finish installer/release public documentation and static gates;
-2. commit installer source plus Runtime autoload persistence fix;
-3. rebuild release artifacts from that exact commit and rerun installer smoke;
-4. publish GitHub Release `v0.4.0` with installer EXE, addon ZIP and SHA-256 manifest.
+Wait for the user to choose the next development task.

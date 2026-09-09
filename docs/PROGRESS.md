@@ -638,10 +638,42 @@ ARTIFACT_HYGIENE=PASS
 INSTALLER_PRECOMMIT_GATES=PASS
 ```
 
+### Task: GitHub Release v0.4.0 publication
+
+Status: **complete**.
+
+Published the validated Windows release at https://github.com/AAAYNMMM/godot-mcp-chatgpt/releases/tag/v0.4.0.
+
+Release source/tag:
+
+- source commit: `f12d268b5bca087ae8cef744f9cb7ab8877848e8`;
+- remote tag `v0.4.0` resolves to the same commit;
+- release is neither draft nor prerelease.
+
+Uploaded assets:
+
+```text
+godot-mcp-chatgpt-v0.4.0-windows-x64-installer.exe
+godot-mcp-chatgpt-v0.4.0-addon.zip
+SHA256SUMS.txt
+```
+
+Final commit-based artifact validation:
+
+```text
+BUILD_COMMIT_CHECK=PASS f12d268b5bca
+INSTALLER_SMOKE=PASS version=0.4.0
+ADDON_ZIP_EXACT_CHECK=PASS files=46
+SHA256SUMS_VERIFY=PASS
+RELEASE_REMOTE_ASSET_VERIFY=PASS
+```
+
+The three assets were downloaded back from GitHub Release after upload and their SHA-256 values matched the locally validated artifacts byte-for-byte.
+
 ## 0.4.0 current blocker
 
-No known installer blocker remains after clean-install, upgrade, invalid-path, no-enable, Unicode/space-path, and real Godot 4.7.2 load validation.
+No known 0.4.0 release blocker remains. The installer source is on `main`, tag `v0.4.0` points to the validated installer commit, and the GitHub Release assets were remotely re-downloaded and hash-verified.
 
 ## 0.4.0 exact next task
 
-**Finish installer/release documentation and repository gates, commit the installer + Runtime autoload persistence fix, rebuild artifacts from the final commit, rerun installer smoke, then publish GitHub Release `v0.4.0` with installer EXE, addon ZIP and SHA-256 manifest.**
+**0.4.0 is published. Wait for the user to choose the next development task.**

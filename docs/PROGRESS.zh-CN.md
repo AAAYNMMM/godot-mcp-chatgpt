@@ -623,10 +623,42 @@ ARTIFACT_HYGIENE=PASS
 INSTALLER_PRECOMMIT_GATES=PASS
 ```
 
+### 任务：GitHub Release v0.4.0 发布
+
+状态：**完成**。
+
+已发布经过验证的 Windows 正式版本：https://github.com/AAAYNMMM/godot-mcp-chatgpt/releases/tag/v0.4.0
+
+Release 源与 tag：
+
+- 源 commit：`f12d268b5bca087ae8cef744f9cb7ab8877848e8`；
+- 远端 tag `v0.4.0` 指向同一 commit；
+- Release 不是 draft，也不是 prerelease。
+
+上传资产：
+
+```text
+godot-mcp-chatgpt-v0.4.0-windows-x64-installer.exe
+godot-mcp-chatgpt-v0.4.0-addon.zip
+SHA256SUMS.txt
+```
+
+最终基于 commit 的产物验证：
+
+```text
+BUILD_COMMIT_CHECK=PASS f12d268b5bca
+INSTALLER_SMOKE=PASS version=0.4.0
+ADDON_ZIP_EXACT_CHECK=PASS files=46
+SHA256SUMS_VERIFY=PASS
+RELEASE_REMOTE_ASSET_VERIFY=PASS
+```
+
+上传后又从 GitHub Release 重新下载三个资产，并逐个比较 SHA-256；线上文件与本地已验证产物完全一致。
+
 ## 0.4.0 当前 blocker
 
-安装器已通过干净安装、升级、非法路径、no-enable、中文/空格路径和真实 Godot 4.7.2 加载验证，目前没有已知 installer blocker。
+当前没有已知 0.4.0 release blocker。安装器源码已进入 `main`，`v0.4.0` tag 指向经过验证的安装器 commit，GitHub Release 资产也已经远程重新下载并完成哈希复核。
 
 ## 0.4.0 精确下一项任务
 
-**完成安装器/Release 公开文档和仓库门禁，提交安装器 + Runtime autoload 持久化修复；从最终 commit 重建产物并重新跑 installer smoke，然后发布 GitHub Release `v0.4.0`，上传 installer EXE、addon ZIP、SHA-256 清单。**
+**0.4.0 已发布。等待用户指定下一项开发任务。**

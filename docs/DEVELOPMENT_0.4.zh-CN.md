@@ -269,7 +269,7 @@ Godot 4.7.2 没有简单公开 API 可以直接抓取 Output Dock 全部文本�
 
 ### 一键安装器 / Release 打包
 
-状态：**集成验证通过；等待发布**。
+状态：**完成；GitHub Release 已发布**。
 
 - [x] `tools/installer/` 下 Windows x64 单文件安装器源码
 - [x] 完整 addon 内嵌进安装器；无用户/机器硬编码路径
@@ -282,9 +282,9 @@ Godot 4.7.2 没有简单公开 API 可以直接抓取 Output Dock 全部文本�
 - [x] `--no-enable` 行为
 - [x] 安装结果通过真实 Godot 4.7.2 加载；Runtime autoload 磁盘持久化生命周期已重新验证
 - [x] 使用 `ProjectSettings.save()` 修复 Runtime autoload 持久化
-- [ ] 从最终 commit 重建产物
-- [ ] 对最终 commit 产物重新跑 installer smoke
-- [ ] 发布 GitHub Release `v0.4.0`
+- [x] 从最终 commit 重建产物
+- [x] 对最终 commit 产物重新跑 installer smoke
+- [x] 发布 GitHub Release `v0.4.0` + 线上资产哈希复核
 ### 安装器最终提交前门禁
 
 状态：**release 验证通过**。
@@ -296,13 +296,24 @@ INSTALLER_SMOKE=PASS version=0.4.0
 INSTALLER_PRECOMMIT_GATES=PASS
 ```
 
+### GitHub Release 发布
+
+状态：**完成**。
+
+```text
+source commit=f12d268b5bca087ae8cef744f9cb7ab8877848e8
+tag=v0.4.0
+BUILD_COMMIT_CHECK=PASS f12d268b5bca
+INSTALLER_SMOKE=PASS version=0.4.0
+ADDON_ZIP_EXACT_CHECK=PASS files=46
+SHA256SUMS_VERIFY=PASS
+RELEASE_REMOTE_ASSET_VERIFY=PASS
+```
+
 ## 10. 当前 blocker
 
-当前没有已知 installer blocker。只剩最终公开文档/仓库门禁、基于最终 commit 的重建与复测，以及 GitHub Release 上传。
+当前没有已知 0.4.0 release blocker。`v0.4.0` 已发布并完成线上复核。
 
 ## 11. 精确下一项任务
 
-1. 完成安装器/Release 公开文档和静态门禁；
-2. 提交安装器源码 + Runtime autoload 持久化修复；
-3. 从该精确 commit 重建发布产物并重新跑 installer smoke；
-4. 发布 GitHub Release `v0.4.0`，上传 installer EXE、addon ZIP 和 SHA-256 清单。
+等待用户指定下一项开发任务。
