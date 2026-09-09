@@ -248,6 +248,10 @@ Validated implementation commit:
 
 This commit passed Godot 4.7.2 script compilation, Secure Tunnel contract tests, and a real Godot GUI Secure Tunnel protocol smoke test before commit.
 
+## UI visibility fix — 0.2.2
+
+The connection UI now uses Godot's bottom panel API instead of the right dock. A visible **MCP ChatGPT** button appears alongside Output/Debugger, and the development fixture opens it automatically.
+
 ## Next exact task — requires user operation
 
 Perform the first real OpenAI control-plane test.

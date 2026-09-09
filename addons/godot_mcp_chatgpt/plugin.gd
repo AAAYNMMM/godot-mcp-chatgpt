@@ -9,6 +9,7 @@ const ConnectionDock := preload("res://addons/godot_mcp_chatgpt/ui/connection_do
 var _registry: RefCounted
 var _client: Node
 var _dock: Control
+var _bottom_button: Button
 
 func _enter_tree() -> void:
 	print("[GodotMCPChatGPT] Editor plugin loaded.")
@@ -24,13 +25,19 @@ func _enter_tree() -> void:
 	_dock = ConnectionDock.new()
 	_dock.name = "GodotMCPChatGPT"
 	_dock.set_client(_client)
-	add_control_to_dock(DOCK_SLOT_RIGHT_UL, _dock)
+	_bottom_button = add_control_to_bottom_panel(_dock, "MCP ChatGPT")
+	call_deferred("_show_connection_panel")
+
+func _show_connection_panel() -> void:
+	if _dock != null and is_instance_valid(_dock):
+		make_bottom_panel_item_visible(_dock)
 
 func _exit_tree() -> void:
 	if _dock != null:
-		remove_control_from_docks(_dock)
+		remove_control_from_bottom_panel(_dock)
 		_dock.queue_free()
 		_dock = null
+	_bottom_button = null
 	if _client != null:
 		_client.disconnect_from_tunnel()
 		_client.queue_free()

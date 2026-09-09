@@ -4,7 +4,7 @@ extends Node
 signal state_changed(state: String)
 signal log_message(message: String)
 
-const PLUGIN_VERSION := "0.2.1"
+const PLUGIN_VERSION := "0.2.2"
 const CLIENT_NAME := "godot-mcp-chatgpt"
 const WIRE_PROTOCOL_VERSION := "2026-08-25"
 const DEFAULT_CONTROL_PLANE_URL := "https://api.openai.com"
@@ -429,7 +429,7 @@ func _save_tunnel_id() -> void:
 	if _editor_settings == null:
 		return
 	_editor_settings.set_setting(EDITOR_TUNNEL_ID_SETTING, _tunnel_id)
-	# Clean up plaintext keys that may have been written by development builds before 0.2.1.
+	# Clean up plaintext keys that may have been written by development builds before 0.2.2.
 	if _editor_settings.has_setting(EDITOR_API_KEY_SETTING):
 		_editor_settings.set_setting(EDITOR_API_KEY_SETTING, null)
 

@@ -26,7 +26,7 @@ There is **no local MCP server**, **no stdio transport**, **no Node bridge**, **
 
 ## Current status
 
-Development version: `0.2.1`
+Development version: `0.2.2`
 
 Validated with:
 
@@ -64,7 +64,7 @@ addons/godot_mcp_chatgpt/
 
 Then enable **Godot MCP ChatGPT** under **Project > Project Settings > Plugins**.
 
-A dock appears with only:
+A bottom panel named **MCP ChatGPT** appears alongside Godot’s Output/Debugger panels. It opens automatically in the development fixture and contains only:
 
 - Tunnel ID
 - Runtime API Key
