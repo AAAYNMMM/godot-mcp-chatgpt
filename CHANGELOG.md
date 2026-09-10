@@ -4,6 +4,48 @@ English | [简体中文](CHANGELOG.zh-CN.md)
 
 This changelog records released user-facing milestones and compatibility-impacting changes.
 
+## 0.5.0 — Capability migration and compact MCP surface
+
+Date: 2026-09-10
+
+### Highlights
+
+- Replaced the 119-flat-tool public catalogue with **47 default public tools** while expanding the internal registry to **230 atomic commands**.
+- Added compact `*.manage` domain routing with full atomic-command coverage and a hard public limit below 50.
+- Added MCP screenshots/image content for editor viewport, Camera3D/cinematic, running game, and TileSet atlas inspection.
+- Added deterministic input/playtest operations, live logs, GDScript test runner, script anchor patching/diagnostics, Undo/Redo workflows, and reversible editor transactions.
+- Added high-level content authoring for Animation, Material/Shader, Audio, Particle, Camera, Theme/UI, Curve/Gradient/Noise, Environment, and Physics Shapes.
+- Added TileMap/TileSet, GridMap/MeshLibrary, and CSG world-authoring operations.
+- Added opt-in third-party Custom Tools with addon/handler ownership binding, required safety hints, schema validation, bounded payloads, persistent enable/disable, and at most two promoted public tools.
+- Intentionally did not migrate `godot://` MCP Resources, MCP client auto-config, Python/FastMCP server, or Godot AI's WebSocket bridge.
+
+### Compatibility
+
+This is a public tool-surface breaking change for clients that hard-code v0.4 tool names. Web ChatGPT normally re-discovers the live MCP catalogue. Internal atomic capabilities remain reachable through direct or managed public routes.
+
+### Validation
+
+```text
+CATALOGUE_SCHEMA_GATE=PASS tools=47
+COMPACT_TOOL_SURFACE_GATE=PASS public=47 atomic=230
+PHASE_E_WORLD_EXTENSIBILITY=PASS
+CAPABILITY_MIGRATION_MATRIX=PASS excluded=4 public=47 atomic=230
+PRODUCTION_PLUGIN_SMOKE=PASS
+FULL_OFFICIAL_TUNNEL_SMOKE=PASS
+REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS
+INSTALLER_CLEAN_INSTALL=PASS
+INSTALLER_UPGRADE=PASS
+INSTALLER_GODOT_4_7_2_LOAD=PASS
+INSTALLED_ADDON_EXACT_MATCH=PASS files=70
+```
+
+The real Web ChatGPT Connector acceptance verified actual editor/runtime mutation and readback, screenshot image return and inspection, TileSet image content, world authoring, input injection, logs, tests, transactions, Custom Tool enable/schema/invoke/disable/promotion, and final cleanup.
+
+### Known non-blocking observations
+
+- One recoverable tunnel `network_error: Connection failed` occurred; the editor stayed online and immediate retry succeeded.
+- Native Debugger operations may return `ok=true` while `debuggable=false` and have no effect.
+- `editor.manage(op="stop")` can report unsupported while `stop_playing` succeeds.
 ## 0.4.0 — Full Godot editor/runtime MCP surface
 
 Date: 2026-09-10

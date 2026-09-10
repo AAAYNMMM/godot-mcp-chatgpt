@@ -2,7 +2,7 @@
 
 [English](DEVELOPMENT_0.5.md) | 简体中文
 
-状态：**代码实现与本地 / Official Tunnel 一次性全量验证已完成；最终真实 Web ChatGPT 验收待执行**
+状态：**已完成；最终真实 Web ChatGPT Connector 验收已通过**
 
 基线版本：**v0.4.0**
 
@@ -15,7 +15,7 @@
 v0.5.0 有两条绑定在一起的主线：
 
 1. 迁移 Godot AI 当前已有、而 `godot-mcp-chatgpt` v0.4.0 缺失的实用 Godot 能力；
-2. 把当前 119 个扁平 MCP tools 压缩为紧凑的 domain 工具面，同时保留底层全部原子能力。
+2. 把 v0.4 基线的 119 个扁平 MCP tools 压缩为紧凑的 domain 工具面，同时保留底层全部原子能力。
 
 目标闭环：
 
@@ -479,7 +479,7 @@ Release 前评估是否低成本提供一个**默认关闭的 Legacy Registratio
 
 ### Phase A — Compact Surface 基础
 
-状态：**已实现 / Official Tunnel 验证通过；最终真实 Web ChatGPT 集成验证延后**。
+状态：**已实现并通过最终真实 Web ChatGPT Connector 回归验证**。
 
 已实现：
 
@@ -627,11 +627,11 @@ BOM_CHECK=PASS
 - 有边界的第三方 Custom Tool 注册，绑定 addon/handler Owner，强制显式 read-only/destructive Hint，默认禁用并要求 Opt-in 启用，执行 Schema 校验与 512 KiB 参数/结果上限，持久化启停状态，支持调用/主插件重载恢复，并最多暴露 2 个已启用的 promoted Public Tools；
 - 通过 world.manage / custom.manage 压缩 Public Surface，并继续保证默认/硬上限 <=50。
 
-Phase E 已由 Phase F 一次性全量回归覆盖；现在只剩最终真实 Web ChatGPT Connector 验收待执行。
+Phase E 已由 Phase F 一次性全量回归及最终真实 Web ChatGPT Connector 验收覆盖。
 
 ### Phase F — 全量迁移回归 / Release Hardening
 
-状态：**本地 / Official Tunnel / Release Hygiene 集成验证通过；最终真实 Web ChatGPT 验收待执行**。
+状态：**已完成；本地 / Official Tunnel / Release Hygiene 与最终真实 Web ChatGPT 验收全部通过**。
 
 - Compact Surface Tool Count / Schema Gate；
 - 对照锁定迁移矩阵做 Capability Parity Audit；
@@ -701,7 +701,7 @@ Godot AI 是独立的 MIT 开源项目，本项目在 v0.5 迁移中将它作为
 
 ## 9. 当前状态
 
-状态：**Phase A–E targeted validation 与 Official Tunnel 一次性集成验证通过；最终真实 Web ChatGPT 验收待执行**。
+状态：**已完成；Phase A–E、Official Tunnel、Installer/Hygiene 与最终真实 Web ChatGPT 验收全部通过**。
 
 已经锁定：
 
@@ -729,4 +729,4 @@ PLANNING_DOC_GATES=PASS
 
 ## 10. 精确下一项实现任务
 
-**Phase F 本地 / Official Tunnel、Installer 与 Repository Hygiene 一次性回归已全绿。现在只剩一次真实 Web ChatGPT Connector 验收；在它通过前，公开 Release 文档与版本继续保持已验证的 v0.4.0 基线。**
+**v0.5.0 实现已经完成，最终真实 Web ChatGPT Connector 回归以 `REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS` 通过；Public Docs / Version 已提升到 v0.5.0，剩余步骤仅为正式打包与发布。**

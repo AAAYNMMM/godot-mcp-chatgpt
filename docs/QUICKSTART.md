@@ -21,7 +21,7 @@ You do **not** need CWapi, Node.js, Codex, Claude Desktop, Cursor, or another lo
 
 ### Recommended: Windows x64 installer
 
-Download `godot-mcp-chatgpt-v0.4.0-windows-x64-installer.exe` from [GitHub Releases](https://github.com/AAAYNMMM/godot-mcp-chatgpt/releases), run it, then select the target project's `project.godot` file.
+Download `godot-mcp-chatgpt-v0.5.0-windows-x64-installer.exe` from [GitHub Releases](https://github.com/AAAYNMMM/godot-mcp-chatgpt/releases), run it, then select the target project's `project.godot` file.
 
 The installer validates that the selected path is a Godot project, installs the embedded addon only to:
 
@@ -84,7 +84,7 @@ Expected state:
 Status: connected
 ```
 
-In version 0.4.0 this means the bundled official OpenAI `tunnel-client` process is alive and the local Godot MCP endpoint is available to it. After the first successful connection, the Runtime API Key is stored in Windows Credential Manager for automatic reconnect.
+In version 0.5.0 this means the bundled official OpenAI `tunnel-client` process is alive and the local Godot MCP endpoint is available to it. After the first successful connection, the Runtime API Key is stored in Windows Credential Manager for automatic reconnect.
 
 If the state does not become connected, jump to [FAQ](FAQ.md).
 
@@ -97,7 +97,7 @@ In ChatGPT connector settings:
 3. choose or paste the same Tunnel ID;
 4. create/save the connector while Godot remains open.
 
-The 0.4.0 path has passed a full real ChatGPT Connector regression with all 119 tools discovered and exercised across editor/runtime workflows.
+The 0.5.0 path passed the final real Web ChatGPT Connector regression with 47 default public tools / 230 internal atomic commands, including actual screenshot image return.
 
 ## Step 5 — Test read access first
 
@@ -159,13 +159,13 @@ a CharacterBody3D named Player, and attach a new GDScript that exposes move_spee
 Save it under res://prototype/player_test.tscn. Do not overwrite existing files.
 ```
 
-The current surface contains 119 tools. If ChatGPT cannot inspect or change something, check the [Tool Reference](TOOL_REFERENCE.md) and the live tool schema before assuming the connection is broken.
+The current surface contains 47 default public tools backed by 230 internal atomic commands. If ChatGPT cannot inspect or change something, check the [Tool Reference](TOOL_REFERENCE.md) and the live tool schema before assuming the connection is broken.
 
 ## Disconnecting
 
 Press **Disconnect** in the Godot panel before rotating credentials or changing tunnels.
 
-On Windows 0.4.0, the Runtime API Key is stored in Windows Credential Manager after a successful connection, so the addon can automatically reconnect after restarting Godot. Use **Forget Saved Credentials** if you want to remove the stored key and Tunnel ID.
+On Windows 0.5.0, the Runtime API Key is stored in Windows Credential Manager after a successful connection, so the addon can automatically reconnect after restarting Godot. Use **Forget Saved Credentials** if you want to remove the stored key and Tunnel ID.
 
 ## First troubleshooting checks
 
@@ -177,6 +177,6 @@ If something fails, check in this order:
 4. Is Godot still open?
 5. Does the Runtime API Key have the required tunnel permissions?
 6. Can ChatGPT discover `godot.get_status`?
-7. Is the requested operation part of the current 119-tool surface, and are you using the argument conventions in the Tool Reference?
+7. Is the requested operation available through the current v0.5 direct/managed public surface, and are you using the argument conventions in the Tool Reference?
 
 More: [FAQ / Troubleshooting](FAQ.md).

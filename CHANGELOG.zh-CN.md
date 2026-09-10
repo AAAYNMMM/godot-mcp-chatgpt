@@ -4,6 +4,48 @@
 
 本 Changelog 记录已经发布的用户可见里程碑和会影响兼容性的变化。
 
+## 0.5.0 — 能力迁移与 Compact MCP Surface
+
+日期：2026-09-10
+
+### 重点
+
+- Public Catalogue 从 v0.4 的 119 个扁平 Tool 收敛为 **47 个默认 Public Tools**，Internal Registry 扩展到 **230 个 Atomic Commands**。
+- 新增 Compact `*.manage` Domain Routing，保证 Atomic Command 全覆盖，Public Tool 硬上限低于 50。
+- 新增 Editor Viewport、Camera3D/Cinematic、Running Game、TileSet Atlas 的 MCP Screenshot/Image Content。
+- 新增确定性 Input/Playtest、Live Logs、GDScript Test Runner、Script Anchor Patch/Diagnostics、Undo/Redo 与可逆 Editor Transaction。
+- 新增 Animation、Material/Shader、Audio、Particle、Camera、Theme/UI、Curve/Gradient/Noise、Environment、Physics Shape 高层 Content Authoring。
+- 新增 TileMap/TileSet、GridMap/MeshLibrary、CSG World Authoring。
+- 新增 Opt-in 第三方 Custom Tool：Addon/Handler Ownership、强制 Safety Hints、Schema Validation、有边界 Payload、持久化 Enable/Disable，以及最多 2 个 promoted public tools。
+- 明确不迁移 `godot://` MCP Resources、MCP Client Auto-config、Python/FastMCP Server、Godot AI WebSocket Bridge。
+
+### 兼容性
+
+对硬编码 v0.4 Public Tool Name 的 Client，这是 Tool-Surface Breaking Change。Web ChatGPT 正常会重新发现实时 MCP Catalogue；Internal Atomic 能力全部仍可通过 Direct 或 Managed Public Route 访问。
+
+### 验证
+
+```text
+CATALOGUE_SCHEMA_GATE=PASS tools=47
+COMPACT_TOOL_SURFACE_GATE=PASS public=47 atomic=230
+PHASE_E_WORLD_EXTENSIBILITY=PASS
+CAPABILITY_MIGRATION_MATRIX=PASS excluded=4 public=47 atomic=230
+PRODUCTION_PLUGIN_SMOKE=PASS
+FULL_OFFICIAL_TUNNEL_SMOKE=PASS
+REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS
+INSTALLER_CLEAN_INSTALL=PASS
+INSTALLER_UPGRADE=PASS
+INSTALLER_GODOT_4_7_2_LOAD=PASS
+INSTALLED_ADDON_EXACT_MATCH=PASS files=70
+```
+
+真实 Web ChatGPT Connector 验收覆盖 Editor/Runtime 实际修改与读回、Screenshot Image 回传并查看、TileSet Image Content、World Authoring、Input Injection、Logs、Tests、Transaction、Custom Tool Enable/Schema/Invoke/Disable/Promotion 与最终 Cleanup。
+
+### 已知非阻断观察
+
+- Tunnel 出现过一次可恢复 `network_error: Connection failed`；Editor 未掉线，立即重试成功。
+- Native Debugger 在 `debuggable=false` 时操作可能仍返回 `ok=true` 但无实际效果。
+- `editor.manage(op="stop")` 可能报 unsupported，而 `stop_playing` 可以成功停止。
 ## 0.4.0 — 完整 Godot 编辑器 / Runtime MCP 能力面
 
 日期：2026-09-10

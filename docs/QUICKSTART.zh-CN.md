@@ -21,7 +21,7 @@
 
 ### 推荐：Windows x64 一键安装器
 
-从 [GitHub Releases](https://github.com/AAAYNMMM/godot-mcp-chatgpt/releases) 下载 `godot-mcp-chatgpt-v0.4.0-windows-x64-installer.exe`，运行后选择目标项目的 `project.godot`。
+从 [GitHub Releases](https://github.com/AAAYNMMM/godot-mcp-chatgpt/releases) 下载 `godot-mcp-chatgpt-v0.5.0-windows-x64-installer.exe`，运行后选择目标项目的 `project.godot`。
 
 安装器会验证所选路径确实是 Godot 项目，并且只把内嵌插件安装到：
 
@@ -160,13 +160,13 @@ scene.save
 保存到 res://prototype/player_test.tscn，不要覆盖已有文件。
 ```
 
-当前能力面已经达到 119 tools。如果 ChatGPT 暂时无法读取或修改某个东西，先查看 [工具参考](TOOL_REFERENCE.zh-CN.md)和实时 tool schema，不要直接判断为“连接坏了”。
+当前能力面为 47 个默认 Public Tools，后端覆盖 230 个 Internal Atomic Commands。如果 ChatGPT 暂时无法读取或修改某个东西，先查看 [工具参考](TOOL_REFERENCE.zh-CN.md)和实时 tool schema，不要直接判断为“连接坏了”。
 
 ## 断开连接
 
 更换 Tunnel 或轮换凭据前，先在 Godot 面板点 **Disconnect**。
 
-Windows 0.4.0 在首次成功连接后会把 Runtime API Key 保存到 Windows Credential Manager，重启 Godot 后可自动重连。使用 **Forget Saved Credentials** 可以删除保存的 Key 和 Tunnel ID。
+Windows 0.5.0 在首次成功连接后会把 Runtime API Key 保存到 Windows Credential Manager，重启 Godot 后可自动重连。使用 **Forget Saved Credentials** 可以删除保存的 Key 和 Tunnel ID。
 
 ## 最先检查的排错项
 
@@ -178,6 +178,6 @@ Windows 0.4.0 在首次成功连接后会把 Runtime API Key 保存到 Windows C
 4. Godot 是否仍然开着？
 5. Runtime API Key 是否具备所需 Tunnel 权限？
 6. ChatGPT 能否发现 `godot.get_status`？
-7. 你要求的操作是否属于当前 119-tool 能力面，并且参数是否符合 Tool Reference 约定？
+7. 你要求的操作是否可通过当前 v0.5 Direct / Managed Public Surface 访问，并且参数是否符合 Tool Reference 约定？
 
 更多见：[FAQ / 排错](FAQ.zh-CN.md)。

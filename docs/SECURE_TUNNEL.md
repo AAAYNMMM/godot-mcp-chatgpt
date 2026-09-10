@@ -2,9 +2,9 @@
 
 English | [简体中文](SECURE_TUNNEL.zh-CN.md)
 
-Version `0.4.0` uses the bundled official OpenAI `tunnel-client.exe` and a loopback Streamable HTTP MCP server hosted by Godot.
+Version `0.5.0` uses the bundled official OpenAI `tunnel-client.exe` and a loopback Streamable HTTP MCP server hosted by Godot.
 
-The real production connector path and full 119-tool surface were successfully validated through ChatGPT on **2026-09-10**.
+The real production connector path and v0.5 compact surface (47 default public tools / 230 atomic commands) were successfully validated through Web ChatGPT on **2026-09-10**.
 
 ## Production path
 
@@ -60,7 +60,7 @@ starting
 connected
 ```
 
-In 0.4.0, `connected` means the local MCP server is running and the official tunnel-client child process remains alive. The final confirmation is successful tool discovery/calls from ChatGPT.
+In 0.5.0, `connected` means the local MCP server is running and the official tunnel-client child process remains alive. The final confirmation is successful tool discovery/calls from ChatGPT.
 
 After the first successful Windows connection, the Runtime API Key is stored in Windows Credential Manager as a Generic Credential. It is not written into the project, EditorSettings, Git, or the generated tunnel profile.
 
@@ -73,11 +73,11 @@ In ChatGPT connector settings:
 3. select or paste the same Tunnel ID;
 4. keep Godot open while the connector is created and used.
 
-This exact path passed a full real 0.4.0 ChatGPT Connector regression.
+This exact path passed the final real v0.5.0 Web ChatGPT Connector regression.
 
 ## 4. Verify tool discovery
 
-The current 0.4.0 build should expose **119 tools**.
+The current 0.5.0 build should expose **47 default public tools**; enabled Custom Tool promotion can temporarily add at most two.
 
 Start with:
 

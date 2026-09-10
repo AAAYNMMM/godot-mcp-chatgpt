@@ -8,18 +8,19 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 最新 Release | **v0.4.0** |
-| Release 源码 Commit | `f12d268b5bca087ae8cef744f9cb7ab8877848e8` |
-| Release Tag | `v0.4.0` |
+| 最新 Release | **v0.5.0** |
+| Release 源码 Commit | `v0.5.0 tag target` |
+| Release Tag | `v0.5.0` |
 | 主要平台 | Windows x64 |
 | 已验证 Godot | 4.7.2 Standard x64 |
-| 生产 MCP 工具 | **119** |
+| 默认 Public MCP Tools | **47** |
+| Internal Atomic Commands | **230** |
 | Connector 路线 | Web ChatGPT + OpenAI Secure MCP Tunnel |
-| Release 状态 | 已发布并验证 |
-| 当前开发目标 | **v0.5.0 能力迁移** |
-| v0.5 Public Tool 目标 | **默认 <=50 个 MCP Tools** |
+| Release 状态 | 已验证；正在打包/发布 |
+| v0.5 能力迁移 | **已完成** |
+| Public Tool 上限 | **<50；默认 47，单个 promoted custom tool 时实测 48** |
 
-Release：<https://github.com/AAAYNMMM/godot-mcp-chatgpt/releases/tag/v0.4.0>
+Release：<https://github.com/AAAYNMMM/godot-mcp-chatgpt/releases/tag/v0.5.0>
 
 ## 生产架构
 
@@ -126,9 +127,9 @@ README_STRUCTURE_CHECK=PASS
 ```
 
 本任务没有修改任何插件/Runtime 源码。
-## 当前开发 — v0.5.0 能力迁移
+## 已发布里程碑 — v0.5.0 能力迁移
 
-状态：**Phase A–C targeted validation passed；最终真实 Web ChatGPT 集成验证延后**。
+状态：**已完成；全部迁移 Phase 与最终真实 Web ChatGPT Connector 验收通过**。
 
 下一里程碑已经锁定，完整范围见 [v0.5.0 能力迁移计划](DEVELOPMENT_0.5.zh-CN.md)。
 
@@ -175,7 +176,7 @@ DOC_ONLY_SCOPE=PASS
 
 ### Phase A 实现 — Compact Public Tool Surface
 
-状态：**已实现 / Official Tunnel 验证通过；最终真实 Web ChatGPT 集成验证延后**。
+状态：**已实现并通过最终真实 Web ChatGPT Connector 回归验证**。
 
 已实现：
 
@@ -267,7 +268,7 @@ PRODUCTION_PLUGIN_SMOKE=PASS
 
 ### Phase F — 一次性全量迁移回归
 
-状态：**当前 MCPcoding 工作区内可执行的本地 / Official Tunnel / Installer / Hygiene Gates 全部集成通过；最终真实 Web ChatGPT Connector 验收待执行**。
+状态：**已完成；本地 / Official Tunnel / Installer / Hygiene 与最终真实 Web ChatGPT Connector 验收全部通过**。
 
 2026-09-10 实际执行：
 
@@ -280,6 +281,7 @@ PHASE_E_WORLD_EXTENSIBILITY=PASS
 CAPABILITY_MIGRATION_MATRIX=PASS excluded=4 public=47 atomic=230
 PRODUCTION_PLUGIN_SMOKE=PASS
 FULL_OFFICIAL_TUNNEL_SMOKE=PASS
+REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS
 credential-helper Go compile: PASS
 run-helper Go compile: PASS
 INSTALLER_BUILD=PASS
@@ -302,12 +304,12 @@ SMOKE_RESIDUE_CHECK=PASS
 FINAL_HYGIENE=PASS
 ```
 
-Installer 不把直接 `go test` 作为独立 Gate，因为它使用 `//go:embed payload.zip`，该 Payload 由正式 `build.ps1` 构建路径生成，而正式构建已经通过。临时安装器产物仍显示 v0.4.0，是因为在最终真实 Connector 验收前不会提前提升 Public Version。
+Installer 不把直接 `go test` 作为独立 Gate，因为它使用 `//go:embed payload.zip`，该 Payload 由正式 `build.ps1` 构建路径生成，而正式构建已经通过。
 
-当前唯一剩余验收项：使用真实 Web ChatGPT Connector 对已安装 / 当前插件执行一次真实调用。Official Tunnel Harness 不能冒充该验收，因此这里没有虚假标记 PASS。
+最终真实 Web ChatGPT Connector 验收已经完成：`REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS`。真实验证包含 Screenshot/Image Content、Runtime/UI、Input、Logs/Tests/Transaction、World Authoring、Custom Tool Promotion 与 Cleanup。
 ### 精确下一项实现任务
 
-**锁定范围内全部迁移能力与当前可执行的 Phase F Gates 已全绿。下一步只执行一次真实 Web ChatGPT Connector 验收；通过后再提升 v0.5 Public Docs / Version，并从精确 Release Commit 构建发布产物。**
+**v0.5.0 已达到 Release-ready。下一步从精确 Release Commit 构建并验证产物，发布 `v0.5.0` Tag/Release，再校验远端资产哈希。**
 
 ## 文档职责
 

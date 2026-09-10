@@ -20,7 +20,7 @@ The executable is the official OpenAI `tunnel-client`. Earlier development build
 
 ## What does `Status: connected` mean?
 
-In 0.4.0 it means:
+In 0.5.0 it means:
 
 - the local Godot MCP server started;
 - the official `tunnel-client` child process started and remains alive.
@@ -38,7 +38,7 @@ Check:
 5. The Runtime API Key has the required tunnel permissions.
 6. You are creating a Tunnel connection, not entering the local `127.0.0.1` URL manually.
 
-0.4.0 has been verified with a full real ChatGPT Connector regression discovering and exercising 119 tools.
+0.5.0 has been verified through the real Web ChatGPT Connector with 47 default public tools backed by 230 atomic commands, including actual screenshot image return.
 
 ## Godot says connected but ChatGPT shows no tools
 
@@ -54,11 +54,11 @@ Do not send Runtime API Keys in bug reports.
 
 ## I restarted Godot and the API key field is empty
 
-The field stays visually empty because the key is not echoed back into the UI. On Windows 0.4.0, a successfully connected Runtime API Key is stored in Windows Credential Manager and the addon automatically reconnects after restart when the saved Tunnel ID is also present.
+The field stays visually empty because the key is not echoed back into the UI. On Windows 0.5.0, a successfully connected Runtime API Key is stored in Windows Credential Manager and the addon automatically reconnects after restart when the saved Tunnel ID is also present.
 
 ## Where is the API key stored?
 
-Tunnel ID is stored in Godot `EditorSettings`. On Windows 0.4.0 the Runtime API Key is stored as a Generic Credential in Windows Credential Manager. It is not written into the project, Git, EditorSettings, or generated tunnel profile. Use **Forget Saved Credentials** to remove both saved values.
+Tunnel ID is stored in Godot `EditorSettings`. On Windows 0.5.0 the Runtime API Key is stored as a Generic Credential in Windows Credential Manager. It is not written into the project, Git, EditorSettings, or generated tunnel profile. Use **Forget Saved Credentials** to remove both saved values.
 
 ## Does the local MCP server listen on my LAN?
 
@@ -78,11 +78,11 @@ This is a safety feature. Existing scenes are not overwritten unless `overwrite:
 
 ## Why can ChatGPT not inspect a property I need?
 
-0.4.0 includes `node.get_property`, `node.get_properties`, `node.inspect`, `scene.inspect`, Resource inspection, and ClassDB introspection. If a specific property still cannot be represented, include the exact class/property in a bug report.
+0.5.0 keeps these capabilities through direct and `*.manage` routes, including Node/Scene inspection, Resource inspection, and ClassDB introspection. If a specific property still cannot be represented, include the exact class/property in a bug report.
 
 ## Why can ChatGPT not open an existing scene?
 
-`scene.open`, `scene.close`, `scene.reload`, `scene.list_open`, and `scene.get_current` are available in 0.4.0.
+`scene.open` and `scene.get_current` are direct in 0.5.0; close/reload/list-open remain available through `scene.manage`.
 
 ## Which Godot versions are supported?
 
@@ -109,7 +109,7 @@ The tunnel/runtime may accept multiple remote calls, but Godot editor mutation i
 
 ## Why not expose hundreds of Godot tools immediately?
 
-Large MCP tool surfaces increase maintenance cost, context/tool-schema overhead and ambiguity. 0.4.0 now exposes 119 tools, but still groups them around real workflows and bounded operations rather than exposing a generic shell or every possible engine call.
+That is exactly why v0.5 compresses the public surface: 47 default public tools expose 230 internal atomic commands through direct tools and bounded `*.manage` routers, reducing schema overhead without dropping capability.
 
 ## How should I report a bug?
 

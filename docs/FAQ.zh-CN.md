@@ -20,7 +20,7 @@
 
 ## `Status: connected` 到底表示什么？
 
-0.4.0 中表示：
+0.5.0 中表示：
 
 - Godot 本地 MCP Server 已启动；
 - 官方 `tunnel-client` 子进程已经启动并保持运行。
@@ -38,7 +38,7 @@
 5. Runtime API Key 是否具备所需 Tunnel 权限；
 6. 创建的是 Tunnel 连接，而不是手动填本地 `127.0.0.1` URL。
 
-0.4.0 已完成真实 ChatGPT Connector 全能力回归，真实发现并调用 119 个工具。
+0.5.0 已完成真实 Web ChatGPT Connector 全能力回归：默认 47 个 Public Tools、后端 230 个 Atomic Commands，并实际回传 Screenshot Image。
 
 ## Godot 显示 connected，但 ChatGPT 看不到工具
 
@@ -54,11 +54,11 @@
 
 ## 重启 Godot 后 API Key 为空
 
-输入框保持为空是为了不把保存的 Key 回显到 UI。Windows 0.4.0 在首次成功连接后会把 Runtime API Key 保存到 Windows Credential Manager；如果 Tunnel ID 也已保存，重启 Godot 后会自动重连。
+输入框保持为空是为了不把保存的 Key 回显到 UI。Windows 0.5.0 在首次成功连接后会把 Runtime API Key 保存到 Windows Credential Manager；如果 Tunnel ID 也已保存，重启 Godot 后会自动重连。
 
 ## API Key 存在哪里？
 
-Tunnel ID 保存在 Godot `EditorSettings`。Windows 0.4.0 把 Runtime API Key 作为 Generic Credential 保存到 Windows Credential Manager，不进入项目、Git、EditorSettings 或生成的 tunnel profile。使用 **Forget Saved Credentials** 可以同时删除两项保存内容。
+Tunnel ID 保存在 Godot `EditorSettings`。Windows 0.5.0 把 Runtime API Key 作为 Generic Credential 保存到 Windows Credential Manager，不进入项目、Git、EditorSettings 或生成的 tunnel profile。使用 **Forget Saved Credentials** 可以同时删除两项保存内容。
 
 ## 本地 MCP Server 会监听局域网吗？
 
@@ -78,11 +78,11 @@ Tunnel ID 保存在 Godot `EditorSettings`。Windows 0.4.0 把 Runtime API Key �
 
 ## 为什么 ChatGPT 看不到我需要的节点属性？
 
-0.4.0 已包含 `node.get_property`、`node.get_properties`、`node.inspect`、`scene.inspect`、Resource 检查和 ClassDB 自省。如果某个特定属性仍无法表达，请在 bug 报告中提供准确 class/property。
+0.5.0 继续通过 Direct / `*.manage` Route 提供 Node/Scene、Resource 与 ClassDB 检查能力。如果某个特定属性仍无法表达，请在 bug 报告中提供准确 class/property。
 
 ## 为什么不能打开已有场景？
 
-0.4.0 已支持 `scene.open`、`scene.close`、`scene.reload`、`scene.list_open` 和 `scene.get_current`。
+0.5.0 中 `scene.open` / `scene.get_current` 为 Direct Tool，close/reload/list-open 继续由 `scene.manage` 提供。
 
 ## 支持哪些 Godot 版本？
 
@@ -109,7 +109,7 @@ Tunnel/运行时可能能接收多个远程调用，但 Godot 编辑器修改是
 
 ## 为什么不一次性暴露几百个 Godot 工具？
 
-超大的 MCP 工具面会增加维护成本、工具 schema 上下文开销和模型选择歧义。0.4.0 已达到 119 tools，但仍坚持围绕真实工作流和有边界操作设计，而不是暴露通用 Shell 或所有可能的引擎调用。
+这正是 v0.5 压缩 Public Surface 的原因：默认 47 个 Public Tools 通过 Direct Tool 与有边界 `*.manage` Router 覆盖 230 个 Internal Atomic Commands，降低 Schema 开销而不丢能力。
 
 ## 怎么提交一个高质量 bug？
 

@@ -2,47 +2,102 @@
 
 [English](TOOL_REFERENCE.md) | 简体中文
 
-**0.4.0** 共暴露 **119 个 MCP 工具**。本文是面向用户的索引；每次连接时 `tools/list` 返回的实时 JSON Schema 才是具体参数的最终权威。
+**0.5.0** 默认公开 **47 个 MCP Tools**，后端保留 **230 个 Internal Atomic Commands**。具体参数、Managed Operation Enum 和 Annotation 以每次连接的实时 `tools/list` JSON Schema 为最终权威。
+
+## Compact Surface 模型
+
+v0.5 把 Public MCP Catalogue 与 Internal Atomic Command Registry 分层：
+
+- **31 个 Direct Tools** 覆盖最高频 Inspect/Edit/Run/Test 路径；
+- **16 个 `*.manage` Tools** 通过有边界的 `op` Enum + `params` 承载长尾操作；
+- 每个 Internal Atomic Command 至少有一个 Public Route；
+- 默认 Public 数量 47；启用的第三方 Custom Tool 最多额外 Promote 2 个，硬上限仍低于 50；
+- 硬编码 v0.4 119 个扁平 Public Tool Name 的调用方需要迁移到 v0.5 Compact Surface。
+
+调用 `*.manage` 时，从实时 Schema 提供的 `op` 中选择操作；Server 会再用对应 Atomic Command 自己的 Schema 校验 `params`。
 
 ## 核心约定
 
-- 项目文件路径必须位于 `res://` 内；`res://../...` 等路径穿越会返回 `INVALID_PATH`。
-- 编辑器场景中的节点路径相对于“当前编辑场景根节点”。根节点使用 `.`。特别是 `node.create.parent_path`：**不要填根节点名称，填 `.`**。
-- Runtime 节点路径默认相对于运行中 `current_scene`。
-- Runtime 工具支持可选 `session_id` 和 `timeout_ms`，可用于多个 Debugger Session 或自定义等待时间。
-- `batch.execute` 有顺序、有上限，但**不是事务**；前面成功的操作不会因为后面失败而自动回滚。
-- `diagnostics.run_capture` 只能启动当前 Godot executable + 当前项目，不是通用 Shell/任意进程执行工具。
+- Project 文件路径必须位于 `res://` 内，拒绝 `res://../...` 等路径穿越；
+- Editor Scene 节点路径相对于当前编辑场景根节点，根节点使用 `.`；
+- Runtime 节点路径默认相对于 Live Current Scene；
+- 支持的 Runtime 操作可带 `session_id` / `timeout_ms`；
+- `batch.execute` 有边界但 Non-Atomic；
+- `batch.execute_transaction` 只对被分类为可逆的操作声明 rollback；
+- `diagnostics.run_capture` 只启动当前 Godot executable + 当前项目，不是 Arbitrary Shell；
+- Screenshot 返回有边界 MCP image content；
+- Custom Tool 必须属于 Addon、通过 Schema 校验、显式声明安全属性，并默认禁用。
 
-## 运行目标与常见错误
+## Public Direct Tools（31）
 
-调用 Tool 前先确认它操作的是哪一层：
-
-| 目标 | 常见 Tool | 前提 | 是否写回项目 |
-| --- | --- | --- | --- |
-| Editor Project | `project.*`、`scene.*`、`node.*`、`script.*`、`resource.*` | Godot Editor/插件已加载 | 需要保存/持久化的操作通常会写回 |
-| Editor 控制 | `editor.*` | Godot Editor/插件已加载 | 取决于操作 |
-| Runtime | `runtime.*`、`debugger.*` | 有活动 Debugger/Runtime Session | 不会，除非另外调用 Editor Tool 持久化 |
-| Diagnostics | `diagnostics.run_capture` | 当前 Godot executable/project | Runner 本身不修改项目 |
-| Batch | `batch.execute` | 取决于内部 Tool | 取决于内部 Tool |
-
-常见错误：
-
-| Code | 含义 / 下一步 |
+| Tool | 角色 |
 | --- | --- |
-| `INVALID_PATH` | 路径越过 `res://` 或验证失败；改用项目内 `res://` 路径。 |
-| `NODE_NOT_FOUND` | Editor/Runtime 节点路径找不到；先读取 SceneTree。 |
-| `PROPERTY_NOT_FOUND` | 对象/类没有该属性；先 Inspect 或查 ClassDB。 |
-| `METHOD_NOT_FOUND` | 对象/类没有该方法；先查 Methods/ClassDB。 |
-| `RUNTIME_NOT_RUNNING` | 先启动 Scene/Project，并等待 Debugger Session。 |
-| `RUNTIME_REQUEST_TIMEOUT` | Runtime 请求超时；检查 Session/运行状态。 |
-| `ROOT_DELETE_DENIED` | 不允许删除当前编辑 Scene Root。 |
-| `BATCH_RECURSION_DENIED` | `batch.execute` 不允许递归调用自己。 |
-| `BATCH_TOO_LARGE` | 请求超过 Batch 上限；拆成更小批次。 |
+| `godot.get_status` | 高频 Direct Operation |
+| `project.inspect` | 高频 Direct Operation |
+| `project.search_text` | 高频 Direct Operation |
+| `scene.get_current` | 高频 Direct Operation |
+| `scene.get_tree` | 高频 Direct Operation |
+| `scene.open` | 高频 Direct Operation |
+| `scene.save` | 高频 Direct Operation |
+| `node.create` | 高频 Direct Operation |
+| `node.find` | 高频 Direct Operation |
+| `node.get_properties` | 高频 Direct Operation |
+| `node.set_property` | 高频 Direct Operation |
+| `script.read` | 高频 Direct Operation |
+| `script.write` | 高频 Direct Operation |
+| `script.patch` | 高频 Direct Operation |
+| `script.validate` | 高频 Direct Operation |
+| `script.attach` | 高频 Direct Operation |
+| `classdb.search` | 高频 Direct Operation |
+| `editor.take_screenshot` | 高频 Direct Operation |
+| `editor.run_project` | 高频 Direct Operation |
+| `editor.run_custom_scene` | 高频 Direct Operation |
+| `runtime.status` | 高频 Direct Operation |
+| `runtime.get_tree` | 高频 Direct Operation |
+| `runtime.inspect` | 高频 Direct Operation |
+| `runtime.get_property` | 高频 Direct Operation |
+| `runtime.set_property` | 高频 Direct Operation |
+| `runtime.call_method` | 高频 Direct Operation |
+| `diagnostics.run_capture` | 高频 Direct Operation |
+| `batch.execute` | 高频 Direct Operation |
+| `batch.execute_transaction` | 高频 Direct Operation |
+| `logs.read` | 高频 Direct Operation |
+| `test.run` | 高频 Direct Operation |
 
-修改型工作流建议先 Inspect，再明确保存。Runtime 状态和 Editor 保存状态是两套不同状态。
+## Managed Domain Tools（16）
+
+| Tool | 角色 |
+| --- | --- |
+| `project.manage` | 通过 `op` + `params` 访问长尾 Domain Operations |
+| `input_map.manage` | 通过 `op` + `params` 访问长尾 Domain Operations |
+| `scene.manage` | 通过 `op` + `params` 访问长尾 Domain Operations |
+| `node.manage` | 通过 `op` + `params` 访问长尾 Domain Operations |
+| `script.manage` | 通过 `op` + `params` 访问长尾 Domain Operations |
+| `resource.manage` | 通过 `op` + `params` 访问长尾 Domain Operations |
+| `classdb.manage` | 通过 `op` + `params` 访问长尾 Domain Operations |
+| `editor.manage` | 通过 `op` + `params` 访问长尾 Domain Operations |
+| `debugger.manage` | 通过 `op` + `params` 访问长尾 Domain Operations |
+| `runtime.manage` | 通过 `op` + `params` 访问长尾 Domain Operations |
+| `logs.manage` | 通过 `op` + `params` 访问长尾 Domain Operations |
+| `test.manage` | 通过 `op` + `params` 访问长尾 Domain Operations |
+| `autoload.manage` | 通过 `op` + `params` 访问长尾 Domain Operations |
+| `content.manage` | 通过 `op` + `params` 访问长尾 Domain Operations |
+| `world.manage` | 通过 `op` + `params` 访问长尾 Domain Operations |
+| `custom.manage` | 通过 `op` + `params` 访问长尾 Domain Operations |
+
+### 重要 Managed Domains
+
+- `content.manage`：Animation、Material/Shader、Audio、Particle、Camera、Theme/UI、Curve/Gradient/Noise、Environment、Physics Shape 高层创作。
+- `world.manage`：TileMap/TileSet、GridMap/MeshLibrary、CSG。
+- `autoload.manage`：Autoload 增删与检查。
+- `logs.manage`：Log Cursor/Filter/Clear 等长尾日志操作。
+- `test.manage`：Test Discovery 与 Test Runner 长尾操作。
+- `custom.manage`：第三方工具 list/get/invoke/enable-disable。
+- `debugger.manage`：当前 Godot Runtime 真正支持时的 Debugger Session、Breakpoint、Profiler、Native Debugger 操作。
+
 ## Godot Variant 编码
 
-JSON 本身没有 Vector3 等 Godot 类型，因此常用类型用带标签对象传递。例如：
+常见非 JSON Godot 类型使用带标签对象，例如 `Vector3`：
 
 ```json
 {
@@ -53,286 +108,49 @@ JSON 本身没有 Vector3 等 Godot 类型，因此常用类型用带标签对�
 }
 ```
 
-0.4.0 的公共 Variant codec 还覆盖多种 Vector/Transform/Color/NodePath、数组、字典、Resource 引用和对象摘要。
+共享 Codec 还覆盖常用 Vector/Transform/Color/NodePath、Array/Dictionary、Resource Reference 和结构化 Object Summary。
 
-## 类别总览
+## 常用工作流
 
-| 类别 | 数量 | 主要能力 |
-| --- | ---: | --- |
-| Godot | 1 | 连接、编辑器和版本状态 |
-| Project | 13 | 项目总览、文件、搜索、ProjectSettings、Autoload、插件 |
-| InputMap | 6 | 输入 Action 与事件 |
-| Scene | 12 | 场景创建、打开、检查、保存、重载、实例化和关闭 |
-| Node | 23 | 节点属性、方法、Group、Metadata、Signal 与层级编辑 |
-| Script | 10 | 脚本读写、解析、验证、挂载和 Script Editor 状态 |
-| Resource | 8 | Resource 创建、检查、编辑、保存、复制和依赖 |
-| ClassDB | 9 | 直接查询当前 Godot 版本的类、属性、方法、Signal、枚举和常量 |
-| Editor | 20 | Selection、FileSystem、Script Editor、保存和运行控制 |
-| Debugger | 4 | 调试 Session、断点和 Profiler |
-| Runtime | 11 | 运行时 SceneTree、节点属性/方法、性能、暂停和恢复 |
-| Diagnostics | 1 | 有边界启动 Godot 子进程并读取 stdout/stderr/exit/timeout |
-| Batch | 1 | 有上限、按顺序的多工具执行 |
-
-## 完整 119-tool 索引
-
-### Godot (1)
-
-连接、编辑器和版本状态。
-
-- `godot.get_status`
-
-### Project (13)
-
-项目总览、文件、搜索、ProjectSettings、Autoload、插件。
-
-- `project.delete_file`
-- `project.find_files`
-- `project.get_autoloads`
-- `project.get_info`
-- `project.get_plugins`
-- `project.get_setting`
-- `project.inspect`
-- `project.list_directory`
-- `project.list_settings`
-- `project.make_directory`
-- `project.move_file`
-- `project.search_text`
-- `project.set_setting`
-
-### InputMap (6)
-
-输入 Action 与事件。
-
-- `input_map.add_action`
-- `input_map.add_event`
-- `input_map.clear_action_events`
-- `input_map.get_action`
-- `input_map.list`
-- `input_map.remove_action`
-
-### Scene (12)
-
-场景创建、打开、检查、保存、重载、实例化和关闭。
-
-- `scene.close`
-- `scene.create`
-- `scene.get_current`
-- `scene.get_tree`
-- `scene.get_unsaved`
-- `scene.inspect`
-- `scene.instantiate`
-- `scene.list_open`
-- `scene.open`
-- `scene.reload`
-- `scene.save`
-- `scene.save_all`
-
-### Node (23)
-
-节点属性、方法、Group、Metadata、Signal 与层级编辑。
-
-- `node.add_to_group`
-- `node.call_method`
-- `node.connect_signal`
-- `node.create`
-- `node.delete`
-- `node.disconnect_signal`
-- `node.duplicate`
-- `node.find`
-- `node.get_groups`
-- `node.get_metadata`
-- `node.get_methods`
-- `node.get_properties`
-- `node.get_property`
-- `node.get_signal_connections`
-- `node.get_signals`
-- `node.inspect`
-- `node.move_child`
-- `node.remove_from_group`
-- `node.remove_metadata`
-- `node.rename`
-- `node.reparent`
-- `node.set_metadata`
-- `node.set_property`
-
-### Script (10)
-
-脚本读写、解析、验证、挂载和 Script Editor 状态。
-
-- `script.attach`
-- `script.detach`
-- `script.get_info`
-- `script.get_unsaved`
-- `script.list_open`
-- `script.read`
-- `script.reload_open`
-- `script.save_all`
-- `script.validate`
-- `script.write`
-
-### Resource (8)
-
-Resource 创建、检查、编辑、保存、复制和依赖。
-
-- `resource.call_method`
-- `resource.create`
-- `resource.duplicate`
-- `resource.get_dependencies`
-- `resource.get_property`
-- `resource.inspect`
-- `resource.save`
-- `resource.set_property`
-
-### ClassDB (9)
-
-直接查询当前 Godot 版本的类、属性、方法、Signal、枚举和常量。
-
-- `classdb.can_instantiate`
-- `classdb.get_constants`
-- `classdb.get_enums`
-- `classdb.get_inheritance`
-- `classdb.get_methods`
-- `classdb.get_properties`
-- `classdb.get_signals`
-- `classdb.inspect`
-- `classdb.search`
-
-### Editor (20)
-
-Selection、FileSystem、Script Editor、保存和运行控制。
-
-- `editor.clear_selection`
-- `editor.close_script`
-- `editor.get_filesystem_state`
-- `editor.get_playing_scene`
-- `editor.get_script_state`
-- `editor.get_selection`
-- `editor.inspect`
-- `editor.is_playing`
-- `editor.open_script`
-- `editor.reimport_files`
-- `editor.run_current_scene`
-- `editor.run_custom_scene`
-- `editor.run_main_scene`
-- `editor.run_project`
-- `editor.save_all`
-- `editor.scan_filesystem`
-- `editor.select_file`
-- `editor.set_selection`
-- `editor.stop`
-- `editor.stop_playing`
-
-### Debugger (4)
-
-调试 Session、断点和 Profiler。
-
-- `debugger.get_breakpoints`
-- `debugger.get_sessions`
-- `debugger.set_breakpoint`
-- `debugger.toggle_profiler`
-
-### Runtime (11)
-
-运行时 SceneTree、节点属性/方法、性能、暂停和恢复。
-
-- `runtime.call_method`
-- `runtime.find`
-- `runtime.get_groups`
-- `runtime.get_performance`
-- `runtime.get_property`
-- `runtime.get_tree`
-- `runtime.inspect`
-- `runtime.pause`
-- `runtime.resume`
-- `runtime.set_property`
-- `runtime.status`
-
-### Diagnostics (1)
-
-有边界启动 Godot 子进程并读取 stdout/stderr/exit/timeout。
-
-- `diagnostics.run_capture`
-
-### Batch (1)
-
-有上限、按顺序的多工具执行。
-
-- `batch.execute`
-
-## 重要使用方式
-
-### 在场景根节点下创建节点
-
-`node.create` 的根节点写法：
-
-```json
-{
-  "parent_path": ".",
-  "type": "CharacterBody3D",
-  "name": "Player"
-}
-```
-
-根节点名称本身不是“相对根节点的子路径”。真实 ChatGPT 回归中已经验证该约定。
-
-### 先理解，再修改
-
-面对陌生项目，推荐先调用：
+### Inspect → Edit → Validate → Run
 
 ```text
 project.inspect
-scene.inspect
-node.inspect
-script.get_info
-classdb.inspect
+scene.get_tree
+classdb.search
+node.set_property / script.patch
+scene.save
+script.validate
+editor.run_project
+runtime.inspect
+logs.read
+editor.take_screenshot
 ```
 
-这些聚合工具能显著减少 MCP 往返次数，也能避免 ChatGPT 依靠模型记忆去猜当前 Godot 版本 API。
+### Transaction Editor 修改
 
-### Runtime Debugger
+只有当所有请求操作都可逆时使用 `batch.execute_transaction`。后续可逆步骤失败时，之前成功的可逆步骤会 rollback；不可逆操作不能宣称 rollback。
 
-典型流程：
+### World Authoring
 
-```text
-editor.run_current_scene
-debugger.get_sessions
-runtime.status
-runtime.get_tree
-runtime.get_property / runtime.set_property
-runtime.call_method
-runtime.get_performance
-editor.stop_playing
-```
+使用 `world.manage`，从实时 Schema 选择 TileMap/TileSet、GridMap 或 CSG `op`。v0.5 真实 Connector 验收已经验证 Cell/Item Mutation、有边界读取、Undo/Redo、Atlas Metadata/Image Content、MeshLibrary Listing 与 CSG Operation 修改。
 
-真实 0.4.0 回归中，运行时 `Player.position` 被从 `(2,3,4)` 改成 `(7,8,9)`；停止运行后编辑器场景仍保持 `(2,3,4)`，证明 Runtime 修改没有误写回保存场景。
+### 第三方 Custom Tool
 
-### Diagnostics
-
-`diagnostics.run_capture` 分开返回 stdout、stderr、exit code、timeout、duration 和截断状态，适合让 ChatGPT 自己完成“运行 -> 看错误 -> 修复 -> 再运行”的闭环。
-
-### Batch
-
-`batch.execute` 可以顺序执行一组已有 MCP tools，支持 `stop_on_error`。递归调用 `batch.*` 会返回 `BATCH_RECURSION_DENIED`。
+Custom Tool 必须由真实 Addon 注册，Handler 必须属于该 Addon，强制声明 `read_only` / `destructive`，并默认 Disabled。启用的 promoted tool 可动态出现为 `custom.<name>`；Disable 后会再次从 Public Surface 消失。
 
 ## 安全边界
 
-0.4.0 已实际回归：
-
-- `res://../...` 路径穿越拒绝；
-- 项目外路径拒绝；
-- Scene root 删除拒绝；
-- 非法 Node class/property/method 拒绝；
-- Resource 在 load/save 前执行 `res://` 路径检查；
-- Diagnostics 子进程有 timeout 和输出上限；
-- Batch 有数量/payload 上限并拒绝递归；
-- 不提供通用任意 Shell MCP 工具。
+v0.5 回归覆盖 Path Traversal/Project External 拒绝、Resource/Path 校验、Scene Root Delete 拒绝、有边界 Diagnostics/Image/Input/Logs/Test Payload、Transaction Rollback 分类、Custom Tool Ownership/Schema/Enablement，以及不提供通用任意 Shell MCP Tool。
 
 ## 真实验证
 
-2026-09-10 使用真实 ChatGPT Connector 完整发现并调用 119 个工具，最终结果：
+最终真实 Web ChatGPT Connector 回归于 **2026-09-10** 使用 **Godot 4.7.2-stable (official)**，通过真实 Web ChatGPT → Secure MCP Tunnel → Godot Editor/Runtime 链路验证 Compact Surface；包含真实 Screenshot Image Content，以及 Custom Tool Enable 时 47→48、Disable 后 48→47 的动态 Public Surface。
 
 ```text
-REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS
+CATALOGUE_SCHEMA_GATE=PASS tools=47
+COMPACT_TOOL_SURFACE_GATE=PASS public=47 atomic=230
+REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS
 ```
 
 更多见：[常用示例](EXAMPLES.zh-CN.md)、[快速上手](QUICKSTART.zh-CN.md)、[安全说明](../SECURITY.zh-CN.md)。

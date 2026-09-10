@@ -119,11 +119,11 @@ Godot Editor API / Editor Debugger
 - Release 资产重新下载并校验哈希；
 - 中英文公开文档发布整理。
 
-## 4. 当前下一里程碑 — v0.5.0 能力迁移
+## 4. 已发布里程碑 — v0.5.0 能力迁移
 
 状态：**范围已锁定 / 尚未开始实现**。
 
-v0.5.0 不再是开放式候选里程碑。完整必做范围见 [v0.5.0 能力迁移计划](DEVELOPMENT_0.5.zh-CN.md)。
+状态：**已完成并通过验证**。关闭后的实现/验收记录见 [v0.5.0 能力迁移](DEVELOPMENT_0.5.zh-CN.md)。
 
 本里程碑有两个强制结果：
 
@@ -155,7 +155,7 @@ v0.5.0 不再是开放式候选里程碑。完整必做范围见 [v0.5.0 能力�
 
 Godot 能力继续坚持 **GDScript-first**。现有 Go Helper 继续只负责 Windows Credential Manager、Installer 和有边界 Child-process Capture。
 
-第一项实现任务是 Compact Public Surface 基础；现有 v0.4 能力必须先通过新的 Compact Catalogue 真实 ChatGPT 回归，然后才能继续迁移新能力 Family。
+迁移最终形成 47 个默认 Public Tools、230 个 Internal Atomic Commands，并以 `REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS` 完成真实验收；后续工作放在下节，不再扩展已关闭的 v0.5 Scope。
 
 ## 4.1 本轮迁移完成后的后续事项
 

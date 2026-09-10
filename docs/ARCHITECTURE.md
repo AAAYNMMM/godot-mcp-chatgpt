@@ -106,7 +106,7 @@ Implemented MCP methods:
 
 ## Godot command boundary
 
-Version 0.4.0 exposes **119 tools** grouped around real Godot workflows rather than a generic shell:
+Version 0.5.0 exposes **47 default public tools** backed by **230 internal atomic commands**, grouped around real Godot workflows rather than a generic shell:
 
 ```text
 Project / InputMap
@@ -161,10 +161,10 @@ control-plane stub
  -> official bundled tunnel-client.exe
  -> Godot loopback MCP
  -> real Godot 4.7.2 GUI
- -> 119 real tools
+ -> 47 default public tools / 230 internal atomic commands
 ```
 
-The 0.4.0 path passes catalogue/schema and representative behavior gates with all 119 tools. A real ChatGPT Connector full-surface regression completed successfully on 2026-09-10 with `REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS`.
+The 0.5.0 path passes compact catalogue/schema and representative behavior gates with 47 default public tools and 230 internal atomic commands. The final real Web ChatGPT Connector regression completed successfully on 2026-09-10 with `REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS`.
 
 ## Non-goals
 

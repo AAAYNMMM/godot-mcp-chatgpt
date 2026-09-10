@@ -2,7 +2,7 @@
 
 English | [简体中文](RELEASING.zh-CN.md)
 
-This checklist turns the v0.4.0 release procedure into a repeatable maintainer workflow.
+This checklist defines the repeatable maintainer workflow used for validated releases.
 
 ## 1. Release source must be coherent
 
@@ -17,7 +17,7 @@ Before tagging:
 
 ## 2. Required validation
 
-Run the tests relevant to the changed surface. For a release touching the complete addon, the v0.4.0 baseline includes:
+Run the tests relevant to the changed surface. For a release touching the complete addon, the baseline includes:
 
 ```text
 Godot addon load/compile

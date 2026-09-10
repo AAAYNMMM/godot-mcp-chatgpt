@@ -8,18 +8,19 @@ This document is the **current-state source of truth**. Detailed historical deve
 
 | Item | Value |
 | --- | --- |
-| Latest release | **v0.4.0** |
-| Release source commit | `f12d268b5bca087ae8cef744f9cb7ab8877848e8` |
-| Release tag | `v0.4.0` |
+| Latest release | **v0.5.0** |
+| Release source commit | `v0.5.0 tag target` |
+| Release tag | `v0.5.0` |
 | Primary platform | Windows x64 |
 | Verified Godot | 4.7.2 Standard x64 |
-| Production MCP tools | **119** |
+| Default public MCP tools | **47** |
+| Internal atomic commands | **230** |
 | Connector path | Web ChatGPT + OpenAI Secure MCP Tunnel |
-| Release state | Published and validated |
-| Active development target | **v0.5.0 capability migration** |
-| v0.5 public-tool target | **<=50 default public MCP tools** |
+| Release state | Validated; packaging/publication in progress |
+| v0.5 capability migration | **Complete** |
+| Public-tool limit | **<50; validated at 47 default / 48 with one promoted custom tool** |
 
-Release page: <https://github.com/AAAYNMMM/godot-mcp-chatgpt/releases/tag/v0.4.0>
+Release page: <https://github.com/AAAYNMMM/godot-mcp-chatgpt/releases/tag/v0.5.0>
 
 ## Production architecture
 
@@ -126,9 +127,9 @@ README_STRUCTURE_CHECK=PASS
 ```
 
 No plugin/runtime source file was changed by this task.
-## Active development — v0.5.0 capability migration
+## Released milestone — v0.5.0 capability migration
 
-Status: **Phases A–C targeted validation passed; final integrated Web ChatGPT validation deferred**.
+Status: **complete; all migration phases and final real Web ChatGPT Connector acceptance passed**.
 
 The next milestone is now locked. See [v0.5.0 Capability Migration Plan](DEVELOPMENT_0.5.md).
 
@@ -175,7 +176,7 @@ DOC_ONLY_SCOPE=PASS
 
 ### Phase A implementation — compact public tool surface
 
-Status: **implemented / official-tunnel validation passed; final integrated Web ChatGPT validation deferred**.
+Status: **implemented and validated through the final real Web ChatGPT Connector regression**.
 
 Implemented:
 
@@ -267,7 +268,7 @@ Status: **targeted validation passed**.
 
 ### Phase F consolidated migration regression
 
-Status: **integration passed for all executable local/Official-Tunnel/installer/hygiene gates in this MCPcoding workspace; final real Web ChatGPT Connector acceptance pending**.
+Status: **complete; local/Official-Tunnel/installer/hygiene gates and final real Web ChatGPT Connector acceptance passed**.
 
 Validation actually run on 2026-09-10:
 
@@ -280,6 +281,7 @@ PHASE_E_WORLD_EXTENSIBILITY=PASS
 CAPABILITY_MIGRATION_MATRIX=PASS excluded=4 public=47 atomic=230
 PRODUCTION_PLUGIN_SMOKE=PASS
 FULL_OFFICIAL_TUNNEL_SMOKE=PASS
+REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS
 credential-helper Go compile: PASS
 run-helper Go compile: PASS
 INSTALLER_BUILD=PASS
@@ -302,12 +304,12 @@ SMOKE_RESIDUE_CHECK=PASS
 FINAL_HYGIENE=PASS
 ```
 
-The direct `go test` entry for the installer is intentionally not a standalone gate because the installer uses `//go:embed payload.zip`; its supported `build.ps1` path generates that payload and passed. The temporary installer artifact still reports v0.4.0 because public version promotion is intentionally deferred until the final real Connector acceptance.
+The direct `go test` entry for the installer is intentionally not a standalone gate because the installer uses `//go:embed payload.zip`; its supported `build.ps1` path generates that payload and passed.
 
-Known remaining acceptance item: a real Web ChatGPT Connector call against the installed/current plugin. This cannot be represented by the Official Tunnel harness and has not been falsely marked PASS.
+Final real Web ChatGPT Connector acceptance completed: `REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS`. It verified real screenshots/image content, Runtime/UI, input, logs/tests/transactions, World Authoring, Custom Tool promotion, and cleanup.
 ### Exact next implementation task
 
-**All locked migration capabilities and executable Phase F gates are green. Perform the one final real Web ChatGPT Connector acceptance; only after it passes, promote v0.5 public docs/version and build release artifacts from the exact release commit.**
+**v0.5.0 is release-ready. Build and verify release artifacts from the exact release commit, publish the `v0.5.0` tag/Release, then verify remote asset hashes.**
 
 ## Documentation ownership
 
@@ -317,7 +319,7 @@ Known remaining acceptance item: a real Web ChatGPT Connector call against the i
 - Security: [Security](../SECURITY.md)
 - Architecture: [Architecture](ARCHITECTURE.md)
 - Roadmap: [Development Plan](DEVELOPMENT_PLAN.md)
-- Active v0.5 tracker: [Development 0.5](DEVELOPMENT_0.5.md)
+- Closed v0.5 release record: [Development 0.5](DEVELOPMENT_0.5.md)
 - Release process: [Releasing](RELEASING.md)
 - Closed 0.4 technical record: [Development 0.4](DEVELOPMENT_0.4.md)
 - Historical implementation log: [0.3–0.4 archive](PROGRESS_ARCHIVE_0.3-0.4.md)

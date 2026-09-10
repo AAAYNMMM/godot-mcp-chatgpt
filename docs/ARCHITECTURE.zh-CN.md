@@ -113,7 +113,7 @@ mcp:
 
 ## Godot 工具边界
 
-0.4.0 当前暴露 **119 个工具**，围绕真实 Godot 工作流组织，而不是提供通用 Shell：
+0.5.0 默认公开 **47 个 Public Tools**，后端保留 **230 个 Internal Atomic Commands**，围绕真实 Godot 工作流组织，而不是提供通用 Shell：
 
 ```text
 Project / InputMap
@@ -168,10 +168,10 @@ control-plane stub
  -> 内置官方 tunnel-client.exe
  -> Godot loopback MCP
  -> 真实 Godot 4.7.2 GUI
- -> 119 个真实工具
+ -> 47 个默认 Public Tools / 230 个 Internal Atomic Commands
 ```
 
-0.4.0 已通过 119-tool catalogue/schema 和代表性真实行为门禁；2026-09-10 又通过真实 ChatGPT Connector 全能力回归，结果 `REAL_CHATGPT_GODOT_MCP_0_4_TEST=PASS`。
+0.5.0 已通过 Compact Catalogue/Schema 与代表性真实行为门禁；2026-09-10 最终真实 Web ChatGPT Connector 全能力回归结果为 `REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS`。
 
 ## 明确不做
 

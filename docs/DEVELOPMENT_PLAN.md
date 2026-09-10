@@ -119,11 +119,11 @@ Status: **complete for the v0.4.0 Windows release**.
 - Release assets re-downloaded and hash-verified;
 - public bilingual documentation release pass.
 
-## 4. Active next milestone — v0.5.0 capability migration
+## 4. Released milestone — v0.5.0 capability migration
 
 Status: **scope locked / implementation pending**.
 
-v0.5.0 is no longer an open-ended candidate milestone. Its required scope is defined in [v0.5.0 Capability Migration Plan](DEVELOPMENT_0.5.md).
+Status: **complete and validated**. The closed implementation/acceptance record is [v0.5.0 Capability Migration](DEVELOPMENT_0.5.md).
 
 The milestone has two mandatory outcomes:
 
@@ -155,7 +155,7 @@ Required capability families include:
 
 Implementation remains **GDScript-first** for Godot capabilities. Existing Go helpers remain responsible for Windows Credential Manager, the installer, and bounded child-process capture.
 
-The first implementation task is the compact public-surface foundation; new capability families are not added until the existing v0.4 capabilities pass a real ChatGPT regression through the compact catalogue.
+The migration completed with 47 default public tools, 230 internal atomic commands, and `REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS`. Follow-up work is tracked below instead of extending the closed v0.5 scope.
 
 ## 4.1 Follow-up work after the migration milestone
 

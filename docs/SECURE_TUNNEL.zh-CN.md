@@ -2,7 +2,7 @@
 
 [English](SECURE_TUNNEL.md) | 简体中文
 
-0.4.0 使用插件内置的官方 OpenAI `tunnel-client.exe`，并由 Godot 自己提供 loopback Streamable HTTP MCP Server。
+0.5.0 使用插件内置的官方 OpenAI `tunnel-client.exe`，并由 Godot 自己提供 loopback Streamable HTTP MCP Server。
 
 **2026-09-09 已完成真实生产连接器验证并创建成功。**
 
@@ -60,9 +60,9 @@ starting
 connected
 ```
 
-0.4.0 中，`connected` 表示 Godot 本地 MCP Server 已运行，官方 tunnel-client 子进程也保持存活。最终是否真正接通，应以 ChatGPT 能否发现并调用工具为准。
+0.5.0 中，`connected` 表示 Godot 本地 MCP Server 已运行，官方 tunnel-client 子进程也保持存活。最终是否真正接通，应以 ChatGPT 能否发现并调用工具为准。
 
-Windows 0.4.0 首次成功连接后会把 Runtime API Key 作为 Generic Credential 保存到 Windows Credential Manager；它不会进入项目、EditorSettings、Git 或生成的 tunnel profile。
+Windows 0.5.0 首次成功连接后会把 Runtime API Key 作为 Generic Credential 保存到 Windows Credential Manager；它不会进入项目、EditorSettings、Git 或生成的 tunnel profile。
 
 ## 3. 在 ChatGPT 创建连接器
 
@@ -73,11 +73,11 @@ Windows 0.4.0 首次成功连接后会把 Runtime API Key 作为 Generic Credent
 3. 选择或填写同一个 Tunnel ID；
 4. 创建和使用期间保持 Godot 打开。
 
-0.4.0 已通过真实 ChatGPT Connector 全能力回归。
+0.5.0 已通过最终真实 Web ChatGPT Connector 全能力回归。
 
 ## 4. 验证工具发现
 
-当前 0.4.0 应发现 **119 个工具**。
+当前 0.5.0 默认应发现 **47 个 Public Tools**；启用 promoted Custom Tool 时最多临时增加 2 个。
 
 先测试：
 

@@ -2,7 +2,7 @@
 
 English | [简体中文](DEVELOPMENT_0.5.zh-CN.md)
 
-Status: **implementation and consolidated local/Official-Tunnel validation complete; final real Web ChatGPT acceptance pending**
+Status: **complete; final real Web ChatGPT Connector acceptance passed**
 
 Baseline release: **v0.4.0**
 
@@ -15,7 +15,7 @@ This document is the active tracker for the next development milestone. Nothing 
 v0.5.0 has two linked goals:
 
 1. migrate the useful Godot-side capabilities that Godot AI currently has and `godot-mcp-chatgpt` v0.4.0 does not;
-2. compress the public MCP tool surface from the current 119 flat tools to a compact domain-oriented surface without deleting the underlying capabilities.
+2. compress the public MCP tool surface from the v0.4 baseline of 119 flat tools to a compact domain-oriented surface without deleting the underlying capabilities.
 
 The intended result is a stronger autonomous game-development loop:
 
@@ -478,7 +478,7 @@ Before release, evaluate whether an **optional, disabled-by-default legacy regis
 
 ### Phase A — Compact-surface foundation
 
-Status: **implemented / official-tunnel validation passed; final integrated Web ChatGPT validation deferred**.
+Status: **implemented and validated through the final real Web ChatGPT Connector regression**.
 
 Implemented:
 
@@ -626,11 +626,11 @@ Implementation now exists for:
 - bounded third-party custom tool registration with addon/handler ownership binding, explicit read-only/destructive hints, default-disabled opt-in enablement, schema validation, 512 KiB argument/result limits, enable/disable persistence, invocation, plugin reload preservation, and up to two enabled promoted public tools;
 - compact public routing through world.manage and custom.manage while keeping the default/public hard limit at <=50.
 
-Phase E is now covered by the consolidated Phase F regression; only the final real Web ChatGPT Connector acceptance remains pending.
+Phase E is covered by the consolidated Phase F regression and the final real Web ChatGPT Connector acceptance.
 
 ### Phase F — Full migration regression and release hardening
 
-Status: **integration passed for local/Official-Tunnel/release-hygiene gates; final real Web ChatGPT acceptance pending**.
+Status: **complete; local/Official-Tunnel/release-hygiene gates and final real Web ChatGPT acceptance passed**.
 
 - compact-surface tool-count/schema gate;
 - capability parity audit against the locked migration matrix;
@@ -700,7 +700,7 @@ Rules for implementation:
 
 ## 9. Current status
 
-Status: **Phases A–E targeted validation and consolidated Official-Tunnel integration passed; final real Web ChatGPT acceptance pending**.
+Status: **complete; Phases A–E, consolidated Official-Tunnel integration, installer/hygiene, and final real Web ChatGPT acceptance passed**.
 
 Locked decisions:
 
@@ -728,4 +728,4 @@ PLANNING_DOC_GATES=PASS
 
 ## 10. Exact next implementation task
 
-**The consolidated Phase F local/Official-Tunnel, installer and repository-hygiene regression is green. The only remaining acceptance step is the one real Web ChatGPT Connector regression; public release docs/version remain on the validated v0.4.0 baseline until that passes.**
+**v0.5.0 implementation is complete. The final real Web ChatGPT Connector regression passed with `REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS`; public release docs/version are promoted to v0.5.0 and release packaging/publication is the remaining step.**
