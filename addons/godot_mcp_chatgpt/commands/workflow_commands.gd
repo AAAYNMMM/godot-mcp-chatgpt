@@ -5,6 +5,7 @@ const U := preload("res://addons/godot_mcp_chatgpt/core/command_utils.gd")
 const RESERVED_RUNTIME_AUTOLOAD := "GodotMCPChatGPTRuntime"
 const MAX_TEST_FILES := 100
 const MAX_TEST_METHODS := 500
+const TEST_FRESHNESS_WARNING := "Test results are editor-session scoped. If dependencies changed after a script was loaded, reload/rescan before treating same-editor results as authoritative."
 static var _last_test_result: Dictionary = {}
 
 static func register(registry: RefCounted, plugin: EditorPlugin) -> void:
@@ -16,7 +17,7 @@ static func register(registry: RefCounted, plugin: EditorPlugin) -> void:
     _add(registry, "test.run", "Discover and run bounded project GDScript test methods. Test scripts may extend addons/godot_mcp_chatgpt/testing/test_suite.gd and methods named test_* are executed.", {
         "root":{"type":"string"},"paths":{"type":"array","items":{"type":"string"},"maxItems":100},"name_contains":{"type":"string"},"max_files":{"type":"integer","minimum":1,"maximum":100},"max_tests":{"type":"integer","minimum":1,"maximum":500}
     }, func(a): return await _test_run(plugin,a), false)
-    _add(registry, "test.get_results", "Return the most recent GDScript test-run result from this editor session.", {}, func(_a): return U.ok(_last_test_result.duplicate(true)), true)
+    _add(registry, "test.get_results", "Return the most recent GDScript test-run result from this editor session.", {}, func(_a): return _test_results(), true)
     _add(registry, "test.list", "Discover project GDScript test scripts and test_* methods without executing them.", {"root":{"type":"string"},"paths":{"type":"array","items":{"type":"string"},"maxItems":100},"name_contains":{"type":"string"},"max_files":{"type":"integer","minimum":1,"maximum":100}}, func(a): return _test_list(a), true)
 
     _add(registry, "autoload.list", "List project autoload entries including singleton mode.", {}, func(_a): return U.ok({"autoloads":_autoload_list()}), true)
@@ -130,7 +131,7 @@ static func _test_list(args: Dictionary) -> Dictionary:
     var suites: Array=[]
     for path in path_result.result:
         var info:=_test_script_info(path); suites.append(info)
-    return U.ok({"suites":suites,"count":suites.size()})
+    return U.ok({"suites":suites,"count":suites.size(),"freshness_warning":TEST_FRESHNESS_WARNING,"editor_session_only":true})
 
 static func _test_script_info(path: String) -> Dictionary:
     var resource := ResourceLoader.load(path,"Script",ResourceLoader.CACHE_MODE_IGNORE)
@@ -146,7 +147,7 @@ static func _test_run(plugin: EditorPlugin, args: Dictionary) -> Dictionary:
     var path_result := _test_paths(args)
     if not bool(path_result.get("ok",false)): return path_result
     var max_tests:=clampi(int(args.get("max_tests",MAX_TEST_METHODS)),1,MAX_TEST_METHODS)
-    var result := {"suites":[],"passed":0,"failed":0,"tests":0,"load_errors":[],"started_ms":Time.get_ticks_msec()}
+    var result := {"suites":[],"passed":0,"failed":0,"tests":0,"load_errors":[],"started_ms":Time.get_ticks_msec(),"freshness_warning":TEST_FRESHNESS_WARNING,"editor_session_only":true,"started_unix":Time.get_unix_time_from_system()}
     for path in path_result.result:
         if int(result.tests)>=max_tests: break
         var suite_result := await _run_suite(plugin,path,max_tests-int(result.tests))
@@ -155,7 +156,17 @@ static func _test_run(plugin: EditorPlugin, args: Dictionary) -> Dictionary:
         if suite_result.has("load_error"): result.load_errors.append({"path":path,"error":suite_result.load_error})
     result["duration_ms"] = Time.get_ticks_msec()-int(result.started_ms)
     result["ok"] = int(result.failed)==0 and result.load_errors.is_empty()
+    result["completed_unix"] = Time.get_unix_time_from_system()
     _last_test_result = result.duplicate(true)
+    return U.ok(result)
+
+static func _test_results() -> Dictionary:
+    if _last_test_result.is_empty():
+        return U.ok({"has_result":false,"freshness_warning":TEST_FRESHNESS_WARNING,"editor_session_only":true})
+    var result := _last_test_result.duplicate(true)
+    result["has_result"] = true
+    result["freshness_warning"] = TEST_FRESHNESS_WARNING
+    result["editor_session_only"] = true
     return U.ok(result)
 
 static func _run_suite(plugin: EditorPlugin, path: String, remaining: int) -> Dictionary:

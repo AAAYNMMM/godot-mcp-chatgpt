@@ -1,6 +1,9 @@
 @tool
 extends RefCounted
 
+const CustomToolRegistry := preload("res://addons/godot_mcp_chatgpt/custom/custom_tool_registry.gd")
+const GROUPED_DOMAINS := {"world":["tilemap","tileset","gridmap","csg"]}
+
 const DIRECT_TOOLS: Array[String] = [
 	"godot.get_status",
 	"project.inspect",
@@ -18,10 +21,7 @@ const DIRECT_TOOLS: Array[String] = [
 	"script.patch",
 	"script.validate",
 	"script.attach",
-	"resource.inspect",
 	"classdb.search",
-	"classdb.inspect",
-	"editor.inspect",
 	"editor.take_screenshot",
 	"editor.run_project",
 	"editor.run_custom_scene",
@@ -53,11 +53,14 @@ const MANAGED_DOMAINS: Array[String] = [
 	"test",
 	"autoload",
 	"content",
+	"world",
+	"custom",
 ]
 
 var _registry: RefCounted
 var _definitions: Dictionary = {}
 var _domain_operations: Dictionary = {}
+var _domain_targets: Dictionary = {}
 var _direct_lookup: Dictionary = {}
 var _catalogue: Array[Dictionary] = []
 var _build_errors: Array[Dictionary] = []
@@ -66,6 +69,7 @@ func setup(registry: RefCounted) -> Dictionary:
 	_registry = registry
 	_definitions.clear()
 	_domain_operations.clear()
+	_domain_targets.clear()
 	_direct_lookup.clear()
 	_catalogue.clear()
 	_build_errors.clear()
@@ -91,16 +95,24 @@ func setup(registry: RefCounted) -> Dictionary:
 
 	for domain in MANAGED_DOMAINS:
 		var operations: Array[String] = []
-		var prefix := domain + "."
-		for atomic_name_value in _definitions.keys():
-			var atomic_name := str(atomic_name_value)
-			if atomic_name.begins_with(prefix):
-				operations.append(atomic_name.substr(prefix.length()))
+		var targets: Dictionary = {}
+		var source_domains: Array = GROUPED_DOMAINS.get(domain, [domain])
+		for source_domain_value in source_domains:
+			var source_domain := str(source_domain_value)
+			var prefix := source_domain + "."
+			for atomic_name_value in _definitions.keys():
+				var atomic_name := str(atomic_name_value)
+				if atomic_name.begins_with(prefix):
+					var atomic_op := atomic_name.substr(prefix.length())
+					var public_op := atomic_op if source_domain == domain else source_domain + "_" + atomic_op
+					operations.append(public_op)
+					targets[public_op] = atomic_name
 		operations.sort()
 		if operations.is_empty():
 			_build_errors.append({"code": "PUBLIC_DOMAIN_EMPTY", "domain": domain})
 			continue
 		_domain_operations[domain] = operations
+		_domain_targets[domain] = targets
 		_catalogue.append(_manage_definition(domain, operations))
 
 	var coverage := coverage_report()
@@ -111,10 +123,13 @@ func setup(registry: RefCounted) -> Dictionary:
 	return {"ok": true, "result": coverage.get("result", {})}
 
 func catalogue() -> Array[Dictionary]:
-	return _catalogue.duplicate(true)
+	var output: Array[Dictionary] = _catalogue.duplicate(true)
+	for promoted in _promoted_definitions():
+		output.append(promoted)
+	return output
 
 func public_tool_count() -> int:
-	return _catalogue.size()
+	return _catalogue.size() + _promoted_definitions().size()
 
 func atomic_tool_count() -> int:
 	return _definitions.size()
@@ -122,9 +137,9 @@ func atomic_tool_count() -> int:
 func has_public_tool(name: String) -> bool:
 	if _direct_lookup.has(name):
 		return true
-	if not name.ends_with(".manage"):
-		return false
-	return _domain_operations.has(name.trim_suffix(".manage"))
+	if name.ends_with(".manage") and _domain_operations.has(name.trim_suffix(".manage")):
+		return true
+	return _promoted_spec_for_public_name(name) != null
 
 func call_tool(name: String, arguments: Dictionary) -> Dictionary:
 	if _registry == null:
@@ -138,6 +153,13 @@ func call_tool(name: String, arguments: Dictionary) -> Dictionary:
 		if _domain_operations.has(domain):
 			return await _call_manage(domain, arguments)
 
+	var promoted_spec = _promoted_spec_for_public_name(name)
+	if promoted_spec != null:
+		var custom_tools = CustomToolRegistry.get_instance()
+		if custom_tools == null:
+			return _error("CUSTOM_REGISTRY_UNAVAILABLE", "Custom tool registry is unavailable")
+		return await custom_tools.invoke(str((promoted_spec as Dictionary).get("name", "")), arguments)
+
 	return _error("PUBLIC_TOOL_NOT_FOUND", "Unknown public Godot MCP tool: %s" % name, {"available_tools": _public_names()})
 
 func coverage_report() -> Dictionary:
@@ -145,10 +167,11 @@ func coverage_report() -> Dictionary:
 	var mapped: Dictionary = {}
 	for direct_name_value in _direct_lookup.keys():
 		mapped[str(direct_name_value)] = true
-	for domain_value in _domain_operations.keys():
+	for domain_value in _domain_targets.keys():
 		var domain := str(domain_value)
-		for op_value in _domain_operations[domain]:
-			mapped[domain + "." + str(op_value)] = true
+		var targets: Dictionary = _domain_targets[domain]
+		for atomic_name_value in targets.values():
+			mapped[str(atomic_name_value)] = true
 	for atomic_name_value in _definitions.keys():
 		var atomic_name := str(atomic_name_value)
 		if not mapped.has(atomic_name):
@@ -194,7 +217,10 @@ func _call_manage(domain: String, arguments: Dictionary) -> Dictionary:
 	if not params_value is Dictionary:
 		return _error("INVALID_ARGUMENTS", "%s.manage params must be an object" % domain)
 	var params: Dictionary = params_value
-	var atomic_name := domain + "." + op
+	var targets: Dictionary = _domain_targets.get(domain, {})
+	var atomic_name := str(targets.get(op, ""))
+	if atomic_name.is_empty():
+		return _error("OP_TARGET_MISSING", "No internal command is mapped for %s.%s" % [domain, op])
 	var definition: Dictionary = _definitions.get(atomic_name, {})
 	var validation := _validate_against_schema(params, definition.get("input_schema", {}), "params")
 	if not bool(validation.get("ok", false)):
@@ -238,8 +264,9 @@ func _manage_definition(domain: String, operations: Array[String]) -> Dictionary
 func _aggregate_annotations(domain: String, operations: Array[String]) -> Dictionary:
 	var all_read_only := true
 	var any_destructive := false
+	var targets: Dictionary = _domain_targets.get(domain, {})
 	for op in operations:
-		var definition: Dictionary = _definitions.get(domain + "." + op, {})
+		var definition: Dictionary = _definitions.get(str(targets.get(op, "")), {})
 		var annotations_value = definition.get("annotations", {})
 		var annotations: Dictionary = annotations_value if annotations_value is Dictionary else {}
 		if not bool(annotations.get("readOnlyHint", false)):
@@ -250,10 +277,38 @@ func _aggregate_annotations(domain: String, operations: Array[String]) -> Dictio
 
 func _public_names() -> Array[String]:
 	var names: Array[String] = []
-	for definition_value in _catalogue:
+	for definition_value in catalogue():
 		var definition: Dictionary = definition_value
 		names.append(str(definition.get("name", "")))
 	return names
+
+func _promoted_definitions() -> Array[Dictionary]:
+	var output: Array[Dictionary] = []
+	var custom_tools = CustomToolRegistry.get_instance()
+	if custom_tools == null:
+		return output
+	for spec_value in custom_tools.promoted_specs():
+		var spec: Dictionary = spec_value
+		output.append({
+			"name": "custom." + str(spec.get("name", "")),
+			"description": str(spec.get("description", "")),
+			"input_schema": (spec.get("input_schema", {}) as Dictionary).duplicate(true),
+			"annotations": {"readOnlyHint": bool(spec.get("read_only", true)), "destructiveHint": bool(spec.get("destructive", false))},
+		})
+	return output
+
+func _promoted_spec_for_public_name(public_name: String):
+	if not public_name.begins_with("custom.") or public_name == "custom.manage":
+		return null
+	var target_name := public_name.trim_prefix("custom.")
+	var custom_tools = CustomToolRegistry.get_instance()
+	if custom_tools == null:
+		return null
+	for spec_value in custom_tools.promoted_specs():
+		var spec: Dictionary = spec_value
+		if str(spec.get("name", "")) == target_name:
+			return spec
+	return null
 
 func _validate_against_schema(value, schema_value, path: String) -> Dictionary:
 	if not schema_value is Dictionary or (schema_value as Dictionary).is_empty():

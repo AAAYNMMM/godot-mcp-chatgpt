@@ -16,6 +16,9 @@ const WorkflowCommands := preload("res://addons/godot_mcp_chatgpt/commands/workf
 const AnimationAuthoringCommands := preload("res://addons/godot_mcp_chatgpt/commands/animation_authoring_commands.gd")
 const MediaAuthoringCommands := preload("res://addons/godot_mcp_chatgpt/commands/media_authoring_commands.gd")
 const UIResourceAuthoringCommands := preload("res://addons/godot_mcp_chatgpt/commands/ui_resource_authoring_commands.gd")
+const WorldAuthoringCommands := preload("res://addons/godot_mcp_chatgpt/commands/world_authoring_commands.gd")
+const CustomToolCommands := preload("res://addons/godot_mcp_chatgpt/commands/custom_tool_commands.gd")
+const CustomToolRegistry := preload("res://addons/godot_mcp_chatgpt/custom/custom_tool_registry.gd")
 const LogCapture := preload("res://addons/godot_mcp_chatgpt/debug/log_capture.gd")
 const DiagnosticsCommands := preload("res://addons/godot_mcp_chatgpt/commands/diagnostics_commands.gd")
 const BatchCommands := preload("res://addons/godot_mcp_chatgpt/commands/batch_commands.gd")
@@ -27,6 +30,7 @@ var _dock: Control
 var _bottom_button: Button
 var _runtime_manager: Node
 var _editor_logger: Logger
+var _custom_tools: RefCounted
 
 func _enter_tree() -> void:
 	_editor_logger = LogCapture.new()
@@ -52,6 +56,12 @@ func _enter_tree() -> void:
 	AnimationAuthoringCommands.register(_registry, self)
 	MediaAuthoringCommands.register(_registry, self)
 	UIResourceAuthoringCommands.register(_registry, self)
+	WorldAuthoringCommands.register(_registry, self)
+	_custom_tools = CustomToolRegistry.new()
+	var custom_setup: Dictionary = _custom_tools.setup(get_editor_interface().get_editor_settings())
+	if not bool(custom_setup.get("ok", false)):
+		push_warning("[GodotMCPChatGPT] Custom tool registry setup: %s" % str(custom_setup))
+	CustomToolCommands.register(_registry, _custom_tools)
 	DiagnosticsCommands.register(_registry, self)
 	BatchCommands.register(_registry, self)
 
@@ -94,4 +104,7 @@ func _exit_tree() -> void:
 		_client.disconnect_from_tunnel()
 		_client.queue_free()
 		_client = null
+	if _custom_tools != null:
+		_custom_tools.shutdown()
+		_custom_tools = null
 	_registry = null

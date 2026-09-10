@@ -254,9 +254,60 @@ CATALOGUE_SCHEMA_GATE=PASS tools=48
 COMPACT_TOOL_SURFACE_GATE=PASS public=48 atomic=211
 PRODUCTION_PLUGIN_SMOKE=PASS
 ```
+### Phase E implementation — world building and extensibility
+
+Status: **targeted validation passed**.
+
+- Base public surface: 47; internal atomic commands: 230; enabled promoted custom tools remain bounded below the <=50 release cap.
+- TileMapLayer/TileSet atlas write-read-image workflows: PASS, including bounded selected-cell reads and UndoRedo.
+- GridMap/MeshLibrary set/fill/clear/read workflows: PASS, including UndoRedo and fill bounds.
+- CSG create/operation editing: PASS, including UndoRedo.
+- Custom Tool opt-in, addon/handler ownership, explicit safety hints, schema validation, payload bounds, promotion and refresh behavior: PASS.
+- Official OpenAI Tunnel production path: PASS.
+
+### Phase F consolidated migration regression
+
+Status: **integration passed for all executable local/Official-Tunnel/installer/hygiene gates in this MCPcoding workspace; final real Web ChatGPT Connector acceptance pending**.
+
+Validation actually run on 2026-09-10:
+
+```text
+npm run build: PASS
+npm test: PASS
+CATALOGUE_SCHEMA_GATE=PASS tools=47
+COMPACT_TOOL_SURFACE_GATE=PASS public=47 atomic=230
+PHASE_E_WORLD_EXTENSIBILITY=PASS
+CAPABILITY_MIGRATION_MATRIX=PASS excluded=4 public=47 atomic=230
+PRODUCTION_PLUGIN_SMOKE=PASS
+FULL_OFFICIAL_TUNNEL_SMOKE=PASS
+credential-helper Go compile: PASS
+run-helper Go compile: PASS
+INSTALLER_BUILD=PASS
+INSTALLER_CLEAN_INSTALL=PASS
+INSTALLER_UPGRADE=PASS
+INSTALLER_PRESERVE_UNRELATED=PASS
+INSTALLER_STALE_CLEANUP=PASS
+INSTALLER_NO_ENABLE=PASS
+INSTALLER_INVALID_PROJECT=PASS
+INSTALLER_GODOT_4_7_2_LOAD=PASS
+INSTALLED_ADDON_EXACT_MATCH=PASS files=70
+BOM_CHECK=PASS files=69
+SECRET_CHECK=PASS fixtures=1 real=0
+DOC_LINK_CHECK=PASS files=36 local_links=157
+DOC_NO_IMAGE=PASS
+INSTALLER_HARDCODE_CHECK=PASS
+DIFF_CHECK=PASS
+PROJECT_GODOT_HYGIENE=PASS
+SMOKE_RESIDUE_CHECK=PASS
+FINAL_HYGIENE=PASS
+```
+
+The direct `go test` entry for the installer is intentionally not a standalone gate because the installer uses `//go:embed payload.zip`; its supported `build.ps1` path generates that payload and passed. The temporary installer artifact still reports v0.4.0 because public version promotion is intentionally deferred until the final real Connector acceptance.
+
+Known remaining acceptance item: a real Web ChatGPT Connector call against the installed/current plugin. This cannot be represented by the Official Tunnel harness and has not been falsely marked PASS.
 ### Exact next implementation task
 
-**Proceed to Phase E: TileMap/TileSet, GridMap, CSG, and Custom Tool Extensibility. Real Web ChatGPT Connector testing remains deferred until Phase F.**
+**All locked migration capabilities and executable Phase F gates are green. Perform the one final real Web ChatGPT Connector acceptance; only after it passes, promote v0.5 public docs/version and build release artifacts from the exact release commit.**
 
 ## Documentation ownership
 

@@ -1,6 +1,8 @@
 @tool
 extends RefCounted
 
+const U = preload("res://addons/godot_mcp_chatgpt/core/command_utils.gd")
+
 static func register(registry: RefCounted, plugin: EditorPlugin) -> void:
 	registry.add_command(
 		"godot.get_status",
@@ -322,14 +324,14 @@ static func _node_set_property(plugin: EditorPlugin, args: Dictionary) -> Dictio
 	var property_name := str(args.get("property", "")).strip_edges()
 	if property_name.is_empty(): return _error("PROPERTY_REQUIRED", "property is required")
 	if not _has_property(node, property_name): return _error("PROPERTY_NOT_FOUND", "Property '%s' does not exist on %s" % [property_name, node.get_class()])
-	var decoded = _decode_value(args.get("value"))
+	var decoded = U.decode_value(args.get("value"))
 	var old_value = node.get(property_name)
 	var undo := plugin.get_undo_redo()
 	undo.create_action("MCP Set %s" % property_name, UndoRedo.MERGE_DISABLE, node)
 	undo.add_do_property(node, property_name, decoded)
 	undo.add_undo_property(node, property_name, old_value)
 	undo.commit_action()
-	return _ok({"node_path": node_path, "property": property_name, "value": _encode_value(node.get(property_name)), "undoable": true})
+	return _ok({"node_path": node_path, "property": property_name, "value": U.encode_value(node.get(property_name)), "undoable": true})
 
 static func _node_delete(plugin: EditorPlugin, args: Dictionary) -> Dictionary:
 	var root := plugin.get_editor_interface().get_edited_scene_root()

@@ -2,7 +2,7 @@
 
 English | [简体中文](DEVELOPMENT_0.5.zh-CN.md)
 
-Status: **planned / scope locked; implementation not started**
+Status: **implementation and consolidated local/Official-Tunnel validation complete; final real Web ChatGPT acceptance pending**
 
 Baseline release: **v0.4.0**
 
@@ -616,16 +616,21 @@ BOM_CHECK=PASS
 
 ### Phase E — World building and extensibility
 
-Status: **planned**.
+Status: **targeted validation passed**.
 
-- TileMap/TileSet;
-- GridMap;
-- CSG;
-- custom third-party tool registration/invocation.
+Implementation now exists for:
+
+- TileMapLayer cell set/fill/clear, used-cell and bounded selected-cell reads, plus TileSet atlas inspection/image content;
+- GridMap set/fill/clear/read and MeshLibrary item listing;
+- common CSG creation/operation editing with EditorUndoRedoManager integration;
+- bounded third-party custom tool registration with addon/handler ownership binding, explicit read-only/destructive hints, default-disabled opt-in enablement, schema validation, 512 KiB argument/result limits, enable/disable persistence, invocation, plugin reload preservation, and up to two enabled promoted public tools;
+- compact public routing through world.manage and custom.manage while keeping the default/public hard limit at <=50.
+
+Phase E is now covered by the consolidated Phase F regression; only the final real Web ChatGPT Connector acceptance remains pending.
 
 ### Phase F — Full migration regression and release hardening
 
-Status: **planned**.
+Status: **integration passed for local/Official-Tunnel/release-hygiene gates; final real Web ChatGPT acceptance pending**.
 
 - compact-surface tool-count/schema gate;
 - capability parity audit against the locked migration matrix;
@@ -695,7 +700,7 @@ Rules for implementation:
 
 ## 9. Current status
 
-Status: **Phases A–D targeted validation passed; final integrated Web ChatGPT validation deferred**.
+Status: **Phases A–E targeted validation and consolidated Official-Tunnel integration passed; final real Web ChatGPT acceptance pending**.
 
 Locked decisions:
 
@@ -723,4 +728,4 @@ PLANNING_DOC_GATES=PASS
 
 ## 10. Exact next implementation task
 
-**Proceed to Phase E: TileMap/TileSet, GridMap, CSG, and Custom Tool Extensibility. Real Web ChatGPT testing remains deferred to Phase F.**
+**The consolidated Phase F local/Official-Tunnel, installer and repository-hygiene regression is green. The only remaining acceptance step is the one real Web ChatGPT Connector regression; public release docs/version remain on the validated v0.4.0 baseline until that passes.**

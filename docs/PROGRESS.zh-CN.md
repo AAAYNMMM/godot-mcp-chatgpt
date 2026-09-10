@@ -254,9 +254,60 @@ CATALOGUE_SCHEMA_GATE=PASS tools=48
 COMPACT_TOOL_SURFACE_GATE=PASS public=48 atomic=211
 PRODUCTION_PLUGIN_SMOKE=PASS
 ```
+### Phase E — World Building / Extensibility
+
+状态：**targeted validation passed**。
+
+- Base Public Surface：47；Internal Atomic Commands：230；启用的 Promoted Custom Tools 仍受限于 `<=50` 发布上限；
+- TileMapLayer / TileSet Atlas 写入、读取、图片、有限选中 Cell 读取与 UndoRedo：PASS；
+- GridMap / MeshLibrary Set / Fill / Clear / Read、UndoRedo 与 Fill Bound：PASS；
+- CSG Create / Operation Editing + UndoRedo：PASS；
+- Custom Tool 默认禁用显式启用、Addon/Handler Ownership、显式 Safety Hints、Schema Validation、Payload Bounds、Promotion、Refresh：PASS；
+- Official OpenAI Tunnel Production Path：PASS。
+
+### Phase F — 一次性全量迁移回归
+
+状态：**当前 MCPcoding 工作区内可执行的本地 / Official Tunnel / Installer / Hygiene Gates 全部集成通过；最终真实 Web ChatGPT Connector 验收待执行**。
+
+2026-09-10 实际执行：
+
+```text
+npm run build: PASS
+npm test: PASS
+CATALOGUE_SCHEMA_GATE=PASS tools=47
+COMPACT_TOOL_SURFACE_GATE=PASS public=47 atomic=230
+PHASE_E_WORLD_EXTENSIBILITY=PASS
+CAPABILITY_MIGRATION_MATRIX=PASS excluded=4 public=47 atomic=230
+PRODUCTION_PLUGIN_SMOKE=PASS
+FULL_OFFICIAL_TUNNEL_SMOKE=PASS
+credential-helper Go compile: PASS
+run-helper Go compile: PASS
+INSTALLER_BUILD=PASS
+INSTALLER_CLEAN_INSTALL=PASS
+INSTALLER_UPGRADE=PASS
+INSTALLER_PRESERVE_UNRELATED=PASS
+INSTALLER_STALE_CLEANUP=PASS
+INSTALLER_NO_ENABLE=PASS
+INSTALLER_INVALID_PROJECT=PASS
+INSTALLER_GODOT_4_7_2_LOAD=PASS
+INSTALLED_ADDON_EXACT_MATCH=PASS files=70
+BOM_CHECK=PASS files=69
+SECRET_CHECK=PASS fixtures=1 real=0
+DOC_LINK_CHECK=PASS files=36 local_links=157
+DOC_NO_IMAGE=PASS
+INSTALLER_HARDCODE_CHECK=PASS
+DIFF_CHECK=PASS
+PROJECT_GODOT_HYGIENE=PASS
+SMOKE_RESIDUE_CHECK=PASS
+FINAL_HYGIENE=PASS
+```
+
+Installer 不把直接 `go test` 作为独立 Gate，因为它使用 `//go:embed payload.zip`，该 Payload 由正式 `build.ps1` 构建路径生成，而正式构建已经通过。临时安装器产物仍显示 v0.4.0，是因为在最终真实 Connector 验收前不会提前提升 Public Version。
+
+当前唯一剩余验收项：使用真实 Web ChatGPT Connector 对已安装 / 当前插件执行一次真实调用。Official Tunnel Harness 不能冒充该验收，因此这里没有虚假标记 PASS。
 ### 精确下一项实现任务
 
-**开始 Phase E：TileMap / TileSet / GridMap / CSG / Custom Tool Extensibility。真实 Web ChatGPT Connector 测试继续统一留到 Phase F。**
+**锁定范围内全部迁移能力与当前可执行的 Phase F Gates 已全绿。下一步只执行一次真实 Web ChatGPT Connector 验收；通过后再提升 v0.5 Public Docs / Version，并从精确 Release Commit 构建发布产物。**
 
 ## 文档职责
 

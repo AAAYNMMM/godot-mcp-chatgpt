@@ -12,7 +12,7 @@ static func register(registry: RefCounted, plugin: EditorPlugin, manager: Node, 
     }, func(a): return await _screenshot(plugin, manager, a), true)
     _add(registry, "editor.get_performance", "Return editor-process performance monitor values.", {"monitors":{"type":"array","items":{"type":"string"}}}, func(a): return _editor_performance(a), true)
     _add(registry, "editor.get_play_status", "Return structured play/debugger/runtime liveness for the current project run.", {}, func(_a): return await _play_status(plugin, manager, editor_logger), true)
-    _add(registry, "editor.reload_plugin", "Safely refresh addon scripts/filesystem state. Full self-disable/re-enable is intentionally not performed because it would tear down the active MCP response path.", {"scan":{"type":"boolean"}}, func(a): return _reload_plugin(plugin, a), false)
+    _add(registry, "editor.reload_plugin", "Safely refresh addon scripts/filesystem state. Full self-disable/re-enable is intentionally not performed because it would tear down the active MCP response path.", {"scan":{"type":"boolean"}}, func(a): return await _reload_plugin(plugin, a), false)
     _add(registry, "editor.quit", "Schedule Godot editor shutdown. Requires confirm=true; optionally saves all scenes/scripts first.", {"confirm":{"type":"boolean"},"save_before":{"type":"boolean"}}, func(a): return _quit_editor(plugin, a), false, ["confirm"], true)
 
     _add(registry, "logs.read", "Read bounded editor/game logs with cursors and per-run identity.", {
@@ -52,6 +52,8 @@ static func _screenshot(plugin: EditorPlugin, manager: Node, args: Dictionary) -
     var source := str(args.get("source", "viewport_3d"))
     if source == "game":
         return await manager.request("screenshot", {"max_resolution":int(args.get("max_resolution",1280))}, int(args.get("timeout_ms",8000)), int(args.get("session_id",-1)))
+    if DisplayServer.get_name().to_lower() == "headless":
+        return U.error("VIEWPORT_IMAGE_UNAVAILABLE", "Editor viewport screenshots require a non-headless display/rendering mode")
     var viewport: Viewport = null
     if source == "viewport_2d":
         viewport = plugin.get_editor_interface().get_editor_viewport_2d()
@@ -62,7 +64,12 @@ static func _screenshot(plugin: EditorPlugin, manager: Node, args: Dictionary) -
     if viewport == null:
         return U.error("VIEWPORT_UNAVAILABLE", "Requested editor viewport is unavailable")
     RenderingServer.force_draw(false)
-    var image := viewport.get_texture().get_image()
+    var texture := viewport.get_texture()
+    if texture == null:
+        return U.error("VIEWPORT_TEXTURE_UNAVAILABLE", "Requested editor viewport has no render texture in the current display/rendering mode")
+    var image := texture.get_image()
+    if image == null or image.is_empty():
+        return U.error("VIEWPORT_IMAGE_UNAVAILABLE", "Requested editor viewport framebuffer is unavailable in the current display/rendering mode")
     return _image_result(image, source, int(args.get("max_resolution",1280)))
 
 static func _cinematic_screenshot(plugin: EditorPlugin, max_resolution: int) -> Dictionary:
@@ -137,23 +144,41 @@ static func _editor_performance(args: Dictionary) -> Dictionary:
 
 static func _play_status(plugin: EditorPlugin, manager: Node, editor_logger: Logger) -> Dictionary:
     var playing := plugin.get_editor_interface().is_playing_scene()
+    var sessions: Array = manager.session_summaries()
     var runtime: Dictionary = {}
+    var state := "stopped"
     if playing:
+        state = "launching"
+        for session_value in sessions:
+            if session_value is Dictionary and bool((session_value as Dictionary).get("breaked", false)):
+                state = "break"
+                break
         var response: Dictionary = await manager.request("status", {}, 1000, -1)
         runtime = response.get("result", {}) if bool(response.get("ok",false)) else {"ready":false,"error":response.get("error")}
+        if state != "break" and bool(response.get("ok", false)):
+            state = "live"
     var logs: Dictionary = editor_logger.recent(20) if editor_logger != null and editor_logger.has_method("recent") else {}
     var recent_errors: Array = []
     for entry in logs.get("entries",[]):
         if entry is Dictionary and str(entry.get("level","")) == "error":
             recent_errors.append(entry)
-    return U.ok({"playing":playing,"playing_scene":plugin.get_editor_interface().get_playing_scene(),"sessions":manager.session_summaries(),"runtime":runtime,"recent_errors":recent_errors.slice(maxi(0,recent_errors.size()-5))})
+    return U.ok({"state":state,"playing":playing,"playing_scene":plugin.get_editor_interface().get_playing_scene(),"sessions":sessions,"runtime":runtime,"recent_errors":recent_errors.slice(maxi(0,recent_errors.size()-5))})
 
 static func _reload_plugin(plugin: EditorPlugin, args: Dictionary) -> Dictionary:
+    var started_ms := Time.get_ticks_msec()
     plugin.get_editor_interface().get_script_editor().reload_open_files()
     var fs := plugin.get_editor_interface().get_resource_filesystem()
-    if fs != null and bool(args.get("scan",true)):
+    var scan_requested := fs != null and bool(args.get("scan",true))
+    var scan_completed := not scan_requested
+    if scan_requested:
         fs.scan()
-    return U.ok({"refreshed":true,"full_self_reload":false,"reason":"A full disable/re-enable would tear down the active MCP request; scripts/filesystem were refreshed in-process."})
+        var deadline := started_ms + 3000
+        while Time.get_ticks_msec() < deadline:
+            await plugin.get_tree().process_frame
+            if not fs.has_method("is_scanning") or not bool(fs.call("is_scanning")):
+                scan_completed = true
+                break
+    return U.ok({"refreshed":true,"ready":scan_completed,"scan_requested":scan_requested,"scan_completed":scan_completed,"elapsed_ms":Time.get_ticks_msec()-started_ms,"full_self_reload":false,"reason":"A full self disable/re-enable would tear down the active MCP response path; open scripts and filesystem state were refreshed in-process with bounded readiness waiting."})
 
 static func _quit_editor(plugin: EditorPlugin, args: Dictionary) -> Dictionary:
     if not bool(args.get("confirm",false)):

@@ -2,7 +2,7 @@
 
 [English](DEVELOPMENT_0.5.md) | 简体中文
 
-状态：**已锁定范围 / 尚未开始实现**
+状态：**代码实现与本地 / Official Tunnel 一次性全量验证已完成；最终真实 Web ChatGPT 验收待执行**
 
 基线版本：**v0.4.0**
 
@@ -617,16 +617,21 @@ BOM_CHECK=PASS
 
 ### Phase E — World Building / Extensibility
 
-状态：**planned**。
+状态：**targeted validation passed**。
 
-- TileMap / TileSet；
-- GridMap；
-- CSG；
-- 第三方 Custom Tool Register / Invoke。
+当前实现已覆盖：
+
+- TileMapLayer Cell Set/Fill/Clear、Used Cells 与有上限的 Selected Cells 读取，以及 TileSet Atlas 检查与图片 Content；
+- GridMap Set/Fill/Clear/Read 与 MeshLibrary Item 列表；
+- 常用 CSG 创建/Operation 编辑，并接入 EditorUndoRedoManager；
+- 有边界的第三方 Custom Tool 注册，绑定 addon/handler Owner，强制显式 read-only/destructive Hint，默认禁用并要求 Opt-in 启用，执行 Schema 校验与 512 KiB 参数/结果上限，持久化启停状态，支持调用/主插件重载恢复，并最多暴露 2 个已启用的 promoted Public Tools；
+- 通过 world.manage / custom.manage 压缩 Public Surface，并继续保证默认/硬上限 <=50。
+
+Phase E 已由 Phase F 一次性全量回归覆盖；现在只剩最终真实 Web ChatGPT Connector 验收待执行。
 
 ### Phase F — 全量迁移回归 / Release Hardening
 
-状态：**planned**。
+状态：**本地 / Official Tunnel / Release Hygiene 集成验证通过；最终真实 Web ChatGPT 验收待执行**。
 
 - Compact Surface Tool Count / Schema Gate；
 - 对照锁定迁移矩阵做 Capability Parity Audit；
@@ -696,7 +701,7 @@ Godot AI 是独立的 MIT 开源项目，本项目在 v0.5 迁移中将它作为
 
 ## 9. 当前状态
 
-状态：**Phase A–D targeted validation passed；最终真实 Web ChatGPT 集成验证延后**。
+状态：**Phase A–E targeted validation 与 Official Tunnel 一次性集成验证通过；最终真实 Web ChatGPT 验收待执行**。
 
 已经锁定：
 
@@ -724,4 +729,4 @@ PLANNING_DOC_GATES=PASS
 
 ## 10. 精确下一项实现任务
 
-**开始 Phase E：TileMap / TileSet / GridMap / CSG / Custom Tool Extensibility。真实 Web ChatGPT 测试继续延后到 Phase F。**
+**Phase F 本地 / Official Tunnel、Installer 与 Repository Hygiene 一次性回归已全绿。现在只剩一次真实 Web ChatGPT Connector 验收；在它通过前，公开 Release 文档与版本继续保持已验证的 v0.4.0 基线。**

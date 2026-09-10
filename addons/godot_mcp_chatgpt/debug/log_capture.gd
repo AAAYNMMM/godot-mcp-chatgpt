@@ -34,7 +34,7 @@ func _append(level: String, text: String, path: String = "", line: int = 0, func
         "cursor": _sequence,
         "timestamp_ms": Time.get_ticks_msec(),
         "level": level,
-        "text": text,
+        "text": _sanitize_text(text),
         "path": path,
         "line": line,
         "function": function,
@@ -45,6 +45,28 @@ func _append(level: String, text: String, path: String = "", line: int = 0, func
         _entries = _entries.slice(remove_count)
         _dropped += remove_count
     _mutex.unlock()
+
+func _sanitize_text(value: String) -> String:
+    var out := ""
+    var i := 0
+    while i < value.length():
+        var code := value.unicode_at(i)
+        if code == 27:
+            i += 1
+            if i < value.length() and value.unicode_at(i) == 91:
+                i += 1
+                while i < value.length():
+                    var c := value.unicode_at(i)
+                    i += 1
+                    if c >= 64 and c <= 126:
+                        break
+            continue
+        if code < 32 and code not in [9, 10, 13]:
+            i += 1
+            continue
+        out += value.substr(i, 1)
+        i += 1
+    return out
 
 func read_since(cursor: int = 0, limit: int = 200, level: String = "") -> Dictionary:
     _mutex.lock()

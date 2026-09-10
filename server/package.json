@@ -1,22 +1,23 @@
 {
-  "name": "godot-mcp-chatgpt-test-harness",
-  "version": "0.4.0",
-  "private": true,
-  "type": "module",
-  "description": "Development-only control-plane harness for the official tunnel-client to Godot Streamable HTTP MCP path",
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "test": "tsx --test test/secureTunnelStub.test.ts",
-    "dev:tunnel-stub": "tsx src/secureTunnelStub.ts",
-    "test:secure-godot": "tsx test/secure-tunnel-godot-smoke.ts"
-  },
-  "dependencies": {
-    "express": "^5.2.1"
-  },
-  "devDependencies": {
-    "@types/express": "^5.0.6",
-    "@types/node": "^26.5.0",
-    "tsx": "^4.23.13",
-    "typescript": "^7.0.2"
-  }
+    "name":  "godot-mcp-chatgpt-test-harness",
+    "version":  "0.4.0",
+    "private":  true,
+    "type":  "module",
+    "description":  "Development-only control-plane harness for the official tunnel-client to Godot Streamable HTTP MCP path",
+    "scripts":  {
+                    "build":  "tsc -p tsconfig.json",
+                    "test":  "tsx --test test/secureTunnelStub.test.ts",
+                    "dev:tunnel-stub":  "tsx src/secureTunnelStub.ts",
+                    "test:secure-godot":  "tsx test/secure-tunnel-godot-smoke.ts",
+                    "test:secure-godot:full":  "tsx test/full-secure-godot-runner.ts"
+                },
+    "dependencies":  {
+                         "express":  "^5.2.1"
+                     },
+    "devDependencies":  {
+                            "@types/express":  "^5.0.6",
+                            "@types/node":  "^26.5.0",
+                            "tsx":  "^4.23.13",
+                            "typescript":  "^7.0.2"
+                        }
 }

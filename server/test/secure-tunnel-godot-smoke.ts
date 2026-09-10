@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 
 const base = process.env.TUNNEL_STUB_URL ?? "http://127.0.0.1:8790";
+const expectEditorImages = process.env.EXPECT_EDITOR_IMAGES === "1";
 let rpcSeq = 0;
 let publicToolNames = new Set<string>();
 
@@ -26,7 +27,7 @@ async function rpc(method: string, params: Record<string, unknown> = {}): Promis
     response_timeout: "30s",
   });
   assert.equal(envelope.resp_type, "jsonrpc_response");
-  assert.equal(envelope.resp_code, 200);
+  assert.equal(envelope.resp_code, 200, `${method} tunnel response: ${JSON.stringify(envelope)}`);
   assert.equal(envelope.resp_json?.id, id);
   if (envelope.resp_json?.error) throw new Error(`${method}: ${JSON.stringify(envelope.resp_json.error)}`);
   return envelope.resp_json?.result;
@@ -49,10 +50,12 @@ async function toolRaw(name: string, args: Record<string, unknown> = {}): Promis
     if (dot > 0) {
       const domain = name.slice(0, dot);
       const op = name.slice(dot + 1);
-      const manageName = domain + ".manage";
+      let manageName = domain + ".manage";
+      let publicOp = op;
+      if (["tilemap", "tileset", "gridmap", "csg"].includes(domain)) { manageName = "world.manage"; publicOp = domain + "_" + op; }
       if (publicToolNames.has(manageName)) {
         publicName = manageName;
-        publicArgs = { op, params: args };
+        publicArgs = { op: publicOp, params: args };
       }
     }
   }
@@ -153,17 +156,17 @@ const expectedDirect = [
   "scene.get_current", "scene.get_tree", "scene.open", "scene.save",
   "node.create", "node.find", "node.get_properties", "node.set_property",
   "script.read", "script.write", "script.patch", "script.validate", "script.attach",
-  "resource.inspect", "classdb.search", "classdb.inspect",
-  "editor.inspect", "editor.take_screenshot", "editor.run_project", "editor.run_custom_scene",
+  "classdb.search",
+  "editor.take_screenshot", "editor.run_project", "editor.run_custom_scene",
   "runtime.status", "runtime.get_tree", "runtime.inspect", "runtime.get_property",
   "runtime.set_property", "runtime.call_method", "diagnostics.run_capture", "batch.execute", "logs.read",
 ];
 const expectedManage = [
   "project.manage", "input_map.manage", "scene.manage", "node.manage", "script.manage",
-  "resource.manage", "classdb.manage", "editor.manage", "debugger.manage", "runtime.manage", "logs.manage", "test.manage", "autoload.manage", "content.manage",
+  "resource.manage", "classdb.manage", "editor.manage", "debugger.manage", "runtime.manage", "logs.manage", "test.manage", "autoload.manage", "content.manage", "world.manage", "custom.manage",
 ];
 for (const required of [...expectedDirect, ...expectedManage]) assert.ok(names.has(required), "missing compact public tool " + required);
-assert.equal(toolNames.length, 48, "unexpected compact public tool count");
+assert.equal(toolNames.length, 47, "unexpected compact public tool count");
 assert.ok(toolNames.length <= 50, "compact public tool surface exceeds release gate");
 let derivedAtomicCount = 4;
 for (const manageName of expectedManage) {
@@ -173,7 +176,7 @@ for (const manageName of expectedManage) {
   assert.ok(Array.isArray(ops) && ops.length > 0, manageName + " missing op enum");
   derivedAtomicCount += ops.length;
 }
-assert.equal(derivedAtomicCount, 211, "compact surface does not cover all registered atomic commands");
+assert.equal(derivedAtomicCount, 230, "compact surface does not cover all registered atomic commands");
 console.log("COMPACT_TOOL_SURFACE_GATE=PASS public=" + toolNames.length + " atomic=" + derivedAtomicCount);
 
 const invalidManagedParams = await toolRaw("project.get_info", { unexpected: true });
@@ -228,6 +231,7 @@ await tool("script.write", { path: "res://.mcp-smoke/tests/test_phase_c.gd", con
 const testList = await tool("test.list", { root: "res://.mcp-smoke/tests" });
 assert.equal(testList.count, 1);
 assert.equal(testList.suites[0].count, 2);
+assert.match(testList.freshness_warning, /editor-session scoped/);
 const testRun = await tool("test.run", { root: "res://.mcp-smoke/tests", max_tests: 10 });
 assert.equal(testRun.ok, true);
 assert.equal(testRun.tests, 2);
@@ -235,6 +239,8 @@ assert.equal(testRun.passed, 2);
 assert.equal(testRun.failed, 0);
 const cachedTests = await tool("test.get_results");
 assert.equal(cachedTests.tests, 2);
+assert.equal(cachedTests.has_result, true);
+assert.match(cachedTests.freshness_warning, /editor-session scoped/);
 
 const batchRead = await tool("batch.execute", {
   operations: [
@@ -439,6 +445,15 @@ assert.equal(camera3d.type, "Camera3D");
 await tool("content.camera_apply_preset", { node_path: "PhaseDCamera3D", preset: "cinematic_3d" });
 const camera3dInfo = await tool("content.camera_get", { node_path: "PhaseDCamera3D" });
 assert.equal(camera3dInfo.node.class, "Camera3D");
+for (const source of ["viewport_2d", "viewport_3d", "cinematic"] as const) {
+  const shot = await toolRaw("editor.take_screenshot", { source, max_resolution: 256, timeout_ms: 10000 });
+  if (expectEditorImages) {
+    assert.equal(shot.isError, false, `${source} screenshot failed: ${shot.text}`);
+    assert.ok(shot.content.some((item: any) => item.type === "image" && item.mimeType === "image/png" && typeof item.data === "string" && item.data.length > 100), `${source} screenshot did not return PNG image content`);
+  } else if (shot.isError) {
+    assert.ok(["VIEWPORT_TEXTURE_UNAVAILABLE", "VIEWPORT_IMAGE_UNAVAILABLE", "IMAGE_EMPTY"].includes(String(shot.body?.code)), `${source} returned unexpected headless error: ${shot.text}`);
+  }
+}
 
 await tool("content.theme_create", { path: "res://.mcp-smoke/phase-d-theme.tres" });
 await tool("content.theme_set_color", { path: "res://.mcp-smoke/phase-d-theme.tres", name: "font_color", theme_type: "Label", color: { __godot_type: "Color", r: 0.9, g: 0.8, b: 0.2, a: 1 } });
@@ -486,6 +501,149 @@ for (const [path, expectedClass] of [
   const reloaded = await tool("resource.inspect", { path, property_mode: "storage", limit: 20 });
   assert.equal(reloaded.resource.class, expectedClass, `reloaded class mismatch for ${path}`);
 }
+
+// Phase E: world building and extensibility through compact world/custom domains.
+await tool("resource.create", { class: "TileSetAtlasSource", path: "res://.mcp-smoke/phase-e-atlas-source.tres", properties: {
+  texture: { __godot_type: "Resource", path: "res://.mcp-smoke/phase-d-noise.tres" },
+  texture_region_size: { __godot_type: "Vector2i", x: 64, y: 64 },
+} });
+await tool("resource.call_method", { path: "res://.mcp-smoke/phase-e-atlas-source.tres", method: "create_tile", arguments: [{ __godot_type: "Vector2i", x: 0, y: 0 }], save_after: true });
+await tool("resource.create", { class: "TileSet", path: "res://.mcp-smoke/phase-e-tileset.tres", properties: { tile_size: { __godot_type: "Vector2i", x: 64, y: 64 } } });
+await tool("resource.call_method", { path: "res://.mcp-smoke/phase-e-tileset.tres", method: "add_source", arguments: [{ __godot_type: "Resource", path: "res://.mcp-smoke/phase-e-atlas-source.tres" }, 0], save_after: true });
+await tool("node.create", { parent_path: ".", type: "TileMapLayer", name: "PhaseETiles" });
+await tool("node.set_property", { node_path: "PhaseETiles", property: "tile_set", value: { __godot_type: "Resource", path: "res://.mcp-smoke/phase-e-tileset.tres" } });
+const tileSetOne = await tool("tilemap.set_cell", { node_path: "PhaseETiles", map_x: 2, map_y: 3, source_id: 0, atlas_col: 0, atlas_row: 0 });
+assert.equal(tileSetOne.undoable, true);
+const tileCell = await tool("tilemap.get_cell", { node_path: "PhaseETiles", map_x: 2, map_y: 3 });
+assert.equal(tileCell.source_id, 0);
+await tool("editor.undo");
+const tileAfterUndo = await tool("tilemap.get_cell", { node_path: "PhaseETiles", map_x: 2, map_y: 3 });
+assert.equal(tileAfterUndo.has_tile, false);
+await tool("editor.redo");
+const tileAfterRedo = await tool("tilemap.get_cell", { node_path: "PhaseETiles", map_x: 2, map_y: 3 });
+assert.equal(tileAfterRedo.source_id, 0);
+const tileFill = await tool("tilemap.set_cells_rect", { node_path: "PhaseETiles", rect_x: 0, rect_y: 0, rect_w: 2, rect_h: 2, source_id: 0, atlas_col: 0, atlas_row: 0 });
+assert.equal(tileFill.cells_filled, 4);
+const usedTiles = await tool("tilemap.get_used_cells", { node_path: "PhaseETiles", limit: 20 });
+assert.ok(usedTiles.total >= 4);
+const selectedTiles = await tool("tilemap.get_cells", { node_path: "PhaseETiles", cells: [{ x: 0, y: 0 }, { x: 2, y: 3 }, { x: 99, y: 99 }] });
+assert.equal(selectedTiles.count, 3);
+assert.equal(selectedTiles.cells[0]?.source_id, 0);
+assert.equal(selectedTiles.cells[1]?.source_id, 0);
+assert.equal(selectedTiles.cells[2]?.has_tile, false);
+const atlasTiles = await tool("tileset.get_atlas_tiles", { tileset_path: "res://.mcp-smoke/phase-e-tileset.tres", source_id: 0 });
+assert.equal(atlasTiles.count, 1);
+const atlasSourceRaw = await toolRaw("tileset.get_atlas_source", { tileset_path: "res://.mcp-smoke/phase-e-tileset.tres", source_id: 0, include_image: true, max_resolution: 128 });
+assert.equal(atlasSourceRaw.isError, false, `tileset.get_atlas_source failed: ${atlasSourceRaw.text}`);
+assert.ok(atlasSourceRaw.content.some((item: any) => item.type === "image" && item.mimeType === "image/png"));
+
+const tileCleared = await tool("tilemap.clear", { node_path: "PhaseETiles" });
+assert.equal(tileCleared.undoable, true);
+const usedTilesAfterClear = await tool("tilemap.get_used_cells", { node_path: "PhaseETiles", limit: 20 });
+assert.equal(usedTilesAfterClear.total, 0);
+await tool("editor.undo");
+const usedTilesAfterClearUndo = await tool("tilemap.get_used_cells", { node_path: "PhaseETiles", limit: 20 });
+assert.ok(usedTilesAfterClearUndo.total >= 4);
+await tool("editor.redo");
+const usedTilesAfterClearRedo = await tool("tilemap.get_used_cells", { node_path: "PhaseETiles", limit: 20 });
+assert.equal(usedTilesAfterClearRedo.total, 0);
+
+await tool("resource.create", { class: "MeshLibrary", path: "res://.mcp-smoke/phase-e-mesh-library.tres", properties: {} });
+await tool("resource.call_method", { path: "res://.mcp-smoke/phase-e-mesh-library.tres", method: "create_item", arguments: [1], save_after: true });
+await tool("resource.call_method", { path: "res://.mcp-smoke/phase-e-mesh-library.tres", method: "set_item_name", arguments: [1, "Block"], save_after: true });
+await tool("resource.call_method", { path: "res://.mcp-smoke/phase-e-mesh-library.tres", method: "set_item_mesh", arguments: [1, { __godot_type: "Resource", path: "res://.mcp-smoke/phase-d-boxmesh.tres" }], save_after: true });
+await tool("node.create", { parent_path: ".", type: "GridMap", name: "PhaseEGrid" });
+await tool("node.set_property", { node_path: "PhaseEGrid", property: "mesh_library", value: { __godot_type: "Resource", path: "res://.mcp-smoke/phase-e-mesh-library.tres" } });
+const gridSet = await tool("gridmap.set_item", { node_path: "PhaseEGrid", map_x: 1, map_y: 2, map_z: 3, item: 1 });
+assert.equal(gridSet.undoable, true);
+await tool("editor.undo");
+const gridAfterUndo = await tool("gridmap.get_used_cells", { node_path: "PhaseEGrid", limit: 32 });
+assert.equal(gridAfterUndo.total, 0);
+await tool("editor.redo");
+const gridAfterRedo = await tool("gridmap.get_used_cells", { node_path: "PhaseEGrid", limit: 32 });
+assert.equal(gridAfterRedo.total, 1);
+const gridFill = await tool("gridmap.fill", { node_path: "PhaseEGrid", rect_x: 0, rect_y: 0, rect_z: 0, rect_w: 2, rect_h: 2, rect_d: 2, item: 1 });
+assert.equal(gridFill.cells_filled, 8);
+const gridUsed = await tool("gridmap.get_used_cells", { node_path: "PhaseEGrid", limit: 32 });
+assert.ok(gridUsed.total >= 8);
+const gridLibrary = await tool("gridmap.list_library_items", { node_path: "PhaseEGrid" });
+assert.ok(gridLibrary.items.some((item: any) => item.item === 1 && item.name === "Block"), `unexpected GridMap library: ${JSON.stringify(gridLibrary)}`);
+const gridLimit = await toolRaw("gridmap.fill", { node_path: "PhaseEGrid", rect_w: 17, rect_h: 17, rect_d: 17, item: 1 });
+assert.equal(gridLimit.isError, true);
+assert.equal(gridLimit.body?.code, "FILL_LIMIT");
+
+const gridCleared = await tool("gridmap.clear", { node_path: "PhaseEGrid" });
+assert.equal(gridCleared.undoable, true);
+const gridUsedAfterClear = await tool("gridmap.get_used_cells", { node_path: "PhaseEGrid", limit: 32 });
+assert.equal(gridUsedAfterClear.total, 0);
+await tool("editor.undo");
+const gridUsedAfterClearUndo = await tool("gridmap.get_used_cells", { node_path: "PhaseEGrid", limit: 32 });
+assert.ok(gridUsedAfterClearUndo.total >= 8);
+await tool("editor.redo");
+const gridUsedAfterClearRedo = await tool("gridmap.get_used_cells", { node_path: "PhaseEGrid", limit: 32 });
+assert.equal(gridUsedAfterClearRedo.total, 0);
+
+const csgCreated = await tool("csg.create", { parent_path: ".", name: "PhaseECsg", shape: "box", operation: "subtraction" });
+assert.equal(csgCreated.class, "CSGBox3D");
+await tool("editor.undo");
+const csgAfterCreateUndo = await tool("node.find", { name_contains: "PhaseECsg", limit: 10 });
+assert.equal(csgAfterCreateUndo.count, 0);
+await tool("editor.redo");
+const csgAfterCreateRedo = await tool("node.find", { name_contains: "PhaseECsg", limit: 10 });
+assert.equal(csgAfterCreateRedo.count, 1);
+const csgChanged = await tool("csg.set_operation", { node_path: "PhaseECsg", operation: "intersection" });
+assert.equal(csgChanged.undoable, true);
+const csgOperationChanged = await tool("node.get_property", { node_path: "PhaseECsg", property: "operation" });
+await tool("editor.undo");
+const csgOperationUndo = await tool("node.get_property", { node_path: "PhaseECsg", property: "operation" });
+assert.notEqual(csgOperationUndo.value, csgOperationChanged.value);
+await tool("editor.redo");
+const csgOperationRedo = await tool("node.get_property", { node_path: "PhaseECsg", property: "operation" });
+assert.equal(csgOperationRedo.value, csgOperationChanged.value);
+const customList = await tool("custom.list", { include_disabled: true });
+assert.ok(Array.isArray(customList.tools));
+const customPluginCfg = `[plugin]\nname="MCP Smoke Custom"\ndescription="Temporary custom-tool fixture"\nauthor="test"\nversion="0.0.0"\nscript="fixture_plugin.gd"\n`;
+const customPluginScript = `@tool\nextends EditorPlugin\n`;
+const customToolHostScript = `@tool\nextends RefCounted\n\nstatic func echo(args: Dictionary) -> Dictionary:\n    return {"ok":true,"result":{"echo":str(args.get("text","")),"count":int(args.get("count",0))}}\n`;
+const customRegistrationTest = `@tool\nextends "res://addons/godot_mcp_chatgpt/testing/test_suite.gd"\n\nconst CustomTools := preload("res://addons/godot_mcp_chatgpt/custom/custom_tool_registry.gd")\nconst Host := preload("res://addons/mcp_smoke_custom/custom_tool_host.gd")\n\nfunc test_register_custom_tool() -> bool:\n    CustomTools.unregister("phase_e_echo","res://addons/mcp_smoke_custom/plugin.cfg")\n    var missing_hint:=CustomTools.register({"name":"phase_e_missing_hint","description":"missing hint rejection","source_path":"res://addons/mcp_smoke_custom/plugin.cfg","handler":Callable(Host,"echo"),"input_schema":{"type":"object","properties":{},"additionalProperties":false}})\n    assert_false(bool(missing_hint.get("ok",false)))\n    assert_eq(str(missing_hint.get("error",{}).get("code","")),"CUSTOM_HINT_REQUIRED")\n    var spoof:=CustomTools.register({"name":"phase_e_spoof","description":"owner mismatch rejection","source_path":"res://addons/godot_mcp_chatgpt/plugin.cfg","handler":Callable(Host,"echo"),"read_only":true,"destructive":false,"input_schema":{"type":"object","properties":{},"additionalProperties":false}})\n    assert_false(bool(spoof.get("ok",false)))\n    assert_eq(str(spoof.get("error",{}).get("code","")),"CUSTOM_HANDLER_OWNER_MISMATCH")\n    var registered:=CustomTools.register({"name":"phase_e_echo","description":"Echo bounded smoke arguments","source_path":"res://addons/mcp_smoke_custom/plugin.cfg","handler":Callable(Host,"echo"),"read_only":true,"destructive":false,"promoted":true,"input_schema":{"type":"object","properties":{"text":{"type":"string","minLength":1,"maxLength":16},"count":{"type":"integer","minimum":0,"maximum":3}},"required":["text"],"additionalProperties":false}})\n    assert_true(bool(registered.get("ok",false)),str(registered))\n    return true\n`;
+await tool("script.write", { path: "res://addons/mcp_smoke_custom/plugin.cfg", content: customPluginCfg });
+await tool("script.write", { path: "res://addons/mcp_smoke_custom/fixture_plugin.gd", content: customPluginScript });
+await tool("script.write", { path: "res://addons/mcp_smoke_custom/custom_tool_host.gd", content: customToolHostScript });
+await tool("script.write", { path: "res://addons/mcp_smoke_custom/test_custom_registration.gd", content: customRegistrationTest });
+const customRegistrationRun = await tool("test.run", { paths: ["res://addons/mcp_smoke_custom/test_custom_registration.gd"], max_files: 1, max_tests: 1 });
+assert.equal(customRegistrationRun.failed, 0, JSON.stringify(customRegistrationRun));
+const customSpec = await tool("custom.get", { name: "phase_e_echo" });
+assert.equal(customSpec.source_path, "res://addons/mcp_smoke_custom/plugin.cfg");
+assert.equal(customSpec.handler_script_path, "res://addons/mcp_smoke_custom/custom_tool_host.gd");
+assert.equal(customSpec.promoted, true);
+await tool("custom.set_enabled", { name: "phase_e_echo", enabled: false });
+const disabledCustom = await toolRaw("custom.invoke", { name: "phase_e_echo", arguments: { text: "off" } });
+assert.equal(disabledCustom.isError, true);
+assert.equal(disabledCustom.body?.code, "CUSTOM_TOOL_DISABLED");
+let customCatalogue = await rpc("tools/list");
+assert.ok(!customCatalogue.tools.some((item: any) => item.name === "custom.phase_e_echo"));
+const customEnabled = await tool("custom.set_enabled", { name: "phase_e_echo", enabled: true });
+assert.equal(customEnabled.enabled, true);
+customCatalogue = await rpc("tools/list");
+assert.ok(customCatalogue.tools.some((item: any) => item.name === "custom.phase_e_echo"));
+assert.ok(customCatalogue.tools.length <= 50);
+publicToolNames = new Set(customCatalogue.tools.map((item: any) => item.name));
+const promotedEcho = await tool("custom.phase_e_echo", { text: "promoted", count: 2 });
+assert.equal(promotedEcho.echo, "promoted");
+assert.equal(promotedEcho.count, 2);
+const managedEcho = await tool("custom.invoke", { name: "phase_e_echo", arguments: { text: "managed", count: 1 } });
+assert.equal(managedEcho.echo, "managed");
+const customSchemaReject = await toolRaw("custom.invoke", { name: "phase_e_echo", arguments: { text: "this-string-is-too-long" } });
+assert.equal(customSchemaReject.isError, true);
+assert.equal(customSchemaReject.body?.code, "INVALID_ARGUMENTS");
+const customReload = await tool("editor.reload_plugin", { scan: true });
+assert.equal(customReload.refreshed, true);
+const afterCustomReload = await tool("custom.invoke", { name: "phase_e_echo", arguments: { text: "reload" } });
+assert.equal(afterCustomReload.echo, "reload");
+await tool("custom.set_enabled", { name: "phase_e_echo", enabled: false });
+customCatalogue = await rpc("tools/list");
+publicToolNames = new Set(customCatalogue.tools.map((item: any) => item.name));
+assert.ok(!publicToolNames.has("custom.phase_e_echo"));
 
 const editorSelection = await tool("editor.set_selection", { node_paths: ["Player"], clear_first: true });
 assert.equal(editorSelection.selection.nodes.length, 1);
@@ -644,6 +802,18 @@ const editorPerf = await tool("editor.get_performance");
 assert.equal(typeof editorPerf.monitors.fps, "number");
 const editorLogs = await tool("logs.read", { source: "editor", limit: 20 });
 assert.ok(Array.isArray(editorLogs.entries));
+const editorSelectionRead = await tool("editor.get_selection");
+assert.ok(Array.isArray(editorSelectionRead.nodes));
+const selectedFile = await tool("editor.select_file", { path: "res://.mcp-smoke/secure-player.gd" });
+assert.equal(selectedFile.selected, "res://.mcp-smoke/secure-player.gd");
+const fsScan = await tool("editor.scan_filesystem", { sources_only: true });
+assert.equal(typeof fsScan.scanning, "boolean");
+const pluginRefresh = await tool("editor.reload_plugin", { scan: true });
+assert.equal(pluginRefresh.refreshed, true);
+assert.equal(pluginRefresh.full_self_reload, false);
+const quitDenied = await toolRaw("editor.quit", { confirm: false });
+assert.equal(quitDenied.isError, true);
+assert.equal(quitDenied.body?.code, "CONFIRM_REQUIRED");
 
 await tool("node.create", { parent_path: ".", type: "Label", name: "PhaseBLabel" });
 await tool("node.set_property", { node_path: "PhaseBLabel", property: "text", value: "PHASE_B_UI" });
@@ -655,25 +825,38 @@ assert.equal(editorPlaying.playing, true);
 const runtimeStatus = await toolEventually("runtime.status");
 const debuggerSessions = await tool("debugger.get_sessions");
 assert.ok(debuggerSessions.sessions.some((session: any) => session.active));
+const playStatus = await tool("editor.get_play_status");
+assert.equal(playStatus.playing, true);
+assert.equal(playStatus.state, "live");
+const editorIsPlaying = await tool("editor.is_playing");
+assert.equal(editorIsPlaying.playing, true);
 assert.equal(runtimeStatus.current_scene, "res://.mcp-smoke/secure-generated.tscn");
 assert.ok(runtimeStatus.node_count >= 2);
 const debugStatus = await toolEventually("runtime.get_debug_status");
 assert.equal(typeof debugStatus.process_ticks, "number");
 const uiElements = await tool("runtime.get_ui_elements", { limit: 50 });
 assert.ok(uiElements.elements.some((item: any) => item.name === "PhaseBLabel" && item.text === "PHASE_B_UI"));
+const runtimeFind = await tool("runtime.find", { name_contains: "Player", limit: 20 });
+assert.ok(runtimeFind.nodes.some((item: any) => item.name === "Player"));
+const runtimeGroups = await tool("runtime.get_groups", { node_path: "Player" });
+assert.ok(Array.isArray(runtimeGroups.groups));
 await tool("runtime.input_key", { keycode: 65, pressed: true });
 await tool("runtime.input_key", { keycode: 65, pressed: false });
 await tool("runtime.input_mouse", { kind: "button", button: 1, pressed: true, x: 20, y: 30 });
 await tool("runtime.input_mouse", { kind: "button", button: 1, pressed: false, x: 20, y: 30 });
 await tool("runtime.input_mouse", { kind: "motion", x: 25, y: 35, dx: 5, dy: 5 });
+await tool("runtime.input_mouse", { kind: "button", button: 4, pressed: true, x: 25, y: 35, factor: 1.0 });
+await tool("runtime.input_mouse", { kind: "button", button: 4, pressed: false, x: 25, y: 35, factor: 1.0 });
 await tool("runtime.input_gamepad", { kind: "button", device: 0, button: 0, pressed: true });
 await tool("runtime.input_gamepad", { kind: "button", device: 0, button: 0, pressed: false });
+await tool("runtime.input_gamepad", { kind: "axis", device: 0, axis: 0, value: 0.5 });
+await tool("runtime.input_gamepad", { kind: "axis", device: 0, axis: 0, value: 0.0 });
 const keyEventCount = await tool("runtime.get_property", { node_path: "Player", property: "key_events" });
 const mouseEventCount = await tool("runtime.get_property", { node_path: "Player", property: "mouse_events" });
 const joyEventCount = await tool("runtime.get_property", { node_path: "Player", property: "joy_events" });
 assert.ok(keyEventCount.value >= 2, "keyboard injection did not reach _input");
-assert.ok(mouseEventCount.value >= 3, "mouse injection did not reach _input");
-assert.ok(joyEventCount.value >= 2, "gamepad injection did not reach _input");
+assert.ok(mouseEventCount.value >= 5, "mouse/wheel injection did not reach _input");
+assert.ok(joyEventCount.value >= 4, "gamepad button/axis injection did not reach _input");
 const evalResult = await tool("runtime.evaluate", { node_path: "Player", expression: "a * 2 + b", variables: { a: 20, b: 2 } });
 assert.equal(evalResult.value, 42);
 const actionPressed = await tool("runtime.input_action", { action: "mcp_phase_b_action", pressed: true, strength: 0.75 });
@@ -687,6 +870,8 @@ const sequence = await tool("runtime.input_sequence", { steps: [
 ], release_actions: true, timeout_ms: 10000 });
 assert.equal(sequence.completed, true);
 assert.equal(sequence.steps, 2);
+const inputStateAfterSequence = await tool("runtime.get_input_state", { actions: ["mcp_phase_b_action"] });
+assert.equal(inputStateAfterSequence.actions.mcp_phase_b_action.pressed, false);
 const screenshotRaw = await toolRaw("editor.take_screenshot", { source: "game", max_resolution: 512, timeout_ms: 10000 });
 assert.equal(screenshotRaw.isError, false);
 assert.ok(screenshotRaw.content.some((item: any) => item.type === "image" && item.mimeType === "image/png" && typeof item.data === "string" && item.data.length > 100));
@@ -695,6 +880,23 @@ assert.ok(Array.isArray(gameLogs.entries));
 assert.ok(gameLogs.entries.some((entry: any) => String(entry.text ?? "").includes("CAPTURE_STDOUT_OK")), "running-game log capture missing CAPTURE_STDOUT_OK");
 const nativeStatus = await tool("debugger.get_status");
 assert.equal(nativeStatus.active, true);
+const breakpointsBefore = await tool("debugger.get_breakpoints");
+assert.ok(Array.isArray(breakpointsBefore.breakpoints));
+const breakpointSet = await tool("debugger.set_breakpoint", { path: "res://.mcp-smoke/secure-player.gd", line: 11, enabled: true });
+assert.equal(breakpointSet.enabled, true);
+const breakpointUnset = await tool("debugger.set_breakpoint", { path: "res://.mcp-smoke/secure-player.gd", line: 11, enabled: false });
+assert.equal(breakpointUnset.enabled, false);
+const debuggerPause = await tool("debugger.suspend");
+assert.equal(debuggerPause.action, "suspend");
+const debuggerFrame = await tool("debugger.next_frame");
+assert.equal(debuggerFrame.action, "next_frame");
+const debuggerContinue = await tool("debugger.resume");
+assert.equal(debuggerContinue.action, "resume");
+const gameLogClear = await tool("logs.clear", { source: "game", timeout_ms: 10000 });
+assert.equal(gameLogClear.game.source, "game");
+assert.equal(typeof gameLogClear.game.cleared, "number");
+const gameLogsAfterClear = await tool("logs.read", { source: "game", limit: 20 });
+assert.ok(Array.isArray(gameLogsAfterClear.entries));
 const runtimeTree = await tool("runtime.get_tree", { max_depth: 4 });
 assert.equal(runtimeTree.root.name, "SecureRoot");
 assert.equal(runtimeTree.root.children[0]?.name, "Player");
@@ -789,6 +991,11 @@ await tool("project.delete_file", { path: "res://.mcp-smoke/phase-c-invalid.gd" 
 await tool("project.delete_file", { path: "res://.mcp-smoke/patch-target.gd" });
 await tool("project.delete_file", { path: "res://.mcp-smoke/phase-c-autoload.gd" });
 await tool("project.delete_file", { path: "res://.mcp-smoke/tests/test_phase_c.gd" });
+await tool("project.delete_file", { path: "res://addons/mcp_smoke_custom/test_custom_registration.gd" });
+await tool("project.delete_file", { path: "res://addons/mcp_smoke_custom/fixture_plugin.gd" });
+await tool("project.delete_file", { path: "res://addons/mcp_smoke_custom/fixture_plugin.gd.uid" });
+await tool("project.delete_file", { path: "res://addons/mcp_smoke_custom/custom_tool_host.gd" });
+await tool("project.delete_file", { path: "res://addons/mcp_smoke_custom/plugin.cfg" });
 await tool("input_map.remove_action", { action: "mcp_phase_b_action" });
 const removedAction = await tool("input_map.remove_action", { action: "mcp_smoke_action" });
 assert.equal(removedAction.removed, true);
@@ -803,6 +1010,10 @@ assert.equal(removedSettingCheck.exists, false);
 const terminated = await enqueue({ command_type: "session_termination", headers: { "Mcp-Session-Id": ["smoke-session"] } });
 assert.equal(terminated.resp_type, "session_termination_response");
 assert.equal(terminated.resp_code, 204);
+
+console.log("PHASE_E_WORLD_EXTENSIBILITY=PASS");
+console.log("CAPABILITY_MIGRATION_MATRIX=PASS excluded=4 public=" + listed.tools.length + " atomic=" + derivedAtomicCount);
+console.log("PRODUCTION_PLUGIN_SMOKE=PASS");
 
 console.log(JSON.stringify({
   ok: true,
