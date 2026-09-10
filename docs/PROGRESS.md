@@ -9,14 +9,14 @@ This document is the **current-state source of truth**. Detailed historical deve
 | Item | Value |
 | --- | --- |
 | Latest release | **v0.5.0** |
-| Release source commit | `v0.5.0 tag target` |
+| Release source commit | `41a353b10d62a133025eb8f89d1b316f9f0b141a` |
 | Release tag | `v0.5.0` |
 | Primary platform | Windows x64 |
 | Verified Godot | 4.7.2 Standard x64 |
 | Default public MCP tools | **47** |
 | Internal atomic commands | **230** |
 | Connector path | Web ChatGPT + OpenAI Secure MCP Tunnel |
-| Release state | Validated; packaging/publication in progress |
+| Release state | **Published and validated** |
 | v0.5 capability migration | **Complete** |
 | Public-tool limit | **<50; validated at 47 default / 48 with one promoted custom tool** |
 
@@ -302,14 +302,17 @@ DIFF_CHECK=PASS
 PROJECT_GODOT_HYGIENE=PASS
 SMOKE_RESIDUE_CHECK=PASS
 FINAL_HYGIENE=PASS
+RELEASE_REMOTE_ASSET_VERIFY=PASS
+RELEASE_TAG_TARGET_VERIFY=PASS
 ```
 
 The direct `go test` entry for the installer is intentionally not a standalone gate because the installer uses `//go:embed payload.zip`; its supported `build.ps1` path generates that payload and passed.
 
 Final real Web ChatGPT Connector acceptance completed: `REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS`. It verified real screenshots/image content, Runtime/UI, input, logs/tests/transactions, World Authoring, Custom Tool promotion, and cleanup.
+
 ### Exact next implementation task
 
-**v0.5.0 is release-ready. Build and verify release artifacts from the exact release commit, publish the `v0.5.0` tag/Release, then verify remote asset hashes.**
+**v0.5.0 is published and fully verified. Keep the `v0.5.0` tag fixed on the validated release source commit; track future fixes and enhancements as post-v0.5 work.**
 
 ## Documentation ownership
 

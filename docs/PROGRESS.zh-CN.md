@@ -9,14 +9,14 @@
 | 项目 | 值 |
 | --- | --- |
 | 最新 Release | **v0.5.0** |
-| Release 源码 Commit | `v0.5.0 tag target` |
+| Release 源码 Commit | `41a353b10d62a133025eb8f89d1b316f9f0b141a` |
 | Release Tag | `v0.5.0` |
 | 主要平台 | Windows x64 |
 | 已验证 Godot | 4.7.2 Standard x64 |
 | 默认 Public MCP Tools | **47** |
 | Internal Atomic Commands | **230** |
 | Connector 路线 | Web ChatGPT + OpenAI Secure MCP Tunnel |
-| Release 状态 | 已验证；正在打包/发布 |
+| Release 状态 | **已发布并验证** |
 | v0.5 能力迁移 | **已完成** |
 | Public Tool 上限 | **<50；默认 47，单个 promoted custom tool 时实测 48** |
 
@@ -302,14 +302,17 @@ DIFF_CHECK=PASS
 PROJECT_GODOT_HYGIENE=PASS
 SMOKE_RESIDUE_CHECK=PASS
 FINAL_HYGIENE=PASS
+RELEASE_REMOTE_ASSET_VERIFY=PASS
+RELEASE_TAG_TARGET_VERIFY=PASS
 ```
 
 Installer 不把直接 `go test` 作为独立 Gate，因为它使用 `//go:embed payload.zip`，该 Payload 由正式 `build.ps1` 构建路径生成，而正式构建已经通过。
 
 最终真实 Web ChatGPT Connector 验收已经完成：`REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS`。真实验证包含 Screenshot/Image Content、Runtime/UI、Input、Logs/Tests/Transaction、World Authoring、Custom Tool Promotion 与 Cleanup。
+
 ### 精确下一项实现任务
 
-**v0.5.0 已达到 Release-ready。下一步从精确 Release Commit 构建并验证产物，发布 `v0.5.0` Tag/Release，再校验远端资产哈希。**
+**v0.5.0 已正式发布并完成全部验证。`v0.5.0` Tag 固定在经过验证的 Release Source Commit；后续修复与增强作为 post-v0.5 工作继续跟踪。**
 
 ## 文档职责
 

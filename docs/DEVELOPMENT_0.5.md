@@ -728,4 +728,4 @@ PLANNING_DOC_GATES=PASS
 
 ## 10. Exact next implementation task
 
-**v0.5.0 implementation is complete. The final real Web ChatGPT Connector regression passed with `REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS`; public release docs/version are promoted to v0.5.0 and release packaging/publication is the remaining step.**
+**v0.5.0 is complete, published, and remotely verified. `REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS`; the `v0.5.0` tag remains fixed on the exact validated release source commit.**

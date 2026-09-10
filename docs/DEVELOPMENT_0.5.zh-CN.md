@@ -729,4 +729,4 @@ PLANNING_DOC_GATES=PASS
 
 ## 10. 精确下一项实现任务
 
-**v0.5.0 实现已经完成，最终真实 Web ChatGPT Connector 回归以 `REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS` 通过；Public Docs / Version 已提升到 v0.5.0，剩余步骤仅为正式打包与发布。**
+**v0.5.0 已完成、正式发布并通过远端验证。`REAL_CHATGPT_GODOT_MCP_0_5_TEST=PASS`；`v0.5.0` Tag 固定在精确的已验证 Release Source Commit。**
